@@ -1,7 +1,8 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
-  /* config options here */
-};
+  // Remove all experimental.turbo configuration
+  // The default configuration works fine for Tailwind CSS
+}
 
-export default nextConfig;
+export default nextConfig

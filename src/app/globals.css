@@ -1,26 +1,41 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --color-cream-50: #fefdf9;
+  --color-cream-100: #fdf8f0;
+  --color-cream-200: #faf0e0;
+  --color-cream-300: #f5e6c8;
+  --color-cream-400: #efd6a3;
+  --color-cream-500: #e6c378;
+  
+  --color-dark-green-50: #f0f9f0;
+  --color-dark-green-100: #dcf2dc;
+  --color-dark-green-200: #a8d8a8;
+  --color-dark-green-300: #6bb76b;
+  --color-dark-green-400: #4a9c4a;
+  --color-dark-green-500: #2d6b2d;
+  --color-dark-green-600: #1e4a1e;
+  --color-dark-green-700: #153a15;
+  --color-dark-green-800: #0d2b0d;
+  --color-dark-green-900: #051c05;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+.cream-gradient {
+  background: linear-gradient(135deg, var(--color-cream-50) 0%, var(--color-cream-100) 100%);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+.green-gradient {
+  background: linear-gradient(135deg, var(--color-dark-green-500) 0%, var(--color-dark-green-600) 100%);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--color-cream-50);
+  color: var(--color-dark-green-900);
 }
