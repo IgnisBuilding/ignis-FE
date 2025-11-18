@@ -1,119 +1,141 @@
-'use client';
+﻿'use client';
 import { useState } from 'react';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { Shield, User as UserIcon, Flame } from 'lucide-react';
 import PageTransition from '@/components/shared/pageTransition';
-import Button from '@/components/shared/Button';
-import Input from '@/components/ui/Input';
-import { fadeIn, scaleIn } from '@/lib/animations';
+import { useAuth } from '../../../context/AuthContext';
+import { UserRole } from '../../../types';
 
 export default function LoginPage() {
-  const [showPassword, setShowPassword] = useState(false);
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-  });
+  const router = useRouter();
+  const { login } = useAuth();
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Handle login logic here
-    console.log('Login attempt:', formData);
+  const handleRoleSelect = async (role: UserRole) => {
+    setLoading(true);
+    const credentials = { 
+      building_authority: { email: 'admin@ignis.com', password: 'admin123' }, 
+      resident: { email: 'resident@ignis.com', password: 'resident123' }, 
+      firefighter: { email: 'firefighter@ignis.com', password: 'firefighter123' } 
+    };
+    const { email, password } = credentials[role];
+    const success = await login(email, password);
+    
+    if (success) {
+      if (role === 'building_authority') router.push('/admin');
+      else if (role === 'resident') router.push('/resident');
+      else if (role === 'firefighter') router.push('/firefighter');
+    }
+    setLoading(false);
   };
+
+  const roleCards = [
+    {
+      role: 'building_authority' as UserRole,
+      title: 'Building Authority',
+      description: 'Manage residents, sensors & buildings',
+      icon: Shield,
+      gradient: 'from-blue-500 to-blue-600',
+      delay: 0.1
+    },
+    {
+      role: 'resident' as UserRole,
+      title: 'Resident',
+      description: 'View apartment info & alerts',
+      icon: UserIcon,
+      gradient: 'from-green-500 to-green-600',
+      delay: 0.15
+    },
+    {
+      role: 'firefighter' as UserRole,
+      title: 'Firefighter',
+      description: 'Monitor active fire locations',
+      icon: Flame,
+      gradient: 'from-orange-500 to-red-500',
+      delay: 0.2
+    }
+  ];
 
   return (
     <PageTransition>
-      <div className="min-h-screen cream-gradient flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-        <motion.div
-          variants={scaleIn}
-          initial="initial"
-          animate="animate"
-          className="max-w-md w-full space-y-8"
+      <div className="min-h-screen cream-gradient flex items-center justify-center py-12 px-4 relative overflow-hidden">
+        {/* Floating background elements - Reduced motion */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-30">
+          <div className="absolute top-20 left-10 w-64 h-64 bg-gradient-to-br from-dark-green-200/20 to-dark-green-300/10 rounded-full blur-3xl" />
+          <div className="absolute bottom-20 right-10 w-80 h-80 bg-gradient-to-br from-dark-green-300/20 to-dark-green-400/10 rounded-full blur-3xl" />
+        </div>
+
+        <motion.div 
+          initial={{ opacity: 0.9 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.1 }}
+          className="max-w-md w-full relative z-10"
         >
-          <div className="bg-white rounded-2xl shadow-xl p-8">
-            <div className="text-center mb-8">
-              <motion.div
-                variants={fadeIn}
-                className="w-16 h-16 green-gradient rounded-2xl flex items-center justify-center mx-auto mb-4"
+          <div className="glass-effect rounded-3xl p-10 shadow-2xl border border-white/50">
+            <div className="text-center mb-10">
+              <motion.div 
+                initial={{ scale: 0.9 }} 
+                animate={{ scale: 1 }} 
+                transition={{ duration: 0.15, ease: 'easeOut' }} 
+                className="w-20 h-20 green-gradient rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-2xl"
               >
-                <span className="text-white font-bold text-2xl">I</span>
+                <span className="text-white font-bold text-3xl">I</span>
               </motion.div>
-              <h2 className="text-3xl font-bold text-dark-green-800">
-                Welcome back
+              <h2 className="text-4xl font-bold gradient-text mb-3">
+                Welcome to Ignis
               </h2>
-              <p className="text-dark-green-600 mt-2">
-                Sign in to your Ignis account
+              <p className="text-dark-green-600 text-lg">
+                Select your role to continue
               </p>
             </div>
-
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <motion.div
-                initial={{ opacity: 0, x: -50 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.4, duration: 0.6 }}
+            
+            <div className="space-y-4">
+              {roleCards.map((card) => (
+                <motion.button 
+                  key={card.role}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  transition={{ duration: 0.1 }} 
+                  onClick={() => handleRoleSelect(card.role)} 
+                  disabled={loading} 
+                  className="w-full p-6 premium-card rounded-2xl hover:shadow-2xl transition-all group disabled:opacity-50 relative overflow-hidden"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-dark-green-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="flex items-center space-x-4 relative z-10">
+                    <div className={`w-14 h-14 bg-gradient-to-br ${card.gradient} rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg`}>
+                      <card.icon className="w-7 h-7 text-white" />
+                    </div>
+                    <div className="text-left flex-1">
+                      <h3 className="text-xl font-bold text-dark-green-800 group-hover:text-dark-green-900 transition-colors">{card.title}</h3>
+                      <p className="text-sm text-dark-green-600 mt-1">{card.description}</p>
+                    </div>
+                    <span className="text-dark-green-400 opacity-0 group-hover:opacity-100 transition-opacity">→</span>
+                  </div>
+                </motion.button>
+              ))}
+            </div>
+            
+            {loading && (
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="mt-8 text-center"
               >
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-dark-green-400 w-5 h-5" />
-                  <Input
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Enter your password"
-                    className="pl-11 pr-11"
-                    value={formData.password}
-                    onChange={(e) => setFormData({...formData, password: e.target.value})}
-                    required
+                <div className="inline-flex items-center space-x-3 px-6 py-3 rounded-full bg-gradient-to-r from-dark-green-50 to-dark-green-100">
+                  <motion.div 
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                    className="w-5 h-5 border-3 border-dark-green-500 border-t-transparent rounded-full"
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-dark-green-400 hover:text-dark-green-600"
-                  >
-                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                  </button>
+                  <p className="text-sm font-semibold text-dark-green-700">Logging in...</p>
                 </div>
               </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.6, duration: 0.6 }}
-                className="flex items-center justify-between"
-              >
-                <label className="flex items-center">
-                  <input type="checkbox" className="rounded border-cream-300 text-dark-green-600 focus:ring-dark-green-500" />
-                  <span className="ml-2 text-sm text-dark-green-600">Remember me</span>
-                </label>
-                <Link href="/forgot-password" className="text-sm text-dark-green-600 hover:text-dark-green-800">
-                  Forgot password?
-                </Link>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.8, duration: 0.6 }}
-              >
-                <Button type="submit" className="w-full" size="lg">
-                  Sign In
-                </Button>
-              </motion.div>
-            </form>
-
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 1, duration: 0.6 }}
-              className="mt-6 text-center"
-            >
-              <p className="text-dark-green-600">
-                Don't have an account?{' '}
-                <Link href="/signup" className="font-medium text-dark-green-700 hover:text-dark-green-900">
-                  Sign up
-                </Link>
-              </p>
-            </motion.div>
+            )}
           </div>
         </motion.div>
       </div>
     </PageTransition>
   );
 }
+

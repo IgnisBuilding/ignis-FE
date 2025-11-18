@@ -1,21 +1,14 @@
 'use client';
-import { motion } from 'framer-motion';
+import { memo } from 'react';
 
 interface PageTransitionProps {
   children: React.ReactNode;
 }
 
-const PageTransition = ({ children }: PageTransitionProps) => {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 20 }}
-      transition={{ duration: 0.5, ease: "easeOut" }}
-    >
-      {children}
-    </motion.div>
-  );
-};
+// Simplified - no animation, just wrapper for consistency
+const PageTransition = memo(({ children }: PageTransitionProps) => {
+  return <>{children}</>;
+});
 
+PageTransition.displayName = 'PageTransition';
 export default PageTransition;

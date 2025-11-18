@@ -1,32 +1,35 @@
-import PageTransition from '@/components/shared/pageTransition';
-import Hero from '@/components/dashboard/Hero';
-import StatsCards from '@/components/dashboard/StatsCard';
-import QuickNav from '@/components/dashboard/QuickNav';
+'use client';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '../../context/AuthContext';
 
-export default function Dashboard() {
+export default function HomePage() {
+  const router = useRouter();
+  const { isAuthenticated, role } = useAuth();
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.replace('/login');
+    } else {
+      // Redirect to role-specific dashboard
+      if (role === 'building_authority') {
+        router.replace('/admin');
+      } else if (role === 'resident') {
+        router.replace('/resident');
+      } else if (role === 'firefighter') {
+        router.replace('/firefighter');
+      }
+    }
+  }, [isAuthenticated, role, router]);
+
   return (
-    <PageTransition>
-      <div className="min-h-screen cream-gradient py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="space-y-8">
-            <Hero />
-            
-            <section>
-              <h2 className="text-2xl font-bold text-dark-green-800 mb-6">
-                Overview
-              </h2>
-              <StatsCards />
-            </section>
-
-            <section>
-              <h2 className="text-2xl font-bold text-dark-green-800 mb-6">
-                Quick Access
-              </h2>
-              <QuickNav />
-            </section>
-          </div>
+    <div className="min-h-screen cream-gradient flex items-center justify-center">
+      <div className="text-center">
+        <div className="w-16 h-16 green-gradient rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xl animate-pulse">
+          <span className="text-white font-bold text-2xl">I</span>
         </div>
+        <p className="text-dark-green-600 font-semibold text-lg">Loading Ignis...</p>
       </div>
-    </PageTransition>
+    </div>
   );
 }

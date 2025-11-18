@@ -1,15 +1,12 @@
 'use client';
-import { motion } from 'framer-motion';
-import { InputHTMLAttributes, forwardRef } from 'react';
+import { InputHTMLAttributes, forwardRef, memo } from 'react';
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: string;
 }
 
-const MotionInput = motion.input;
-
-const Input = forwardRef<HTMLInputElement, InputProps>(
+const Input = memo(forwardRef<HTMLInputElement, InputProps>(
   ({ className = '', label, error, ...props }, ref) => {
     return (
       <div className="space-y-2">
@@ -18,8 +15,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
             {label}
           </label>
         )}
-        <MotionInput
-          whileFocus={{ scale: 1.02 }}
+        <input
           ref={ref}
           className={`
             w-full px-4 py-3 rounded-lg border border-cream-300 
@@ -28,21 +24,17 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
             ${error ? 'border-red-300 focus:ring-red-500' : ''}
             ${className}
           `}
-          {...props as any} // Type assertion to avoid conflicts
+          {...props}
         />
         {error && (
-          <motion.p 
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-sm text-red-600"
-          >
+          <p className="text-sm text-red-600">
             {error}
-          </motion.p>
+          </p>
         )}
       </div>
     );
   }
-);
+));
 
 Input.displayName = 'Input';
 export default Input;

@@ -1,9 +1,10 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import Image from 'next/image';
 
-const Hero = () => {
+const Hero = memo(() => {
   const [currentSlide, setCurrentSlide] = useState(0);
   
   const slides = [
@@ -32,47 +33,50 @@ const Hero = () => {
       setCurrentSlide((prev) => (prev + 1) % slides.length);
     }, 5000);
     return () => clearInterval(timer);
-  }, []);
+  }, [slides.length]);
 
-  const nextSlide = () => {
+  const nextSlide = useCallback(() => {
     setCurrentSlide((prev) => (prev + 1) % slides.length);
-  };
+  }, [slides.length]);
 
-  const prevSlide = () => {
+  const prevSlide = useCallback(() => {
     setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
-  };
+  }, [slides.length]);
 
   return (
     <div className="relative h-96 md:h-[500px] overflow-hidden rounded-2xl">
       <AnimatePresence mode="wait">
         <motion.div
           key={currentSlide}
-          initial={{ opacity: 0, scale: 1.1 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.9 }}
-          transition={{ duration: 0.7 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.3 }}
           className="absolute inset-0"
         >
-          <div
-            className="w-full h-full bg-cover bg-center"
-            style={{ backgroundImage: `url(${slides[currentSlide].image})` }}
-          >
-            <div className="absolute inset-0 bg-dark-green-800/60" />
-            <div className="absolute inset-0 flex items-center justify-center text-center">
-              <motion.div
-                initial={{ y: 50, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.3, duration: 0.6 }}
-                className="text-white"
-              >
-                <h1 className="text-4xl md:text-6xl font-bold mb-4">
-                  {slides[currentSlide].title}
-                </h1>
-                <p className="text-xl md:text-2xl text-cream-200">
-                  {slides[currentSlide].subtitle}
-                </p>
-              </motion.div>
-            </div>
+          <Image
+            src={slides[currentSlide].image}
+            alt={slides[currentSlide].title}
+            fill
+            priority={currentSlide === 0}
+            className="object-cover"
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 100vw, 1200px"
+          />
+          <div className="absolute inset-0 bg-dark-green-800/60" />
+          <div className="absolute inset-0 flex items-center justify-center text-center">
+            <motion.div
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.1, duration: 0.3 }}
+              className="text-white px-4"
+            >
+              <h1 className="text-4xl md:text-6xl font-bold mb-4">
+                {slides[currentSlide].title}
+              </h1>
+              <p className="text-xl md:text-2xl text-cream-200">
+                {slides[currentSlide].subtitle}
+              </p>
+            </motion.div>
           </div>
         </motion.div>
       </AnimatePresence>
@@ -81,12 +85,14 @@ const Hero = () => {
       <button
         onClick={prevSlide}
         className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white/20 hover:bg-white/30 text-white p-2 rounded-full transition-colors"
+        aria-label="Previous slide"
       >
         <ChevronLeft size={24} />
       </button>
       <button
         onClick={nextSlide}
         className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white/20 hover:bg-white/30 text-white p-2 rounded-full transition-colors"
+        aria-label="Next slide"
       >
         <ChevronRight size={24} />
       </button>
@@ -100,11 +106,13 @@ const Hero = () => {
             className={`w-3 h-3 rounded-full transition-colors ${
               index === currentSlide ? 'bg-white' : 'bg-white/50'
             }`}
+            aria-label={`Go to slide ${index + 1}`}
           />
         ))}
       </div>
     </div>
   );
-};
+});
 
+Hero.displayName = 'Hero';
 export default Hero;
