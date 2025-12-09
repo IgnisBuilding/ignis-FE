@@ -2,42 +2,68 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Plus, Edit2, Trash2, Search, Activity, Thermometer, Wind, Droplets } from 'lucide-react';
+import { Plus, Edit2, Trash2, Search, Activity, Thermometer, Wind, Droplets, AlertCircle } from 'lucide-react';
 import PageTransition from '@/components/shared/pageTransition';
 import { fadeIn } from '@/lib/animations';
 import { useAuth } from '../../../../context/AuthContext';
-import { mockSensors } from '@/lib/mockData';
-import { Sensor } from '../../../../types';
+import { api, Sensor as ApiSensor } from '@/lib/api';
 
 export default function SensorsManagementPage() {
   const router = useRouter();
   const { user, role } = useAuth();
-  const [sensors, setSensors] = useState<Sensor[]>(mockSensors);
+  const [sensors, setSensors] = useState<ApiSensor[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
-  const [editingSensor, setEditingSensor] = useState<Sensor | null>(null);
+  const [editingSensor, setEditingSensor] = useState<ApiSensor | null>(null);
   const [formData, setFormData] = useState({
-    type: 'smoke' as 'smoke' | 'heat' | 'co2' | 'sprinkler',
-    location: '', floor: 1, building: '',
-    status: 'active' as 'active' | 'inactive' | 'maintenance',
-    batteryLevel: 100, sensitivity: 'medium' as 'low' | 'medium' | 'high'
+    name: '',
+    type: 'smoke',
+    value: 0,
+    unit: 'ppm',
+    status: 'active',
+    roomId: undefined as number | undefined,
+    latitude: undefined as number | undefined,
+    longitude: undefined as number | undefined,
   });
 
   useEffect(() => {
-    if (!user || role !== 'building_authority') router.push('/login');
+    if (!user || (role !== 'building_authority' && role !== 'admin')) {
+      router.push('/login');
+    } else {
+      loadSensors();
+    }
   }, [user, role, router]);
 
+  const loadSensors = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await api.getSensors();
+      setSensors(data);
+    } catch (err: any) {
+      console.error('Failed to load sensors:', err);
+      setError(err.message || 'Failed to load sensors');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const filteredSensors = sensors.filter(s =>
-    s.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     s.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.building.toLowerCase().includes(searchTerm.toLowerCase())
+    s.status.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const getSensorIcon = (type: string) => {
-    switch(type) {
+    switch(type.toLowerCase()) {
       case 'smoke': return <Wind className="w-5 h-5" />;
+      case 'temperature': return <Thermometer className="w-5 h-5" />;
       case 'heat': return <Thermometer className="w-5 h-5" />;
+      case 'gas': return <Activity className="w-5 h-5" />;
       case 'co2': return <Activity className="w-5 h-5" />;
+      case 'humidity': return <Droplets className="w-5 h-5" />;
       case 'sprinkler': return <Droplets className="w-5 h-5" />;
       default: return <Activity className="w-5 h-5" />;
     }
@@ -45,42 +71,61 @@ export default function SensorsManagementPage() {
 
   const handleAdd = () => {
     setEditingSensor(null);
-    setFormData({ type: 'smoke', location: '', floor: 1, building: '', status: 'active', batteryLevel: 100, sensitivity: 'medium' });
-    setShowModal(true);
-  };
-
-  const handleEdit = (sensor: Sensor) => {
-    setEditingSensor(sensor);
     setFormData({
-      type: sensor.type, location: sensor.location, floor: sensor.floor,
-      building: sensor.building, status: sensor.status,
-      batteryLevel: sensor.batteryLevel || 100, sensitivity: sensor.sensitivity
+      name: '',
+      type: 'smoke',
+      value: 0,
+      unit: 'ppm',
+      status: 'active',
+      roomId: undefined,
+      latitude: undefined,
+      longitude: undefined,
     });
     setShowModal(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleEdit = (sensor: ApiSensor) => {
+    setEditingSensor(sensor);
+    setFormData({
+      name: sensor.name,
+      type: sensor.type,
+      value: sensor.value || 0,
+      unit: sensor.unit || 'ppm',
+      status: sensor.status,
+      roomId: sensor.roomId,
+      latitude: sensor.latitude,
+      longitude: sensor.longitude,
+    });
+    setShowModal(true);
+  };
+
+  const handleDelete = async (id: number) => {
     if (confirm('Are you sure you want to delete this sensor?')) {
-      setSensors(sensors.filter(s => s.id !== id));
+      try {
+        await api.deleteSensor(id);
+        await loadSensors();
+      } catch (err: any) {
+        alert('Failed to delete sensor: ' + err.message);
+      }
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingSensor) {
-      setSensors(sensors.map(s => s.id === editingSensor.id ? { ...s, ...formData, lastChecked: new Date() } : s));
-    } else {
-      const newSensor: Sensor = {
-        id: `S${Date.now()}`,
-        ...formData,
-        lastChecked: new Date()
-      };
-      setSensors([...sensors, newSensor]);
+    try {
+      if (editingSensor) {
+        await api.updateSensor(editingSensor.id, formData);
+      } else {
+        await api.createSensor(formData);
+      }
+      setShowModal(false);
+      await loadSensors();
+    } catch (err: any) {
+      alert('Failed to save sensor: ' + err.message);
     }
-    setShowModal(false);
   };
 
-  if (!user || role !== 'building_authority') return null;
+  if (!user || (role !== 'building_authority' && role !== 'admin')) return null;
 
   return (
     <PageTransition>
@@ -106,61 +151,67 @@ export default function SensorsManagementPage() {
             </div>
 
             <div className="premium-card rounded-2xl overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gradient-to-r from-dark-green-50 to-dark-green-100 border-b-2 border-dark-green-200">
-                    <tr>
-                      <th className="px-6 py-4 text-left text-sm font-bold text-dark-green-800">Type</th>
-                      <th className="px-6 py-4 text-left text-sm font-bold text-dark-green-800">Location</th>
-                      <th className="px-6 py-4 text-left text-sm font-bold text-dark-green-800">Floor</th>
-                      <th className="px-6 py-4 text-left text-sm font-bold text-dark-green-800">Building</th>
-                      <th className="px-6 py-4 text-left text-sm font-bold text-dark-green-800">Battery</th>
-                      <th className="px-6 py-4 text-left text-sm font-bold text-dark-green-800">Status</th>
-                      <th className="px-6 py-4 text-left text-sm font-bold text-dark-green-800">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredSensors.map((sensor, index) => (
-                      <motion.tr key={sensor.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.03 }} className="border-b border-dark-green-50 hover:bg-gradient-to-r hover:from-dark-green-50/50 hover:to-transparent transition-all">
-                        <td className="px-6 py-4">
-                          <div className="flex items-center space-x-3">
-                            <div className="p-2.5 bg-gradient-to-br from-dark-green-100 to-dark-green-50 rounded-xl text-dark-green-600 shadow-sm">
-                              {getSensorIcon(sensor.type)}
+              {loading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-dark-green-500"></div>
+                </div>
+              ) : error ? (
+                <div className="flex items-center justify-center py-12 text-red-600">
+                  <AlertCircle className="w-6 h-6 mr-2" />
+                  <span>{error}</span>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gradient-to-r from-dark-green-50 to-dark-green-100 border-b-2 border-dark-green-200">
+                      <tr>
+                        <th className="px-6 py-4 text-left text-sm font-bold text-dark-green-800">Type</th>
+                        <th className="px-6 py-4 text-left text-sm font-bold text-dark-green-800">Name</th>
+                        <th className="px-6 py-4 text-left text-sm font-bold text-dark-green-800">Value</th>
+                        <th className="px-6 py-4 text-left text-sm font-bold text-dark-green-800">Room ID</th>
+                        <th className="px-6 py-4 text-left text-sm font-bold text-dark-green-800">Status</th>
+                        <th className="px-6 py-4 text-left text-sm font-bold text-dark-green-800">Last Reading</th>
+                        <th className="px-6 py-4 text-left text-sm font-bold text-dark-green-800">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredSensors.map((sensor, index) => (
+                        <motion.tr key={sensor.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.03 }} className="border-b border-dark-green-50 hover:bg-gradient-to-r hover:from-dark-green-50/50 hover:to-transparent transition-all">
+                          <td className="px-6 py-4">
+                            <div className="flex items-center space-x-3">
+                              <div className="p-2.5 bg-gradient-to-br from-dark-green-100 to-dark-green-50 rounded-xl text-dark-green-600 shadow-sm">
+                                {getSensorIcon(sensor.type)}
+                              </div>
+                              <span className="text-dark-green-800 font-semibold capitalize">{sensor.type}</span>
                             </div>
-                            <span className="text-dark-green-800 font-semibold capitalize">{sensor.type}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-dark-green-600">{sensor.location}</td>
-                        <td className="px-6 py-4 text-dark-green-600">Floor {sensor.floor}</td>
-                        <td className="px-6 py-4 text-dark-green-600">{sensor.building}</td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center space-x-2">
-                            <div className="w-24 h-2.5 bg-gray-100 rounded-full overflow-hidden shadow-inner">
-                              <div className={`h-full rounded-full transition-all ${(sensor.batteryLevel || 0) > 50 ? 'bg-gradient-to-r from-green-400 to-green-500' : (sensor.batteryLevel || 0) > 20 ? 'bg-gradient-to-r from-yellow-400 to-yellow-500' : 'bg-gradient-to-r from-red-400 to-red-500'}`} style={{ width: `${sensor.batteryLevel || 0}%` }}></div>
+                          </td>
+                          <td className="px-6 py-4 text-dark-green-600">{sensor.name}</td>
+                          <td className="px-6 py-4 text-dark-green-600">{sensor.value} {sensor.unit}</td>
+                          <td className="px-6 py-4 text-dark-green-600">{sensor.roomId || 'N/A'}</td>
+                          <td className="px-6 py-4">
+                            <span className={`px-3 py-1.5 rounded-full text-xs font-bold ${sensor.status === 'active' ? 'bg-gradient-to-r from-green-100 to-green-50 text-green-700 border border-green-200' : sensor.status === 'alert' ? 'bg-gradient-to-r from-red-100 to-red-50 text-red-700 border border-red-200' : 'bg-gradient-to-r from-gray-100 to-gray-50 text-gray-700 border border-gray-200'}`}>
+                              {sensor.status}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-dark-green-600 text-sm">
+                            {sensor.lastReading ? new Date(sensor.lastReading).toLocaleString() : 'N/A'}
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex space-x-2">
+                              <button onClick={() => handleEdit(sensor)} className="p-2.5 text-blue-600 hover:bg-blue-50 rounded-xl transition-all hover:scale-110 shadow-sm">
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                              <button onClick={() => handleDelete(sensor.id)} className="p-2.5 text-red-600 hover:bg-red-50 rounded-xl transition-all hover:scale-110 shadow-sm">
+                                <Trash2 className="w-4 h-4" />
+                              </button>
                             </div>
-                            <span className="text-xs font-semibold text-dark-green-600">{sensor.batteryLevel}%</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className={`px-3 py-1.5 rounded-full text-xs font-bold ${sensor.status === 'active' ? 'bg-gradient-to-r from-green-100 to-green-50 text-green-700 border border-green-200' : sensor.status === 'maintenance' ? 'bg-gradient-to-r from-yellow-100 to-yellow-50 text-yellow-700 border border-yellow-200' : 'bg-gradient-to-r from-gray-100 to-gray-50 text-gray-700 border border-gray-200'}`}>
-                            {sensor.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex space-x-2">
-                            <button onClick={() => handleEdit(sensor)} className="p-2.5 text-blue-600 hover:bg-blue-50 rounded-xl transition-all hover:scale-110 shadow-sm">
-                              <Edit2 className="w-4 h-4" />
-                            </button>
-                            <button onClick={() => handleDelete(sensor.id)} className="p-2.5 text-red-600 hover:bg-red-50 rounded-xl transition-all hover:scale-110 shadow-sm">
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </motion.tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                          </td>
+                        </motion.tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
 
             {showModal && (
@@ -170,45 +221,46 @@ export default function SensorsManagementPage() {
                     <h2 className="text-2xl font-bold gradient-text mb-6">{editingSensor ? 'Edit Sensor' : 'Add New Sensor'}</h2>
                     <form onSubmit={handleSubmit} className="space-y-4">
                       <div className="grid grid-cols-2 gap-4">
+                        <div className="col-span-2">
+                          <label className="block text-sm font-semibold text-dark-green-700 mb-2">Sensor Name</label>
+                          <input type="text" required value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} placeholder="e.g., Smoke Detector - Lobby" className="w-full px-4 py-2 border-2 border-dark-green-200 rounded-xl focus:border-dark-green-500 focus:outline-none" />
+                        </div>
                         <div>
                           <label className="block text-sm font-semibold text-dark-green-700 mb-2">Sensor Type</label>
-                          <select value={formData.type} onChange={(e) => setFormData({...formData, type: e.target.value as any})} className="w-full px-4 py-2 border-2 border-dark-green-200 rounded-xl focus:border-dark-green-500 focus:outline-none">
-                            <option value="smoke">Smoke Detector</option>
-                            <option value="heat">Heat Sensor</option>
-                            <option value="co2">CO2 Monitor</option>
-                            <option value="sprinkler">Sprinkler System</option>
+                          <select value={formData.type} onChange={(e) => setFormData({...formData, type: e.target.value})} className="w-full px-4 py-2 border-2 border-dark-green-200 rounded-xl focus:border-dark-green-500 focus:outline-none">
+                            <option value="smoke">Smoke</option>
+                            <option value="temperature">Temperature</option>
+                            <option value="gas">Gas</option>
+                            <option value="humidity">Humidity</option>
+                            <option value="co2">CO2</option>
                           </select>
                         </div>
                         <div>
-                          <label className="block text-sm font-semibold text-dark-green-700 mb-2">Location</label>
-                          <input type="text" required value={formData.location} onChange={(e) => setFormData({...formData, location: e.target.value})} className="w-full px-4 py-2 border-2 border-dark-green-200 rounded-xl focus:border-dark-green-500 focus:outline-none" />
+                          <label className="block text-sm font-semibold text-dark-green-700 mb-2">Unit</label>
+                          <input type="text" required value={formData.unit} onChange={(e) => setFormData({...formData, unit: e.target.value})} placeholder="e.g., ppm, °C, %" className="w-full px-4 py-2 border-2 border-dark-green-200 rounded-xl focus:border-dark-green-500 focus:outline-none" />
                         </div>
                         <div>
-                          <label className="block text-sm font-semibold text-dark-green-700 mb-2">Floor</label>
-                          <input type="number" required min="1" value={formData.floor} onChange={(e) => setFormData({...formData, floor: parseInt(e.target.value)})} className="w-full px-4 py-2 border-2 border-dark-green-200 rounded-xl focus:border-dark-green-500 focus:outline-none" />
+                          <label className="block text-sm font-semibold text-dark-green-700 mb-2">Initial Value</label>
+                          <input type="number" step="0.01" value={formData.value} onChange={(e) => setFormData({...formData, value: parseFloat(e.target.value)})} className="w-full px-4 py-2 border-2 border-dark-green-200 rounded-xl focus:border-dark-green-500 focus:outline-none" />
                         </div>
                         <div>
-                          <label className="block text-sm font-semibold text-dark-green-700 mb-2">Building</label>
-                          <input type="text" required value={formData.building} onChange={(e) => setFormData({...formData, building: e.target.value})} className="w-full px-4 py-2 border-2 border-dark-green-200 rounded-xl focus:border-dark-green-500 focus:outline-none" />
+                          <label className="block text-sm font-semibold text-dark-green-700 mb-2">Room ID (Optional)</label>
+                          <input type="number" value={formData.roomId || ''} onChange={(e) => setFormData({...formData, roomId: e.target.value ? parseInt(e.target.value) : undefined})} placeholder="Leave empty if not assigned" className="w-full px-4 py-2 border-2 border-dark-green-200 rounded-xl focus:border-dark-green-500 focus:outline-none" />
                         </div>
                         <div>
-                          <label className="block text-sm font-semibold text-dark-green-700 mb-2">Battery Level (%)</label>
-                          <input type="number" required min="0" max="100" value={formData.batteryLevel} onChange={(e) => setFormData({...formData, batteryLevel: parseInt(e.target.value)})} className="w-full px-4 py-2 border-2 border-dark-green-200 rounded-xl focus:border-dark-green-500 focus:outline-none" />
+                          <label className="block text-sm font-semibold text-dark-green-700 mb-2">Latitude (Optional)</label>
+                          <input type="number" step="0.000001" value={formData.latitude || ''} onChange={(e) => setFormData({...formData, latitude: e.target.value ? parseFloat(e.target.value) : undefined})} placeholder="e.g., 24.8607" className="w-full px-4 py-2 border-2 border-dark-green-200 rounded-xl focus:border-dark-green-500 focus:outline-none" />
                         </div>
                         <div>
-                          <label className="block text-sm font-semibold text-dark-green-700 mb-2">Sensitivity</label>
-                          <select value={formData.sensitivity} onChange={(e) => setFormData({...formData, sensitivity: e.target.value as any})} className="w-full px-4 py-2 border-2 border-dark-green-200 rounded-xl focus:border-dark-green-500 focus:outline-none">
-                            <option value="low">Low</option>
-                            <option value="medium">Medium</option>
-                            <option value="high">High</option>
-                          </select>
+                          <label className="block text-sm font-semibold text-dark-green-700 mb-2">Longitude (Optional)</label>
+                          <input type="number" step="0.000001" value={formData.longitude || ''} onChange={(e) => setFormData({...formData, longitude: e.target.value ? parseFloat(e.target.value) : undefined})} placeholder="e.g., 67.0011" className="w-full px-4 py-2 border-2 border-dark-green-200 rounded-xl focus:border-dark-green-500 focus:outline-none" />
                         </div>
                         <div className="col-span-2">
                           <label className="block text-sm font-semibold text-dark-green-700 mb-2">Status</label>
-                          <select value={formData.status} onChange={(e) => setFormData({...formData, status: e.target.value as any})} className="w-full px-4 py-2 border-2 border-dark-green-200 rounded-xl focus:border-dark-green-500 focus:outline-none">
+                          <select value={formData.status} onChange={(e) => setFormData({...formData, status: e.target.value})} className="w-full px-4 py-2 border-2 border-dark-green-200 rounded-xl focus:border-dark-green-500 focus:outline-none">
                             <option value="active">Active</option>
                             <option value="inactive">Inactive</option>
-                            <option value="maintenance">Maintenance</option>
+                            <option value="alert">Alert</option>
                           </select>
                         </div>
                       </div>

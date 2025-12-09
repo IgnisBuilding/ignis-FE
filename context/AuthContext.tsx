@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
 import { User, UserRole, SignupData } from '../types';
-import { authenticateUser, mockUsers } from '@/lib/mockData';
+import { api } from '@/lib/api';
 
 interface AuthContextType {
   user: User | null;
@@ -28,12 +28,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
     
     const storedUser = localStorage.getItem('ignis_user');
-    if (storedUser) {
+    const token = localStorage.getItem('ignis_token');
+    
+    if (storedUser && token) {
       try {
         setUser(JSON.parse(storedUser));
       } catch (error) {
         console.error('Error parsing stored user:', error);
         localStorage.removeItem('ignis_user');
+        localStorage.removeItem('ignis_token');
       }
     }
     setLoading(false);
@@ -42,15 +45,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = useCallback(async (email: string, password: string): Promise<boolean> => {
     setLoading(true);
     try {
-      // Simulate API delay (reduced for better UX)
-      await new Promise(resolve => setTimeout(resolve, 300));
+      const response = await api.login(email, password);
       
-      const authenticatedUser = authenticateUser(email, password);
-      
-      if (authenticatedUser) {
-        setUser(authenticatedUser);
+      if (response.access_token && response.user) {
+        // Map backend user to frontend User type
+        const mappedUser: User = {
+          id: response.user.id.toString(),
+          name: response.user.name,
+          email: response.user.email,
+          role: response.user.role as UserRole,
+        };
+        
+        setUser(mappedUser);
         if (typeof window !== 'undefined') {
-          localStorage.setItem('ignis_user', JSON.stringify(authenticatedUser));
+          localStorage.setItem('ignis_user', JSON.stringify(mappedUser));
         }
         setLoading(false);
         return true;
@@ -67,49 +75,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = useCallback(() => {
     setUser(null);
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('ignis_user');
-    }
+    api.clearToken();
   }, []);
 
   const signup = useCallback(async (data: SignupData): Promise<boolean> => {
     setLoading(true);
     try {
-      // Simulate API delay (reduced for better UX)
-      await new Promise(resolve => setTimeout(resolve, 400));
-      
-      // Check if user already exists
-      const existingUser = mockUsers.find(u => u.email === data.email);
-      if (existingUser) {
-        setLoading(false);
-        return false;
-      }
-
-      // Create new user
-      const newUser: User = {
-        id: `u${Date.now()}`,
-        name: data.name,
+      const registerData = {
         email: data.email,
+        password: data.password || 'default123',
+        name: data.name,
         role: data.role,
-        buildingId: data.buildingId,
-        apartmentNumber: data.apartmentNumber
       };
-
-      // In a real app, this would be saved to backend
-      mockUsers.push(newUser);
       
-      setUser(newUser);
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('ignis_user', JSON.stringify(newUser));
+      const response = await api.register(registerData);
+      
+      if (response) {
+        // Auto-login after successful signup
+        const loginSuccess = await login(data.email, registerData.password);
+        return loginSuccess;
       }
+      
       setLoading(false);
-      return true;
+      return false;
     } catch (error) {
       console.error('Signup error:', error);
       setLoading(false);
       return false;
     }
-  }, []);
+  }, [login]);
 
   const value: AuthContextType = useMemo(() => ({
     user,

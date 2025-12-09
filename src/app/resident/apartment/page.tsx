@@ -1,23 +1,67 @@
 ﻿'use client';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Home, MapPin, Users, Activity, Calendar, Shield, AlertTriangle } from 'lucide-react';
 import PageTransition from '@/components/shared/pageTransition';
 import { fadeIn, scaleIn } from '@/lib/animations';
 import { useAuth } from '../../../../context/AuthContext';
-import { mockApartmentInfo } from '@/lib/mockData';
+import { api } from '@/lib/api';
+import { Apartment } from '../../../../types';
 
 export default function ApartmentDetailsPage() {
   const router = useRouter();
   const { user, role } = useAuth();
-  const apartment = mockApartmentInfo;
+  const [apartment, setApartment] = useState<Apartment | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user || role !== 'resident') router.push('/login');
+    if (!user || (role !== 'resident' && role !== 'manager')) {
+      router.push('/login');
+      return;
+    }
+
+    const fetchApartment = async () => {
+      try {
+        const data = await api.getMyApartment();
+        setApartment(data);
+      } catch (error) {
+        console.error('Failed to fetch apartment:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchApartment();
   }, [user, role, router]);
 
-  if (!user || role !== 'resident') return null;
+  if (!user || (role !== 'resident' && role !== 'manager')) return null;
+
+  if (loading) {
+    return (
+      <PageTransition>
+        <div className="min-h-screen cream-gradient flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
+            <p className="text-dark-green-600">Loading apartment details...</p>
+          </div>
+        </div>
+      </PageTransition>
+    );
+  }
+
+  if (!apartment) {
+    return (
+      <PageTransition>
+        <div className="min-h-screen cream-gradient flex items-center justify-center">
+          <div className="text-center">
+            <Home className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <p className="text-dark-green-600">No apartment information available.</p>
+          </div>
+        </div>
+      </PageTransition>
+    );
+  }
 
   return (
     <PageTransition>
@@ -79,7 +123,7 @@ export default function ApartmentDetailsPage() {
                   </motion.div>
                   <motion.div whileHover={{ x: 5 }} className="flex justify-between items-center py-3 px-4 rounded-xl bg-gradient-to-r from-cream-50 to-transparent hover:from-cream-100 transition-all">
                     <span className="text-dark-green-600 font-medium">Building:</span>
-                    <span className="font-bold text-dark-green-800 text-lg">{apartment.building}</span>
+                    <span className="font-bold text-dark-green-800 text-lg">{apartment.building?.name || 'N/A'}</span>
                   </motion.div>
                 </div>
               </motion.div>
@@ -91,15 +135,15 @@ export default function ApartmentDetailsPage() {
                     <Shield className="w-8 h-8 text-white" />
                   </motion.div>
                   <div>
-                    <p className="text-sm text-dark-green-600 font-semibold uppercase tracking-wide">Safety Score</p>
-                    <h3 className="text-4xl font-bold gradient-text">{apartment.safetyScore}%</h3>
+                    <p className="text-sm text-dark-green-600 font-semibold uppercase tracking-wide">Occupancy Status</p>
+                    <h3 className="text-2xl font-bold gradient-text">{apartment.occupied ? 'Occupied' : 'Vacant'}</h3>
                   </div>
                 </div>
                 <div className="relative z-10">
-                  <div className="w-full h-4 bg-cream-200 rounded-full overflow-hidden shadow-inner">
-                    <motion.div initial={{ width: 0 }} animate={{ width: `${apartment.safetyScore}%` }} transition={{ delay: 0.5, duration: 1.5, ease: "easeOut" }} className="h-full bg-gradient-to-r from-green-400 via-green-500 to-green-600 rounded-full shadow-lg"></motion.div>
+                  <div className="flex items-center space-x-2">
+                    <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 2, repeat: Infinity }} className={`w-2 h-2 ${apartment.occupied ? 'bg-green-500' : 'bg-gray-400'} rounded-full`}></motion.div>
+                    <p className="text-sm text-dark-green-700 font-semibold">{apartment.occupied ? 'Active Residence' : 'Unoccupied'}</p>
                   </div>
-                  <p className="text-sm text-dark-green-600 mt-3 font-medium">Excellent safety rating</p>
                 </div>
               </motion.div>
 
@@ -110,15 +154,14 @@ export default function ApartmentDetailsPage() {
                     <Activity className="w-8 h-8 text-white" />
                   </motion.div>
                   <div>
-                    <p className="text-sm text-dark-green-600 font-semibold uppercase tracking-wide">Active Sensors</p>
-                    <h3 className="text-4xl font-bold gradient-text">{apartment.sensors}</h3>
+                    <p className="text-sm text-dark-green-600 font-semibold uppercase tracking-wide">Last Updated</p>
+                    <h3 className="text-lg font-bold gradient-text">{new Date(apartment.updatedAt).toLocaleDateString()}</h3>
                   </div>
                 </div>
                 <div className="relative z-10">
-                  <div className="flex items-center space-x-2">
-                    <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 2, repeat: Infinity }} className="w-2 h-2 bg-green-500 rounded-full"></motion.div>
-                    <p className="text-sm text-green-700 font-semibold">All systems operational</p>
-                  </div>
+                  <p className="text-xs text-dark-green-600 mt-2">
+                    Created: {new Date(apartment.createdAt).toLocaleDateString()}
+                  </p>
                 </div>
               </motion.div>
             </div>
@@ -133,22 +176,22 @@ export default function ApartmentDetailsPage() {
                   <div className="flex items-start space-x-3 p-4 bg-gradient-to-br from-dark-green-50 to-white rounded-xl">
                     <Home className="w-5 h-5 text-dark-green-600 mt-1" />
                     <div>
-                      <p className="font-semibold text-dark-green-800">Building: {apartment.building}</p>
-                      <p className="text-sm text-dark-green-600">Main residential tower</p>
+                      <p className="font-semibold text-dark-green-800">Building: {apartment.building?.name || 'N/A'}</p>
+                      <p className="text-sm text-dark-green-600">{apartment.building?.address || 'Main residential tower'}</p>
                     </div>
                   </div>
                   <div className="flex items-start space-x-3 p-4 bg-gradient-to-br from-dark-green-50 to-white rounded-xl">
                     <MapPin className="w-5 h-5 text-dark-green-600 mt-1" />
                     <div>
                       <p className="font-semibold text-dark-green-800">Floor {apartment.floor}</p>
-                      <p className="text-sm text-dark-green-600">2 emergency exits available</p>
+                      <p className="text-sm text-dark-green-600">{apartment.residents} residents on this floor</p>
                     </div>
                   </div>
                   <div className="flex items-start space-x-3 p-4 bg-gradient-to-br from-dark-green-50 to-white rounded-xl">
                     <Users className="w-5 h-5 text-dark-green-600 mt-1" />
                     <div>
                       <p className="font-semibold text-dark-green-800">Unit {apartment.number}</p>
-                      <p className="text-sm text-dark-green-600">2 bedroom apartment, 950 sq ft</p>
+                      <p className="text-sm text-dark-green-600">{apartment.occupied ? 'Currently occupied' : 'Currently vacant'}</p>
                     </div>
                   </div>
                 </div>
@@ -205,34 +248,34 @@ export default function ApartmentDetailsPage() {
               <motion.div variants={fadeIn} className="premium-card rounded-2xl p-6">
                 <h2 className="text-2xl font-bold text-dark-green-800 mb-6 flex items-center space-x-2">
                   <Calendar className="w-6 h-6 text-dark-green-600" />
-                  <span>Maintenance Schedule</span>
+                  <span>Apartment Information</span>
                 </h2>
                 <div className="space-y-3">
                   <div className="p-4 bg-gradient-to-br from-dark-green-50 to-white rounded-xl">
                     <div className="flex justify-between items-center">
                       <div>
-                        <p className="font-semibold text-dark-green-800">Last Inspection</p>
-                        <p className="text-sm text-dark-green-600">{new Date(apartment.lastInspection).toLocaleDateString()}</p>
+                        <p className="font-semibold text-dark-green-800">Created Date</p>
+                        <p className="text-sm text-dark-green-600">{new Date(apartment.createdAt).toLocaleDateString()}</p>
                       </div>
-                      <Shield className="w-8 h-8 text-dark-green-600" />
+                      <Calendar className="w-8 h-8 text-dark-green-600" />
                     </div>
                   </div>
                   <div className="p-4 bg-blue-50 rounded-xl">
                     <div className="flex justify-between items-center">
                       <div>
-                        <p className="font-semibold text-blue-800">Next Inspection</p>
-                        <p className="text-sm text-blue-600">In 15 days</p>
+                        <p className="font-semibold text-blue-800">Last Updated</p>
+                        <p className="text-sm text-blue-600">{new Date(apartment.updatedAt).toLocaleDateString()}</p>
                       </div>
-                      <Calendar className="w-8 h-8 text-blue-600" />
+                      <Activity className="w-8 h-8 text-blue-600" />
                     </div>
                   </div>
-                  <div className="p-4 bg-yellow-50 rounded-xl">
+                  <div className="p-4 bg-purple-50 rounded-xl">
                     <div className="flex justify-between items-center">
                       <div>
-                        <p className="font-semibold text-yellow-800">CO2 Monitor Service</p>
-                        <p className="text-sm text-yellow-600">Scheduled in 3 days</p>
+                        <p className="font-semibold text-purple-800">Residents</p>
+                        <p className="text-sm text-purple-600">{apartment.residents} people</p>
                       </div>
-                      <AlertTriangle className="w-8 h-8 text-yellow-600" />
+                      <Users className="w-8 h-8 text-purple-600" />
                     </div>
                   </div>
                 </div>

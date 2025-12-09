@@ -1,5 +1,5 @@
 import './globals.css';
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import ClientLayout from './ClientLayout';
 
@@ -15,7 +15,12 @@ export const metadata: Metadata = {
   description: 'Modern society management platform with advanced fire safety monitoring',
   keywords: 'society management, fire safety, building management, resident portal',
   authors: [{ name: 'Ignis Team' }],
-  viewport: 'width=device-width, initial-scale=1, maximum-scale=5',
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
 };
 
 export default function RootLayout({

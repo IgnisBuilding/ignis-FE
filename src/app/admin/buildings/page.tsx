@@ -1,217 +1,499 @@
-﻿'use client';
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
-import { Plus, Edit2, Trash2, Search, Building2, Users, Activity, DoorOpen } from 'lucide-react';
-import PageTransition from '@/components/shared/pageTransition';
-import { fadeIn } from '@/lib/animations';
-import { useAuth } from '../../../../context/AuthContext';
-import { mockBuildings } from '@/lib/mockData';
-import { Building } from '../../../../types';
+﻿'use client'
+
+import { useState, useEffect } from 'react'
+import { motion } from 'framer-motion'
+import { 
+  Building2, 
+  MapPin, 
+  Users, 
+  Layers, 
+  Plus, 
+  Edit, 
+  Trash2, 
+  Search,
+  X,
+  Save,
+  AlertTriangle
+} from 'lucide-react'
+import { useAuth } from '../../../../context/AuthContext'
+import { useRouter } from 'next/navigation'
+import { buildingApi } from '../../../lib/api'
+import PageTransition from '@/components/shared/pageTransition'
+
+interface Building {
+  id: number
+  name: string
+  type: string
+  address: string
+  society_id: number
+  created_at: string
+  updated_at: string
+}
+
+interface BuildingFormData {
+  name: string
+  address: string
+  type: string
+}
 
 export default function BuildingsManagementPage() {
-  const router = useRouter();
-  const { user, role } = useAuth();
-  const [buildings, setBuildings] = useState<Building[]>(mockBuildings);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [showModal, setShowModal] = useState(false);
-  const [editingBuilding, setEditingBuilding] = useState<Building | null>(null);
-  const [formData, setFormData] = useState({
-    name: '', address: '', floors: 1, apartments: 0, sensors: 0,
-    residents: 0, emergencyExits: 0,
-    status: 'operational' as 'operational' | 'maintenance' | 'emergency'
-  });
+  const { user, isAuthenticated, loading: authLoading } = useAuth()
+  const router = useRouter()
+  const [buildings, setBuildings] = useState<Building[]>([])
+  const [filteredBuildings, setFilteredBuildings] = useState<Building[]>([])
+  const [loading, setLoading] = useState(true)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [editingBuilding, setEditingBuilding] = useState<Building | null>(null)
+  const [formData, setFormData] = useState<BuildingFormData>({
+    name: '',
+    address: '',
+    type: 'residential'
+  })
+  const [error, setError] = useState<string | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!user || role !== 'building_authority') router.push('/login');
-  }, [user, role, router]);
-
-  const filteredBuildings = buildings.filter(b =>
-    b.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    b.address.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const handleAdd = () => {
-    setEditingBuilding(null);
-    setFormData({ name: '', address: '', floors: 1, apartments: 0, sensors: 0, residents: 0, emergencyExits: 0, status: 'operational' });
-    setShowModal(true);
-  };
-
-  const handleEdit = (building: Building) => {
-    setEditingBuilding(building);
-    setFormData({
-      name: building.name, address: building.address, floors: building.floors,
-      apartments: building.apartments, sensors: building.sensors,
-      residents: building.residents, emergencyExits: building.emergencyExits,
-      status: building.status
-    });
-    setShowModal(true);
-  };
-
-  const handleDelete = (id: string) => {
-    if (confirm('Are you sure you want to delete this building?')) {
-      setBuildings(buildings.filter(b => b.id !== id));
+    if (!authLoading && (!isAuthenticated || (user?.role !== 'admin' && user?.role !== 'building_authority'))) {
+      router.push('/login')
     }
-  };
+  }, [isAuthenticated, user, router, authLoading])
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (editingBuilding) {
-      setBuildings(buildings.map(b => b.id === editingBuilding.id ? { ...b, ...formData, lastInspection: new Date() } : b));
+  useEffect(() => {
+    fetchBuildings()
+  }, [])
+
+  useEffect(() => {
+    const filtered = buildings.filter(building =>
+      building.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      building.address.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    setFilteredBuildings(filtered)
+  }, [searchTerm, buildings])
+
+  const fetchBuildings = async () => {
+    try {
+      setLoading(true)
+      const data = await buildingApi.getBuildings()
+      setBuildings(data)
+      setFilteredBuildings(data)
+      setError(null)
+    } catch (err: any) {
+      console.error('Error fetching buildings:', err)
+      setError(err.message || 'Failed to load buildings')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleOpenModal = (building?: Building) => {
+    if (building) {
+      setEditingBuilding(building)
+      setFormData({
+        name: building.name,
+        address: building.address,
+        type: building.type
+      })
     } else {
-      const newBuilding: Building = {
-        id: `B${Date.now()}`,
-        ...formData,
-        lastInspection: new Date()
-      };
-      setBuildings([...buildings, newBuilding]);
+      setEditingBuilding(null)
+      setFormData({
+        name: '',
+        address: '',
+        type: 'residential'
+      })
     }
-    setShowModal(false);
-  };
+    setIsModalOpen(true)
+    setError(null)
+    setSuccessMessage(null)
+  }
 
-  if (!user || role !== 'building_authority') return null;
+  const handleCloseModal = () => {
+    setIsModalOpen(false)
+    setEditingBuilding(null)
+    setFormData({
+      name: '',
+      address: '',
+      type: 'residential'
+    })
+    setError(null)
+    setSuccessMessage(null)
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    try {
+      if (editingBuilding) {
+        await buildingApi.updateBuilding(editingBuilding.id, formData)
+        setSuccessMessage('Building updated successfully!')
+      } else {
+        await buildingApi.createBuilding(formData)
+        setSuccessMessage('Building created successfully!')
+      }
+      
+      await fetchBuildings()
+      setTimeout(() => {
+        handleCloseModal()
+      }, 1500)
+    } catch (err: any) {
+      console.error('Error saving building:', err)
+      setError(err.message || 'Failed to save building')
+    }
+  }
+
+  const handleDelete = async (id: number, name: string) => {
+    if (!confirm(`Are you sure you want to delete "${name}"? This action cannot be undone.`)) {
+      return
+    }
+
+    try {
+      await buildingApi.deleteBuilding(id)
+      setSuccessMessage('Building deleted successfully!')
+      await fetchBuildings()
+      setTimeout(() => setSuccessMessage(null), 3000)
+    } catch (err: any) {
+      console.error('Error deleting building:', err)
+      setError(err.message || 'Failed to delete building')
+      setTimeout(() => setError(null), 3000)
+    }
+  }
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    })
+  }
+
+  if (authLoading || loading) {
+    return (
+      <PageTransition>
+        <div className="min-h-screen flex items-center justify-center cream-gradient">
+          <div className="text-center">
+            <div className="w-16 h-16 border-4 border-green-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-xl text-dark-green-600">Loading buildings...</p>
+          </div>
+        </div>
+      </PageTransition>
+    )
+  }
+
+  if (!isAuthenticated || (user?.role !== 'admin' && user?.role !== 'building_authority')) {
+    return null
+  }
 
   return (
     <PageTransition>
-      <div className="min-h-screen cream-gradient py-8 px-4">
+      <div className="min-h-screen cream-gradient p-6">
         <div className="max-w-7xl mx-auto">
-          <motion.div variants={fadeIn} initial="initial" animate="animate">
-            <div className="flex justify-between items-center mb-8">
+          {/* Header */}
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8"
+          >
+            <div className="flex items-center justify-between mb-4">
               <div>
-                <h1 className="text-4xl font-bold gradient-text mb-2">Building Management</h1>
-                <p className="text-dark-green-600">Manage all buildings and their facilities</p>
+                <h1 className="text-4xl font-bold gradient-text mb-2">Buildings Management</h1>
+                <p className="text-dark-green-600">Manage all buildings in the fire safety system</p>
               </div>
-              <button onClick={handleAdd} className="flex items-center space-x-2 px-6 py-3.5 green-gradient font-bold text-white rounded-xl hover:scale-105 hover:shadow-xl transition-all">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => handleOpenModal()}
+                className="flex items-center gap-2 px-6 py-3 green-gradient text-white rounded-xl hover:shadow-xl transition-shadow"
+              >
                 <Plus className="w-5 h-5" />
                 <span className="font-semibold">Add Building</span>
-              </button>
+              </motion.button>
             </div>
 
-            <div className="premium-card rounded-2xl hover-lift p-6 mb-6">
-              <div className="relative">
-                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-dark-green-400 w-5 h-5" />
-                <input type="text" placeholder="Search buildings by name or address..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-12 pr-4 py-3 border-2 border-dark-green-100 rounded-xl focus:border-dark-green-400 focus:ring-2 focus:ring-dark-green-100 focus:outline-none" />
-              </div>
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                className="premium-card rounded-2xl p-6"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-dark-green-600 mb-1">Total Buildings</p>
+                    <p className="text-3xl font-bold text-dark-green-800">{buildings.length}</p>
+                  </div>
+                  <div className="w-14 h-14 bg-green-100 rounded-xl flex items-center justify-center">
+                    <Building2 className="w-7 h-7 text-green-600" />
+                  </div>
+                </div>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="premium-card rounded-2xl p-6"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-dark-green-600 mb-1">Total Floors</p>
+                    <p className="text-3xl font-bold text-dark-green-800">
+                      {buildings.reduce((sum, b) => sum + b.total_floors, 0)}
+                    </p>
+                  </div>
+                  <div className="w-14 h-14 bg-blue-100 rounded-xl flex items-center justify-center">
+                    <Layers className="w-7 h-7 text-blue-600" />
+                  </div>
+                </div>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="premium-card rounded-2xl p-6"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-dark-green-600 mb-1">Avg Floors/Building</p>
+                    <p className="text-3xl font-bold text-dark-green-800">
+                      {buildings.length > 0 
+                        ? (buildings.reduce((sum, b) => sum + b.total_floors, 0) / buildings.length).toFixed(1)
+                        : '0'
+                      }
+                    </p>
+                  </div>
+                  <div className="w-14 h-14 bg-purple-100 rounded-xl flex items-center justify-center">
+                    <Users className="w-7 h-7 text-purple-600" />
+                  </div>
+                </div>
+              </motion.div>
             </div>
 
+            {/* Search Bar */}
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <input
+                type="text"
+                placeholder="Search buildings by name or address..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-12 pr-4 py-3 bg-white rounded-xl border-2 border-dark-green-100 focus:border-green-500 focus:outline-none transition-colors"
+              />
+            </div>
+          </motion.div>
+
+          {/* Success/Error Messages */}
+          {successMessage && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-6 p-4 bg-green-50 border-2 border-green-200 rounded-xl flex items-center gap-3"
+            >
+              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              <p className="text-green-700 font-medium">{successMessage}</p>
+            </motion.div>
+          )}
+
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-6 p-4 bg-red-50 border-2 border-red-200 rounded-xl flex items-center gap-3"
+            >
+              <AlertTriangle className="w-5 h-5 text-red-600" />
+              <p className="text-red-700 font-medium">{error}</p>
+            </motion.div>
+          )}
+
+          {/* Buildings Grid */}
+          {filteredBuildings.length === 0 ? (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="premium-card rounded-2xl p-12 text-center"
+            >
+              <Building2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-dark-green-800 mb-2">No buildings found</h3>
+              <p className="text-dark-green-600 mb-6">
+                {searchTerm ? 'Try adjusting your search terms' : 'Get started by adding your first building'}
+              </p>
+              {!searchTerm && (
+                <button
+                  onClick={() => handleOpenModal()}
+                  className="px-6 py-3 green-gradient text-white rounded-xl hover:shadow-xl transition-shadow"
+                >
+                  Add Building
+                </button>
+              )}
+            </motion.div>
+          ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredBuildings.map((building, index) => (
-                <motion.div key={building.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }} className="premium-card rounded-2xl hover-lift overflow-hidden transition-all">
+                <motion.div
+                  key={building.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  whileHover={{ y: -5 }}
+                  className="premium-card rounded-2xl hover:shadow-xl transition-all overflow-hidden"
+                >
+                  <div className="bg-gradient-to-br from-green-500 to-emerald-600 p-6">
+                    <div className="flex items-start justify-between">
+                      <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                        <Building2 className="w-6 h-6 text-white" />
+                      </div>
+                      <div className="flex gap-2">
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={() => handleOpenModal(building)}
+                          className="p-2 bg-white/20 backdrop-blur-sm rounded-lg hover:bg-white/30 transition-colors"
+                        >
+                          <Edit className="w-4 h-4 text-white" />
+                        </motion.button>
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={() => handleDelete(building.id, building.name)}
+                          className="p-2 bg-white/20 backdrop-blur-sm rounded-lg hover:bg-red-500 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4 text-white" />
+                        </motion.button>
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="p-6">
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="flex items-center space-x-3">
-                        <div className="p-3 green-gradient rounded-xl">
-                          <Building2 className="w-6 h-6 text-white" />
-                        </div>
-                        <div>
-                          <h3 className="text-xl font-bold text-dark-green-800">{building.name}</h3>
-                          <p className="text-sm text-dark-green-600">{building.address}</p>
-                        </div>
-                      </div>
-                      <span className={`px-3 py-1.5 rounded-full font-bold text-xs font-semibold ${building.status === 'operational' ? 'bg-gradient-to-r from-green-100 to-green-50 text-green-700 border border-green-200' : building.status === 'maintenance' ? 'bg-gradient-to-r from-yellow-100 to-yellow-50 text-yellow-700 border border-yellow-200' : 'bg-gradient-to-r from-red-100 to-red-50 text-red-700 border border-red-200'}`}>
-                        {building.status}
+                    <h3 className="text-xl font-bold text-dark-green-800 mb-2">{building.name}</h3>
+                    
+                    <div className="flex items-start gap-2 mb-4">
+                      <MapPin className="w-4 h-4 text-dark-green-400 mt-1 flex-shrink-0" />
+                      <p className="text-dark-green-600 text-sm">{building.address}</p>
+                    </div>
+
+                  <div className="flex items-center gap-4 pt-4 border-t border-dark-green-100">
+                    <div className="flex items-center gap-2">
+                      <Building2 className="w-4 h-4 text-green-600" />
+                      <span className="text-sm font-medium text-dark-green-700 capitalize">
+                        {building.type}
                       </span>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4 mb-4">
-                      <div className="flex items-center space-x-2">
-                        <Building2 className="w-4 h-4 text-dark-green-600" />
-                        <span className="text-sm text-dark-green-600">{building.floors} Floors</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Users className="w-4 h-4 text-dark-green-600" />
-                        <span className="text-sm text-dark-green-600">{building.residents} Residents</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Activity className="w-4 h-4 text-dark-green-600" />
-                        <span className="text-sm text-dark-green-600">{building.sensors} Sensors</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <DoorOpen className="w-4 h-4 text-dark-green-600" />
-                        <span className="text-sm text-dark-green-600">{building.emergencyExits} Exits</span>
                       </div>
                     </div>
 
-                    <div className="text-xs text-dark-green-500 mb-4">
-                      Last Inspection: {new Date(building.lastInspection).toLocaleDateString()}
-                    </div>
-
-                    <div className="flex space-x-2">
-                      <button onClick={() => handleEdit(building)} className="flex-1 py-2 px-4 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-colors font-semibold text-sm flex items-center justify-center space-x-2">
-                        <Edit2 className="w-4 h-4" />
-                        <span>Edit</span>
-                      </button>
-                      <button onClick={() => handleDelete(building.id)} className="flex-1 py-2 px-4 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors font-semibold text-sm flex items-center justify-center space-x-2">
-                        <Trash2 className="w-4 h-4" />
-                        <span>Delete</span>
-                      </button>
+                    <div className="mt-4 pt-4 border-t border-dark-green-100">
+                      <p className="text-xs text-dark-green-500">
+                        Added {formatDate(building.created_at)}
+                      </p>
                     </div>
                   </div>
                 </motion.div>
               ))}
             </div>
+          )}
 
-            {showModal && (
-              <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-2xl premium-card max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                  <div className="p-6">
-                    <h2 className="text-2xl font-bold text-dark-green-800 mb-6">{editingBuilding ? 'Edit Building' : 'Add New Building'}</h2>
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="col-span-2">
-                          <label className="block text-sm font-semibold text-dark-green-700 mb-2">Building Name</label>
-                          <input type="text" required value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full px-4 py-2 border-2 border-dark-green-100 rounded-xl focus:border-dark-green-400 focus:ring-2 focus:ring-dark-green-100 focus:outline-none" />
-                        </div>
-                        <div className="col-span-2">
-                          <label className="block text-sm font-semibold text-dark-green-700 mb-2">Address</label>
-                          <input type="text" required value={formData.address} onChange={(e) => setFormData({...formData, address: e.target.value})} className="w-full px-4 py-2 border-2 border-dark-green-100 rounded-xl focus:border-dark-green-400 focus:ring-2 focus:ring-dark-green-100 focus:outline-none" />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-semibold text-dark-green-700 mb-2">Number of Floors</label>
-                          <input type="number" required min="1" value={formData.floors} onChange={(e) => setFormData({...formData, floors: parseInt(e.target.value)})} className="w-full px-4 py-2 border-2 border-dark-green-100 rounded-xl focus:border-dark-green-400 focus:ring-2 focus:ring-dark-green-100 focus:outline-none" />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-semibold text-dark-green-700 mb-2">Apartments</label>
-                          <input type="number" required min="0" value={formData.apartments} onChange={(e) => setFormData({...formData, apartments: parseInt(e.target.value)})} className="w-full px-4 py-2 border-2 border-dark-green-100 rounded-xl focus:border-dark-green-400 focus:ring-2 focus:ring-dark-green-100 focus:outline-none" />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-semibold text-dark-green-700 mb-2">Sensors</label>
-                          <input type="number" required min="0" value={formData.sensors} onChange={(e) => setFormData({...formData, sensors: parseInt(e.target.value)})} className="w-full px-4 py-2 border-2 border-dark-green-100 rounded-xl focus:border-dark-green-400 focus:ring-2 focus:ring-dark-green-100 focus:outline-none" />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-semibold text-dark-green-700 mb-2">Residents</label>
-                          <input type="number" required min="0" value={formData.residents} onChange={(e) => setFormData({...formData, residents: parseInt(e.target.value)})} className="w-full px-4 py-2 border-2 border-dark-green-100 rounded-xl focus:border-dark-green-400 focus:ring-2 focus:ring-dark-green-100 focus:outline-none" />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-semibold text-dark-green-700 mb-2">Emergency Exits</label>
-                          <input type="number" required min="1" value={formData.emergencyExits} onChange={(e) => setFormData({...formData, emergencyExits: parseInt(e.target.value)})} className="w-full px-4 py-2 border-2 border-dark-green-100 rounded-xl focus:border-dark-green-400 focus:ring-2 focus:ring-dark-green-100 focus:outline-none" />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-semibold text-dark-green-700 mb-2">Status</label>
-                          <select value={formData.status} onChange={(e) => setFormData({...formData, status: e.target.value as any})} className="w-full px-4 py-2 border-2 border-dark-green-100 rounded-xl focus:border-dark-green-400 focus:ring-2 focus:ring-dark-green-100 focus:outline-none">
-                            <option value="operational">Operational</option>
-                            <option value="maintenance">Maintenance</option>
-                            <option value="emergency">Emergency</option>
-                          </select>
-                        </div>
-                      </div>
-                      <div className="flex space-x-4 pt-4">
-                        <button type="submit" className="flex-1 py-3.5 green-gradient font-bold text-white rounded-xl hover:scale-105 hover:shadow-xl transition-all font-semibold">
-                          {editingBuilding ? 'Update Building' : 'Add Building'}
-                        </button>
-                        <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-3 border-2 border-dark-green-300 text-dark-green-700 rounded-xl hover:bg-dark-green-50 transition-colors font-semibold">
-                          Cancel
-                        </button>
-                      </div>
-                    </form>
+          {/* Add/Edit Modal */}
+          {isModalOpen && (
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6"
+              >
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-2xl font-bold text-dark-green-800">
+                    {editingBuilding ? 'Edit Building' : 'Add New Building'}
+                  </h2>
+                  <button
+                    onClick={handleCloseModal}
+                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  >
+                    <X className="w-5 h-5 text-gray-500" />
+                  </button>
+                </div>
+
+                {error && (
+                  <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-red-600" />
+                    <p className="text-sm text-red-700">{error}</p>
                   </div>
-                </motion.div>
-              </div>
-            )}
-          </motion.div>
+                )}
+
+                {successMessage && (
+                  <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <p className="text-sm text-green-700">{successMessage}</p>
+                  </div>
+                )}
+
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-dark-green-700 mb-2">
+                      Building Name *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      className="w-full px-4 py-3 border-2 border-dark-green-100 rounded-xl focus:border-green-500 focus:outline-none transition-colors"
+                      placeholder="e.g., Tower A"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-dark-green-700 mb-2">
+                      Address *
+                    </label>
+                    <textarea
+                      required
+                      value={formData.address}
+                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                      rows={3}
+                      className="w-full px-4 py-3 border-2 border-dark-green-100 rounded-xl focus:border-green-500 focus:outline-none transition-colors resize-none"
+                      placeholder="e.g., 123 Main Street, City, State 12345"
+                    />
+                  </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-dark-green-700 mb-2">
+                    Building Type *
+                  </label>
+                  <select
+                    required
+                    value={formData.type}
+                    onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                    className="w-full px-4 py-3 border-2 border-dark-green-100 rounded-xl focus:border-green-500 focus:outline-none transition-colors"
+                  >
+                    <option value="residential">Residential</option>
+                    <option value="commercial">Commercial</option>
+                    <option value="industrial">Industrial</option>
+                    <option value="mixed">Mixed Use</option>
+                  </select>
+                </div>                  <div className="flex gap-3 pt-4">
+                    <button
+                      type="button"
+                      onClick={handleCloseModal}
+                      className="flex-1 px-4 py-3 border-2 border-dark-green-200 text-dark-green-700 rounded-xl hover:bg-dark-green-50 transition-colors font-medium"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="flex-1 px-4 py-3 green-gradient text-white rounded-xl hover:shadow-xl transition-shadow font-medium flex items-center justify-center gap-2"
+                    >
+                      <Save className="w-4 h-4" />
+                      {editingBuilding ? 'Update' : 'Create'}
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            </div>
+          )}
         </div>
       </div>
     </PageTransition>
-  );
+  )
 }
 

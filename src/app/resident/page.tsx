@@ -1,23 +1,15 @@
 ﻿'use client';
-import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../context/AuthContext';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import PageTransition from '@/components/shared/pageTransition';
 import { motion } from 'framer-motion';
 import { Building, Bell, Shield, AlertTriangle } from 'lucide-react';
 import { mockApartmentInfo, mockAlerts } from '@/lib/mockData';
 
-export default function ResidentDashboard() {
-  const { user, role, isAuthenticated } = useAuth();
+function ResidentDashboardContent() {
+  const { user } = useAuth();
   const router = useRouter();
-
-  useEffect(() => {
-    if (!isAuthenticated || role !== 'resident') {
-      router.push('/login');
-    }
-  }, [isAuthenticated, role, router]);
-
-  if (!user) return null;
 
   const recentAlerts = mockAlerts.filter(a => !a.read).slice(0, 3);
 
@@ -62,7 +54,7 @@ export default function ResidentDashboard() {
               <span className="text-sm font-semibold text-green-700">Protected</span>
             </motion.div>
             <h1 className="text-5xl md:text-6xl font-bold gradient-text mb-3">Resident Dashboard</h1>
-            <p className="text-dark-green-600 text-xl">Welcome back, <span className="font-semibold text-dark-green-700">{user.name}</span></p>
+            <p className="text-dark-green-600 text-xl">Welcome, <span className="font-semibold text-dark-green-700">{user?.name}</span></p>
           </motion.div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -263,3 +255,10 @@ export default function ResidentDashboard() {
   );
 }
 
+export default function ResidentDashboard() {
+  return (
+    <ProtectedRoute allowedRoles={['resident', 'manager']}>
+      <ResidentDashboardContent />
+    </ProtectedRoute>
+  );
+}

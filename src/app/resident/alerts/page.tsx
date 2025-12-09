@@ -6,25 +6,36 @@ import { Bell, AlertTriangle, Info, CheckCircle, Filter, Search } from 'lucide-r
 import PageTransition from '@/components/shared/pageTransition';
 import { fadeIn } from '@/lib/animations';
 import { useAuth } from '../../../../context/AuthContext';
-import { mockAlerts } from '@/lib/mockData';
+import { api } from '@/lib/api';
 import { Alert } from '../../../../types';
 
 export default function AlertsPage() {
   const router = useRouter();
   const { user, role } = useAuth();
-  const [alerts, setAlerts] = useState<Alert[]>(mockAlerts);
+  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'unread' | 'high' | 'critical'>('all');
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    if (!user || role !== 'resident') router.push('/login');
-  }, [user, role, router]);
+    if (!user || (role !== 'resident' && role !== 'manager')) {
+      router.push('/login');
+      return;
+    }
 
-  const filteredAlerts = alerts.filter(alert => {
-    const matchesSearch = alert.message.toLowerCase().includes(searchTerm.toLowerCase()) || alert.type.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesFilter = filter === 'all' || (filter === 'unread' && !alert.read) || (filter === 'high' && alert.priority === 'high') || (filter === 'critical' && alert.priority === 'critical');
-    return matchesSearch && matchesFilter;
-  });
+    const fetchAlerts = async () => {
+      try {
+        const data = await api.getMyAlerts();
+        setAlerts(data);
+      } catch (error) {
+        console.error('Failed to fetch alerts:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAlerts();
+  }, [user, role, router]);
 
   const unreadCount = alerts.filter(a => !a.read).length;
   const criticalCount = alerts.filter(a => a.priority === 'critical').length;
@@ -36,6 +47,21 @@ export default function AlertsPage() {
   const handleMarkAllRead = () => {
     setAlerts(alerts.map(a => ({ ...a, read: true })));
   };
+
+  if (!user || (role !== 'resident' && role !== 'manager')) return null;
+
+  if (loading) {
+    return (
+      <PageTransition>
+        <div className="min-h-screen cream-gradient flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
+            <p className="text-dark-green-600">Loading alerts...</p>
+          </div>
+        </div>
+      </PageTransition>
+    );
+  }
 
   const getAlertColor = (priority: string) => {
     switch (priority) {
@@ -57,7 +83,11 @@ export default function AlertsPage() {
     }
   };
 
-  if (!user || role !== 'resident') return null;
+  const filteredAlerts = alerts.filter(alert => {
+    const matchesSearch = alert.message.toLowerCase().includes(searchTerm.toLowerCase()) || alert.type.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesFilter = filter === 'all' || (filter === 'unread' && !alert.read) || (filter === 'high' && alert.priority === 'high') || (filter === 'critical' && alert.priority === 'critical');
+    return matchesSearch && matchesFilter;
+  });
 
   return (
     <PageTransition>

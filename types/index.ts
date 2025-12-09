@@ -104,6 +104,21 @@ export interface Alert {
 }
 
 // Apartment Types
+export interface Apartment {
+  id: number;
+  number: string;
+  floor: number;
+  residents: number;
+  building: {
+    id: number;
+    name: string;
+    address: string;
+  };
+  occupied: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface ApartmentInfo {
   number: string;
   floor: number;

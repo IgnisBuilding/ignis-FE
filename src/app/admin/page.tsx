@@ -1,23 +1,15 @@
 'use client';
-import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../context/AuthContext';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import PageTransition from '@/components/shared/pageTransition';
 import { motion } from 'framer-motion';
 import { Users, Activity, Building, AlertTriangle } from 'lucide-react';
 import { mockResidents, mockSensors, mockBuildings } from '@/lib/mockData';
 
-export default function AdminDashboard() {
-  const { user, role, isAuthenticated } = useAuth();
+function AdminDashboardContent() {
+  const { user } = useAuth();
   const router = useRouter();
-
-  useEffect(() => {
-    if (!isAuthenticated || role !== 'building_authority') {
-      router.push('/login');
-    }
-  }, [isAuthenticated, role, router]);
-
-  if (!user) return null;
 
   const stats = [
     { label: 'Total Residents', value: mockResidents.length, icon: Users, color: 'from-blue-500 to-blue-600', glow: 'shadow-blue-500/20' },
@@ -65,7 +57,7 @@ export default function AdminDashboard() {
               <span className="text-sm font-semibold text-dark-green-700">System Online</span>
             </motion.div>
             <h1 className="text-5xl md:text-6xl font-bold gradient-text mb-3">Admin Dashboard</h1>
-            <p className="text-dark-green-600 text-xl">Welcome back, <span className="font-semibold text-dark-green-700">{user.name}</span></p>
+            <p className="text-dark-green-600 text-xl">Welcome back, <span className="font-semibold text-dark-green-700">{user?.name}</span></p>
           </motion.div>
 
           {/* Stats Grid */}
@@ -260,5 +252,13 @@ export default function AdminDashboard() {
         </div>
       </div>
     </PageTransition>
+  );
+}
+
+export default function AdminDashboard() {
+  return (
+    <ProtectedRoute allowedRoles={['admin']}>
+      <AdminDashboardContent />
+    </ProtectedRoute>
   );
 }

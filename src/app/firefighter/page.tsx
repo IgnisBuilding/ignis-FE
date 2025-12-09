@@ -1,25 +1,90 @@
 ﻿'use client';
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../context/AuthContext';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import PageTransition from '@/components/shared/pageTransition';
 import { motion } from 'framer-motion';
 import { Flame, MapPin, Clock, AlertTriangle } from 'lucide-react';
-import { mockFireIncidents } from '@/lib/mockData';
+import { api } from '@/lib/api';
 
-export default function FirefighterDashboard() {
-  const { user, role, isAuthenticated } = useAuth();
+interface Hazard {
+  id: number;
+  type: string;
+  severity: string;
+  status: string;
+  apartment: {
+    id: number;
+    unit_number: string;
+    floor: {
+      level: number;
+      building: {
+        name: string;
+        address: string;
+      };
+    };
+  };
+  node?: {
+    id: number;
+  };
+  created_at: string;
+  updated_at: string;
+}
+
+function FirefighterDashboardContent() {
+  const { user } = useAuth();
   const router = useRouter();
+  const [hazards, setHazards] = useState<Hazard[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!isAuthenticated || role !== 'firefighter') {
-      router.push('/login');
+    fetchHazards();
+  }, []);
+
+  const fetchHazards = async () => {
+    try {
+      const data = await api.getActiveHazards();
+      console.log('Fetched active hazards:', JSON.stringify(data, null, 2));
+      setHazards(data);
+    } catch (error) {
+      console.error('Failed to fetch hazards:', error);
+    } finally {
+      setLoading(false);
     }
-  }, [isAuthenticated, role, router]);
+  };
 
-  if (!user) return null;
+  const handleRespond = async (id: string) => {
+    try {
+      await api.respondToHazard(id);
+      await fetchHazards(); // Refresh the list
+    } catch (error) {
+      console.error('Failed to respond to hazard:', error);
+    }
+  };
 
-  const activeIncidents = mockFireIncidents.filter(i => i.status === 'active');
+  const handleResolve = async (id: string) => {
+    try {
+      await api.resolveHazard(id);
+      await fetchHazards(); // Refresh the list
+    } catch (error) {
+      console.error('Failed to resolve hazard:', error);
+    }
+  };
+
+  const activeIncidents = hazards.filter(e => e.status === 'active' || e.status === 'reported' || e.status === 'responding');
+
+  if (loading) {
+    return (
+      <PageTransition>
+        <div className="min-h-screen cream-gradient flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
+            <p className="text-dark-green-600">Loading hazards...</p>
+          </div>
+        </div>
+      </PageTransition>
+    );
+  }
 
   return (
     <PageTransition>
@@ -70,7 +135,7 @@ export default function FirefighterDashboard() {
               <span className="text-sm font-semibold text-red-700">On Duty</span>
             </motion.div>
             <h1 className="text-5xl md:text-6xl font-bold gradient-text mb-3">Firefighter Dashboard</h1>
-            <p className="text-dark-green-600 text-xl">Welcome, <span className="font-semibold text-dark-green-700">{user.name}</span></p>
+            <p className="text-dark-green-600 text-xl">Welcome, <span className="font-semibold text-dark-green-700">{user?.name}</span></p>
           </motion.div>
 
           {/* Active Fires Count */}
@@ -145,122 +210,135 @@ export default function FirefighterDashboard() {
 
           {/* Active Incidents */}
           <div className="space-y-6">
-            {activeIncidents.map((incident, index) => (
+            {activeIncidents.length === 0 ? (
               <motion.div
-                key={incident.id}
-                initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ 
-                  delay: 0.3 + index * 0.1,
-                  type: "spring",
-                  stiffness: 150,
-                }}
-                whileHover={{ scale: 1.02, y: -5 }}
-                className="premium-card rounded-3xl p-8 relative overflow-hidden group"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="premium-card rounded-3xl p-12 text-center"
               >
-                {/* Intensity-based gradient overlay */}
-                <div className={`absolute top-0 right-0 w-64 h-64 rounded-full blur-3xl opacity-10 group-hover:opacity-20 transition-opacity ${
-                  incident.intensity === 'critical' ? 'bg-red-500' :
-                  incident.intensity === 'severe' ? 'bg-orange-500' :
-                  incident.intensity === 'moderate' ? 'bg-yellow-500' :
-                  'bg-green-500'
-                }`}></div>
-
-                <div className="flex flex-col md:flex-row items-start justify-between mb-6 gap-4 relative z-10">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-3 mb-3">
-                      <motion.div
-                        animate={{ 
-                          scale: incident.intensity === 'critical' ? [1, 1.2, 1] : 1,
-                        }}
-                        transition={{ 
-                          duration: 1,
-                          repeat: incident.intensity === 'critical' ? Infinity : 0,
-                        }}
-                      >
-                        <Flame className={`w-8 h-8 ${
-                          incident.intensity === 'critical' ? 'text-red-500' :
-                          incident.intensity === 'severe' ? 'text-orange-500' :
-                          incident.intensity === 'moderate' ? 'text-yellow-500' :
-                          'text-green-500'
-                        }`} />
-                      </motion.div>
-                      <h3 className="text-3xl font-bold text-dark-green-800">{incident.building}</h3>
-                    </div>
-                    <div className="flex items-center space-x-2 text-dark-green-600 ml-11">
-                      <MapPin className="w-5 h-5" />
-                      <span className="text-base font-medium">{incident.address}</span>
-                    </div>
-                  </div>
-                  <motion.span 
-                    whileHover={{ scale: 1.05 }}
-                    className={`px-6 py-3 rounded-2xl font-bold text-base shadow-lg ${
-                      incident.intensity === 'critical' ? 'bg-gradient-to-br from-red-500 to-red-600 text-white pulse-glow' :
-                      incident.intensity === 'severe' ? 'bg-gradient-to-br from-orange-500 to-orange-600 text-white' :
-                      incident.intensity === 'moderate' ? 'bg-gradient-to-br from-yellow-400 to-yellow-500 text-yellow-900' :
-                      'bg-gradient-to-br from-green-400 to-green-500 text-green-900'
-                    }`}
-                  >
-                    {incident.intensity.toUpperCase()}
-                  </motion.span>
-                </div>
-
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 relative z-10">
-                  <motion.div 
-                    whileHover={{ y: -3 }}
-                    className="bg-gradient-to-br from-cream-100 to-cream-50 p-5 rounded-2xl shadow-md"
-                  >
-                    <p className="text-xs text-dark-green-600 mb-2 font-semibold uppercase tracking-wide">Floors Affected</p>
-                    <p className="text-2xl font-bold gradient-text">{incident.floors.join(', ')}</p>
-                  </motion.div>
-                  <motion.div 
-                    whileHover={{ y: -3 }}
-                    className="bg-gradient-to-br from-orange-100 to-orange-50 p-5 rounded-2xl shadow-md"
-                  >
-                    <p className="text-xs text-orange-700 mb-2 font-semibold uppercase tracking-wide">Occupants</p>
-                    <p className="text-2xl font-bold text-orange-600">{incident.occupantsAffected}</p>
-                  </motion.div>
-                  <motion.div 
-                    whileHover={{ y: -3 }}
-                    className="bg-gradient-to-br from-green-100 to-green-50 p-5 rounded-2xl shadow-md"
-                  >
-                    <p className="text-xs text-green-700 mb-2 font-semibold uppercase tracking-wide">Evacuated</p>
-                    <p className="text-2xl font-bold text-green-600">{incident.occupantsEvacuated}</p>
-                  </motion.div>
-                  <motion.div 
-                    whileHover={{ y: -3 }}
-                    className="bg-gradient-to-br from-blue-100 to-blue-50 p-5 rounded-2xl shadow-md"
-                  >
-                    <div className="flex items-center space-x-2 mb-2">
-                      <Clock className="w-3 h-3 text-blue-700" />
-                      <p className="text-xs text-blue-700 font-semibold uppercase tracking-wide">Duration</p>
-                    </div>
-                    <p className="text-2xl font-bold text-blue-600">
-                      {Math.floor((Date.now() - incident.startTime.getTime()) / 60000)}m
-                    </p>
-                  </motion.div>
-                </div>
-
-                <div className="flex gap-4 relative z-10">
-                  <motion.button
-                    onClick={() => router.push('/emergency')}
-                    whileHover={{ scale: 1.03 }}
-                    whileTap={{ scale: 0.97 }}
-                    className="flex-1 py-4 bg-gradient-to-r from-dark-green-500 to-dark-green-600 hover:from-dark-green-600 hover:to-dark-green-700 text-white rounded-xl font-bold transition-all shadow-lg shadow-dark-green-500/30"
-                  >
-                    View on Map
-                  </motion.button>
-                  <motion.button
-                    onClick={() => router.push('/firefighter/fires')}
-                    whileHover={{ scale: 1.03 }}
-                    whileTap={{ scale: 0.97 }}
-                    className="px-8 py-4 border-2 border-dark-green-500 text-dark-green-700 rounded-xl hover:bg-gradient-to-br from-dark-green-50 to-white font-bold transition-all"
-                  >
-                    Details
-                  </motion.button>
-                </div>
+                <Flame className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <p className="text-xl text-dark-green-600">No active hazards at the moment</p>
               </motion.div>
-            ))}
+            ) : (
+              activeIncidents.map((incident, index) => (
+                <motion.div
+                  key={incident.id}
+                  initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{ 
+                    delay: 0.3 + index * 0.1,
+                    type: "spring",
+                    stiffness: 150,
+                  }}
+                  whileHover={{ scale: 1.02, y: -5 }}
+                  className="premium-card rounded-3xl p-8 relative overflow-hidden group"
+                >
+                  {/* Intensity-based gradient overlay */}
+                  <div className={`absolute top-0 right-0 w-64 h-64 rounded-full blur-3xl opacity-10 group-hover:opacity-20 transition-opacity ${
+                    incident.severity === 'critical' ? 'bg-red-500' :
+                    incident.severity === 'high' ? 'bg-orange-500' :
+                    incident.severity === 'medium' ? 'bg-yellow-500' :
+                    'bg-green-500'
+                  }`}></div>
+
+                  <div className="flex flex-col md:flex-row items-start justify-between mb-6 gap-4 relative z-10">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-3 mb-3">
+                        <motion.div
+                          animate={{ 
+                            scale: incident.severity === 'critical' ? [1, 1.2, 1] : 1,
+                          }}
+                          transition={{ 
+                            duration: 1,
+                            repeat: incident.severity === 'critical' ? Infinity : 0,
+                          }}
+                        >
+                          <Flame className={`w-8 h-8 ${
+                            incident.severity === 'critical' ? 'text-red-500' :
+                            incident.severity === 'high' ? 'text-orange-500' :
+                            incident.severity === 'medium' ? 'text-yellow-500' :
+                            'text-green-500'
+                          }`} />
+                        </motion.div>
+                        <h3 className="text-3xl font-bold text-dark-green-800">{incident.type || 'Fire'}</h3>
+                      </div>
+                      <div className="flex items-center space-x-2 text-dark-green-600 ml-11">
+                        <MapPin className="w-5 h-5" />
+                        <span className="text-base font-medium">
+                          {incident.apartment?.floor?.building?.name || 'Unknown Building'} - Unit {incident.apartment?.unit_number}, Floor {incident.apartment?.floor?.level}
+                        </span>
+                      </div>
+                    </div>
+                    <motion.span 
+                      whileHover={{ scale: 1.05 }}
+                      className={`px-6 py-3 rounded-2xl font-bold text-base shadow-lg ${
+                        incident.severity === 'critical' ? 'bg-gradient-to-br from-red-500 to-red-600 text-white pulse-glow' :
+                        incident.severity === 'high' ? 'bg-gradient-to-br from-orange-500 to-orange-600 text-white' :
+                        incident.severity === 'medium' ? 'bg-gradient-to-br from-yellow-400 to-yellow-500 text-yellow-900' :
+                        'bg-gradient-to-br from-green-400 to-green-500 text-green-900'
+                      }`}
+                    >
+                      {incident.severity.toUpperCase()}
+                    </motion.span>
+                  </div>
+
+
+
+                  <div className="grid grid-cols-2 gap-4 mb-6 relative z-10">
+                    <motion.div 
+                      whileHover={{ y: -3 }}
+                      className="bg-gradient-to-br from-blue-100 to-blue-50 p-5 rounded-2xl shadow-md"
+                    >
+                      <div className="flex items-center space-x-2 mb-2">
+                        <Clock className="w-3 h-3 text-blue-700" />
+                        <p className="text-xs text-blue-700 font-semibold uppercase tracking-wide">Reported</p>
+                      </div>
+                      <p className="text-lg font-bold text-blue-600">
+                        {incident.created_at ? new Date(incident.created_at).toLocaleString() : 'N/A'}
+                      </p>
+                    </motion.div>
+                    <motion.div 
+                      whileHover={{ y: -3 }}
+                      className="bg-gradient-to-br from-purple-100 to-purple-50 p-5 rounded-2xl shadow-md"
+                    >
+                      <p className="text-xs text-purple-700 mb-2 font-semibold uppercase tracking-wide">Status</p>
+                      <p className="text-lg font-bold text-purple-600 capitalize">{incident.status}</p>
+                    </motion.div>
+                  </div>
+
+                  <div className="flex gap-4 relative z-10">
+                    {(incident.status === 'active' || incident.status === 'reported') && (
+                      <motion.button
+                        onClick={() => handleRespond(incident.id)}
+                        whileHover={{ scale: 1.03 }}
+                        whileTap={{ scale: 0.97 }}
+                        className="flex-1 py-4 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl font-bold transition-all shadow-lg shadow-blue-500/30"
+                      >
+                        Respond to Hazard
+                      </motion.button>
+                    )}
+                    {incident.status === 'responding' && (
+                      <motion.button
+                        onClick={() => handleResolve(incident.id)}
+                        whileHover={{ scale: 1.03 }}
+                        whileTap={{ scale: 0.97 }}
+                        className="flex-1 py-4 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-xl font-bold transition-all shadow-lg shadow-green-500/30"
+                      >
+                        Mark as Resolved
+                      </motion.button>
+                    )}
+                    <motion.button
+                      onClick={() => router.push('/emergency')}
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.97 }}
+                      className="px-8 py-4 border-2 border-dark-green-500 text-dark-green-700 rounded-xl hover:bg-gradient-to-br from-dark-green-50 to-white font-bold transition-all"
+                    >
+                      View on Map
+                    </motion.button>
+                  </div>
+                </motion.div>
+              ))
+            )}
           </div>
 
           {/* Emergency Access Button */}
@@ -298,3 +376,10 @@ export default function FirefighterDashboard() {
   );
 }
 
+export default function FirefighterDashboard() {
+  return (
+    <ProtectedRoute allowedRoles={['firefighter']}>
+      <FirefighterDashboardContent />
+    </ProtectedRoute>
+  );
+}
