@@ -402,12 +402,34 @@ export function createStairsPattern(): HTMLCanvasElement {
 }
 
 /**
+ * Isolation response when person is trapped by fire
+ */
+export interface IsolationResponse {
+  isolated: true;
+  message: string;
+  shelterInstructions: string;
+  roomName?: string;
+}
+
+/**
+ * Route computation result - either a route or isolation info
+ */
+export interface RouteComputationResult {
+  success: boolean;
+  route?: GeoJSON.Feature | null;
+  isolated?: boolean;
+  isolationData?: IsolationResponse;
+  error?: string;
+}
+
+/**
  * Compute evacuation route via API
+ * Returns route on success, or isolation data if person is trapped by fire
  */
 export async function computeRoute(
   startNodeId: string | number,
   endNodeId: string | number
-): Promise<GeoJSON.Feature | null> {
+): Promise<RouteComputationResult> {
   const fullUrl = `${DEFAULT_MAP_CONFIG.apiBase}${API_ENDPOINTS.compute}`;
 
   // Backend expects integer node IDs
@@ -423,16 +445,42 @@ export async function computeRoute(
       body: JSON.stringify({ startNodeId: startId, endNodeId: endId }),
     });
 
-    if (!response.ok) {
-      throw new Error(`Route computation failed: ${response.status}`);
+    const data = await response.json();
+
+    // Handle 422 LOCATION_ISOLATED - person is trapped by fire
+    if (response.status === 422 && data.error === 'LOCATION_ISOLATED') {
+      console.log(`[MapAPI] Location isolated - person trapped:`, data);
+      return {
+        success: false,
+        isolated: true,
+        isolationData: {
+          isolated: true,
+          message: data.message,
+          shelterInstructions: data.shelterInstructions,
+          roomName: data.roomName,
+        },
+      };
     }
 
-    const data = await response.json();
+    if (!response.ok) {
+      console.error(`[MapAPI] Route computation failed: ${response.status}`, data);
+      return {
+        success: false,
+        error: data.message || `Route computation failed: ${response.status}`,
+      };
+    }
+
     console.log(`[MapAPI] Route computation success:`, data);
-    return extractFeatureFromResponse(data);
+    return {
+      success: true,
+      route: extractFeatureFromResponse(data),
+    };
   } catch (error) {
     console.error(`[MapAPI] Failed to compute route via ${fullUrl}:`, error);
-    return null;
+    return {
+      success: false,
+      error: String(error),
+    };
   }
 }
 

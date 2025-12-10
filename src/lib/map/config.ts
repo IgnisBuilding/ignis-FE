@@ -74,10 +74,24 @@ export const LAYER_STYLES = {
     ],
   },
 
-  // Floor outline
+  // Floor outline - black boundaries matching EvacuationSystem
   floorOutline: {
-    'line-color': '#2c3e50',
-    'line-width': 2,
+    'line-color': [
+      'case',
+      ['==', ['get', 'room_type'], 'furniture'],
+      '#bdbdbd',
+      '#000000',  // Black for room boundaries
+    ],
+    'line-width': [
+      'case',
+      ['==', ['get', 'room_type'], 'outdoor'],
+      3,
+      ['==', ['get', 'room_type'], 'stairs'],
+      4,
+      ['==', ['get', 'room_type'], 'furniture'],
+      1,
+      3,  // Default 3px width
+    ],
   },
 
   // Stairs pattern

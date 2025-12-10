@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback, memo } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import { io, Socket } from 'socket.io-client';
 
 import {
   DEFAULT_MAP_CONFIG,
@@ -23,7 +24,7 @@ import {
   isValidLonLat,
 } from '@/lib/map';
 
-import type { EmergencyState, MapCallbacks, Sensor, HazardData } from '@/lib/map';
+import type { EmergencyState, MapCallbacks, Sensor, HazardData, IsolationResponse } from '@/lib/map';
 
 // Props interface
 interface EvacuationMapProps {
@@ -92,10 +93,20 @@ const EvacuationMap = memo(({
   const [fireSeverity, setFireSeverity] = useState<'HIGH' | 'CRITICAL'>('HIGH');
   const [activeFireZones, setActiveFireZones] = useState<Array<{ roomId: string; roomName: string; severity: string }>>([]);
 
+  // Automatic fire detection state
+  const [autoFireEnabled, setAutoFireEnabled] = useState(false);
+  const [autoFireRoom, setAutoFireRoom] = useState<string>('');
+  const [isConnectedToDetection, setIsConnectedToDetection] = useState(false);
+  const socketRef = useRef<Socket | null>(null);
+  const lastFirePlacementRef = useRef<number>(0); // Debounce fire placements
+
   // Panel collapse states
   const [isEmergencyPanelCollapsed, setIsEmergencyPanelCollapsed] = useState(false);
   const [isFireZonePanelCollapsed, setIsFireZonePanelCollapsed] = useState(false);
   const [isRoutePanelCollapsed, setIsRoutePanelCollapsed] = useState(false);
+
+  // Isolation alert state (when person is trapped by fire)
+  const [isolationAlert, setIsolationAlert] = useState<IsolationResponse | null>(null);
 
   // Show notification
   const showNotification = useCallback((message: string, type: keyof typeof NOTIFICATION_COLORS = 'info') => {
@@ -321,7 +332,15 @@ const EvacuationMap = memo(({
       id: 'floor1-outline',
       type: 'line',
       source: 'building',
-      filter: ['==', ['get', 'level'], '0'],
+      filter: [
+        'all',
+        ['==', ['get', 'level'], '0'],
+        ['!=', ['geometry-type'], 'LineString'],
+      ],
+      layout: {
+        'line-join': 'round',
+        'line-cap': 'round',
+      },
       paint: LAYER_STYLES.floorOutline as any,
     });
 
@@ -1032,6 +1051,183 @@ const EvacuationMap = memo(({
   }, [selectedFireZones, fireSeverity, routeNodes, currentFloor, showNotification, updateEmergencyState]);
 
   // Clear all fire zones
+  // Auto-place fire in room when YOLO detection triggers
+  const autoPlaceFireInRoom = useCallback(async (roomId: string, detectionData: any) => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    // Debounce: prevent multiple fire placements within 5 seconds
+    const now = Date.now();
+    if (now - lastFirePlacementRef.current < 5000) {
+      console.log('[AutoFire] Debounced - fire placement too recent');
+      return;
+    }
+
+    // Check if fire already placed in this room
+    if (activeFireZones.some(fz => fz.roomId === roomId)) {
+      console.log('[AutoFire] Fire already active in room:', roomId);
+      return;
+    }
+
+    const room = routeNodes.find(n => n.roomId === roomId);
+    if (!room) {
+      console.error('[AutoFire] Room not found:', roomId);
+      return;
+    }
+
+    console.log('[AutoFire] YOLO detection triggered fire placement in:', room.name, detectionData);
+    lastFirePlacementRef.current = now;
+
+    const [lng, lat] = room.coordinates || [67.1125, 24.862];
+    const floorLevel = currentFloor === 'floor1' ? 1 : 2;
+
+    const fireZone = {
+      nodeId: Number(room.nodeId) || 1,
+      roomId: Number(roomId) || 1,
+      roomName: room.name || 'Unknown Room',
+      longitude: Number(lng),
+      latitude: Number(lat),
+      floorLevel: Number(floorLevel),
+    };
+
+    try {
+      const result = await placeFires([fireZone], 'CRITICAL');
+
+      if (result.success) {
+        // Add fire marker
+        if (room.coordinates) {
+          const marker = new maplibregl.Marker({ color: 'red', scale: 1.2 })
+            .setLngLat(room.coordinates)
+            .setPopup(new maplibregl.Popup({ offset: 25 }).setHTML(formatFireAlertPopup(room.name)))
+            .addTo(map);
+          fireMarkersRef.current.push(marker);
+        }
+
+        // Add fire zone visualization
+        const roomsData = roomsDataRef.current;
+        if (roomsData && roomsData.features) {
+          const fireRoomId = parseInt(roomId);
+          const fireZoneFeatures = roomsData.features.filter(f =>
+            f.properties?.id === fireRoomId || parseInt(String(f.id)) === fireRoomId
+          );
+
+          if (fireZoneFeatures.length > 0) {
+            const fireZoneGeoJSON: GeoJSON.FeatureCollection = {
+              type: 'FeatureCollection',
+              features: fireZoneFeatures.map(f => ({
+                ...f,
+                properties: { ...f.properties, fireZone: true },
+              })),
+            };
+
+            if (map.getSource('fire-zones')) {
+              (map.getSource('fire-zones') as maplibregl.GeoJSONSource).setData(fireZoneGeoJSON);
+            } else {
+              map.addSource('fire-zones', { type: 'geojson', data: fireZoneGeoJSON });
+              map.addLayer({
+                id: 'fire-zone-fill',
+                type: 'fill',
+                source: 'fire-zones',
+                paint: { 'fill-color': '#ff3d00', 'fill-opacity': 0.4 },
+              });
+              map.addLayer({
+                id: 'fire-zone-outline',
+                type: 'line',
+                source: 'fire-zones',
+                paint: { 'line-color': '#d32f2f', 'line-width': 3 },
+              });
+            }
+          }
+        }
+
+        // Update state
+        setActiveFireZones(prev => [...prev, {
+          roomId: String(roomId),
+          roomName: room.name,
+          severity: 'CRITICAL',
+        }]);
+
+        updateEmergencyState({
+          isActive: true,
+          mode: 'fire_detected',
+          fireMarkers: fireMarkersRef.current,
+        });
+
+        showNotification(
+          `🔥 AUTO-DETECTED: Fire detected by camera and placed in ${room.name}!`,
+          'error'
+        );
+      }
+    } catch (error) {
+      console.error('[AutoFire] Failed to place fire:', error);
+      showNotification('Auto fire placement failed', 'error');
+    }
+  }, [routeNodes, currentFloor, activeFireZones, showNotification, updateEmergencyState]);
+
+  // Socket.IO connection for automatic fire detection from YOLO pipeline
+  useEffect(() => {
+    // Only connect when auto mode is enabled and a room is selected
+    if (!autoFireEnabled || !autoFireRoom) {
+      // Disconnect if conditions not met
+      if (socketRef.current) {
+        console.log('[AutoFire] Disconnecting socket - auto mode disabled or no room selected');
+        socketRef.current.disconnect();
+        socketRef.current = null;
+        setIsConnectedToDetection(false);
+      }
+      return;
+    }
+
+    // Connect to Pipeline-Formation NestJS backend on port 4000
+    console.log('[AutoFire] Connecting to fire detection pipeline...');
+    const socket = io('http://localhost:4000', {
+      transports: ['websocket'],
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+    });
+
+    socketRef.current = socket;
+
+    socket.on('connect', () => {
+      console.log('[AutoFire] ✅ Connected to fire detection pipeline');
+      setIsConnectedToDetection(true);
+    });
+
+    socket.on('disconnect', () => {
+      console.log('[AutoFire] ❌ Disconnected from fire detection pipeline');
+      setIsConnectedToDetection(false);
+    });
+
+    socket.on('connect_error', (error) => {
+      console.error('[AutoFire] Connection error:', error.message);
+      setIsConnectedToDetection(false);
+    });
+
+    // Listen for fire detections from YOLO pipeline
+    socket.on('detections', (data: {
+      camera_id: string;
+      timestamp: number;
+      detections: Array<{ bbox: number[]; score: number; label: string }>;
+      latency: number;
+    }) => {
+      console.log('[AutoFire] Received detection event:', data);
+
+      // Only trigger if fire detected (detections array not empty)
+      if (data.detections && data.detections.length > 0) {
+        console.log('[AutoFire] 🔥 Fire detected by YOLO! Detections:', data.detections.length);
+        autoPlaceFireInRoom(autoFireRoom, data);
+      }
+    });
+
+    return () => {
+      console.log('[AutoFire] Cleanup - disconnecting socket');
+      socket.disconnect();
+      socketRef.current = null;
+      setIsConnectedToDetection(false);
+    };
+  }, [autoFireEnabled, autoFireRoom, autoPlaceFireInRoom]);
+
   const clearFireZones = useCallback(async () => {
     const map = mapRef.current;
     if (!map) return;
@@ -1194,11 +1390,31 @@ const EvacuationMap = memo(({
       return;
     }
 
+    // Clear any previous isolation alert
+    setIsolationAlert(null);
     setIsComputingRoute(true);
     showNotification('Computing shortest route...', 'info');
 
     try {
-      const routeFeature = await computeRoute(selectedStart, selectedEnd);
+      const result = await computeRoute(selectedStart, selectedEnd);
+
+      // Handle isolation case - person is trapped by fire
+      if (result.isolated && result.isolationData) {
+        console.log('[Route] Person is isolated - showing shelter instructions');
+        setIsolationAlert(result.isolationData);
+        showNotification('⚠️ Location isolated - no safe evacuation path available!', 'error');
+        setIsComputingRoute(false);
+        return;
+      }
+
+      // Handle general errors
+      if (!result.success) {
+        showNotification(result.error || 'Failed to compute route', 'error');
+        setIsComputingRoute(false);
+        return;
+      }
+
+      const routeFeature = result.route;
 
       if (routeFeature && routeFeature.geometry) {
         // Convert geometry if needed
@@ -1468,57 +1684,120 @@ const EvacuationMap = memo(({
 
             {!isFireZonePanelCollapsed && (
               <div className="px-4 pb-4 space-y-3">
-                <div>
-                  <label htmlFor="fire-zones-select" className="text-xs text-gray-600 block mb-1">Select Fire Zones:</label>
-                  <select
-                    id="fire-zones-select"
-                    multiple
-                    value={selectedFireZones}
-                    onChange={(e) => {
-                      const values = Array.from(e.target.selectedOptions, option => option.value);
-                      setSelectedFireZones(values);
-                    }}
-                    className="w-full px-2 py-1.5 text-xs border rounded focus:ring-2 focus:ring-orange-500 focus:border-orange-500 h-28"
-                    title="Select rooms where fire should be placed"
-                  >
-                    {routeNodes.map(node => (
-                      <option key={node.roomId} value={node.roomId}>{node.name}</option>
-                    ))}
-                  </select>
-                  <p className="text-[10px] text-gray-500 mt-1">Hold Ctrl/Cmd to select multiple rooms</p>
+                {/* Automatic Fire Detection Section */}
+                <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={autoFireEnabled}
+                        onChange={(e) => {
+                          setAutoFireEnabled(e.target.checked);
+                          if (!e.target.checked) {
+                            setAutoFireRoom('');
+                          }
+                        }}
+                        className="w-4 h-4 text-orange-600 rounded focus:ring-orange-500"
+                      />
+                      <span className="text-xs font-medium text-orange-800">
+                        🤖 Auto Fire Detection
+                      </span>
+                    </label>
+                    {autoFireEnabled && (
+                      <span className={`text-[10px] px-2 py-0.5 rounded ${
+                        isConnectedToDetection
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-red-100 text-red-700'
+                      }`}>
+                        {isConnectedToDetection ? '● Connected' : '○ Disconnected'}
+                      </span>
+                    )}
+                  </div>
+
+                  {autoFireEnabled && (
+                    <>
+                      <p className="text-[10px] text-orange-600 mb-2">
+                        Select room to auto-place fire when YOLO detects fire
+                      </p>
+                      <select
+                        value={autoFireRoom}
+                        onChange={(e) => setAutoFireRoom(e.target.value)}
+                        className="w-full px-2 py-1.5 text-xs border border-orange-300 rounded focus:ring-2 focus:ring-orange-500"
+                      >
+                        <option value="">-- Select Room --</option>
+                        {routeNodes.filter(n => !n.id.startsWith('nav-')).map(node => (
+                          <option key={node.roomId} value={node.roomId}>
+                            {node.name}
+                          </option>
+                        ))}
+                      </select>
+                      {autoFireRoom && isConnectedToDetection && (
+                        <p className="text-[10px] text-green-600 mt-1">
+                          ✓ Listening for fire detections...
+                        </p>
+                      )}
+                    </>
+                  )}
                 </div>
 
-                <div>
-                  <label htmlFor="fire-severity-select" className="text-xs text-gray-600 block mb-1">Fire Severity:</label>
-                  <select
-                    id="fire-severity-select"
-                    value={fireSeverity}
-                    onChange={(e) => setFireSeverity(e.target.value as 'HIGH' | 'CRITICAL')}
-                    className="w-full px-2 py-1.5 text-xs border rounded focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                    title="Select fire severity level"
-                  >
-                    <option value="HIGH">High (Dangerous - Avoid)</option>
-                    <option value="CRITICAL">Critical (Life Threatening)</option>
-                  </select>
-                </div>
+                {/* Manual Fire Placement - disabled when auto is enabled */}
+                <div className={autoFireEnabled ? 'opacity-50 pointer-events-none' : ''}>
+                  <div>
+                    <label htmlFor="fire-zones-select" className="text-xs text-gray-600 block mb-1">
+                      Select Fire Zones {autoFireEnabled && '(Disabled in auto mode)'}:
+                    </label>
+                    <select
+                      id="fire-zones-select"
+                      multiple
+                      value={selectedFireZones}
+                      onChange={(e) => {
+                        const values = Array.from(e.target.selectedOptions, option => option.value);
+                        setSelectedFireZones(values);
+                      }}
+                      disabled={autoFireEnabled}
+                      className="w-full px-2 py-1.5 text-xs border rounded focus:ring-2 focus:ring-orange-500 focus:border-orange-500 h-28"
+                      title="Select rooms where fire should be placed"
+                    >
+                      {routeNodes.map(node => (
+                        <option key={node.roomId} value={node.roomId}>{node.name}</option>
+                      ))}
+                    </select>
+                    <p className="text-[10px] text-gray-500 mt-1">Hold Ctrl/Cmd to select multiple rooms</p>
+                  </div>
 
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={placeFireInZones}
-                    disabled={selectedFireZones.length === 0}
-                    className="flex-1 px-3 py-2 text-xs font-semibold bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
-                  >
-                    <span>🔥</span> Place Fire
-                  </button>
-                  <button
-                    type="button"
-                    onClick={clearFireZones}
-                    disabled={activeFireZones.length === 0}
-                    className="flex-1 px-3 py-2 text-xs font-semibold bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
-                  >
-                    <span>✓</span> Clear All
-                  </button>
+                  <div className="mt-3">
+                    <label htmlFor="fire-severity-select" className="text-xs text-gray-600 block mb-1">Fire Severity:</label>
+                    <select
+                      id="fire-severity-select"
+                      value={fireSeverity}
+                      onChange={(e) => setFireSeverity(e.target.value as 'HIGH' | 'CRITICAL')}
+                      disabled={autoFireEnabled}
+                      className="w-full px-2 py-1.5 text-xs border rounded focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                      title="Select fire severity level"
+                    >
+                      <option value="HIGH">High (Dangerous - Avoid)</option>
+                      <option value="CRITICAL">Critical (Life Threatening)</option>
+                    </select>
+                  </div>
+
+                  <div className="flex gap-2 mt-3">
+                    <button
+                      type="button"
+                      onClick={placeFireInZones}
+                      disabled={selectedFireZones.length === 0 || autoFireEnabled}
+                      className="flex-1 px-3 py-2 text-xs font-semibold bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
+                    >
+                      <span>🔥</span> Place Fire
+                    </button>
+                    <button
+                      type="button"
+                      onClick={clearFireZones}
+                      disabled={activeFireZones.length === 0}
+                      className="flex-1 px-3 py-2 text-xs font-semibold bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
+                    >
+                      <span>✓</span> Clear All
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -1605,6 +1884,71 @@ const EvacuationMap = memo(({
           <div className="text-center">
             <div className="animate-spin w-10 h-10 border-4 border-emerald-600 border-t-transparent rounded-full mx-auto mb-4"></div>
             <p className="text-gray-600">Loading map...</p>
+          </div>
+        </div>
+      )}
+
+      {/* Isolation Alert - Shelter in Place Instructions */}
+      {isolationAlert && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md mx-4 overflow-hidden animate-slide-up">
+            {/* Header */}
+            <div className="bg-red-600 px-6 py-4">
+              <div className="flex items-center gap-3">
+                <span className="text-3xl">🚨</span>
+                <div>
+                  <h2 className="text-white font-bold text-lg">LOCATION ISOLATED</h2>
+                  <p className="text-red-100 text-sm">No safe evacuation path available</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="p-6">
+              {/* Warning Message */}
+              <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-4 rounded-r">
+                <p className="text-red-800 text-sm font-medium">
+                  {isolationAlert.message}
+                </p>
+              </div>
+
+              {/* Shelter Instructions */}
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+                <h3 className="text-amber-800 font-bold text-sm mb-2 flex items-center gap-2">
+                  <span>🏠</span> SHELTER IN PLACE INSTRUCTIONS
+                </h3>
+                <p className="text-amber-700 text-sm whitespace-pre-line">
+                  {isolationAlert.shelterInstructions}
+                </p>
+              </div>
+
+              {/* Safety Tips */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h3 className="text-blue-800 font-bold text-sm mb-2 flex items-center gap-2">
+                  <span>💡</span> WHILE WAITING FOR RESCUE
+                </h3>
+                <ul className="text-blue-700 text-sm space-y-1">
+                  <li>• Stay low to avoid smoke inhalation</li>
+                  <li>• Seal door gaps with wet towels</li>
+                  <li>• Signal from window if possible</li>
+                  <li>• Keep calm and conserve energy</li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="bg-gray-50 px-6 py-4 flex justify-between items-center">
+              <p className="text-gray-500 text-xs">
+                Rescue team has been notified
+              </p>
+              <button
+                type="button"
+                onClick={() => setIsolationAlert(null)}
+                className="px-4 py-2 bg-gray-600 text-white text-sm font-semibold rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                Acknowledge
+              </button>
+            </div>
           </div>
         </div>
       )}
