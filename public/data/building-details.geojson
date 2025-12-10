@@ -1,0 +1,578 @@
+{
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "properties": {
+                "feature_type": "toilet",
+                "level": "1",
+                "room": "Master Bath"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [67.1145, 24.8619]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "feature_type": "bathtub",
+                "level": "1",
+                "room": "Master Bath"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [67.1146, 24.8622],
+                    [67.1147, 24.8622],
+                    [67.1147, 24.8624],
+                    [67.1146, 24.8624],
+                    [67.1146, 24.8622]
+                ]]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "feature_type": "sink_double",
+                "level": "1",
+                "room": "Master Bath"
+            },
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [67.1144, 24.8621],
+                    [67.1146, 24.8621]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "feature_type": "toilet",
+                "level": "1",
+                "room": "Shower Room"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [67.1126, 24.8621]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "feature_type": "shower",
+                "level": "1",
+                "room": "Shower Room"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [67.1126, 24.8620],
+                    [67.1127, 24.8620],
+                    [67.1127, 24.8621],
+                    [67.1126, 24.8621],
+                    [67.1126, 24.8620]
+                ]]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "feature_type": "toilet",
+                "level": "1",
+                "room": "Bedroom 2 Bath"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [67.1124, 24.8614]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "feature_type": "sink",
+                "level": "1",
+                "room": "Kitchen"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [67.1123, 24.8623]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "feature_type": "stove",
+                "level": "1",
+                "room": "Kitchen"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [67.1124, 24.8622],
+                    [67.1126, 24.8622],
+                    [67.1126, 24.8623],
+                    [67.1124, 24.8623],
+                    [67.1124, 24.8622]
+                ]]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "feature_type": "kitchen_island",
+                "level": "1",
+                "room": "Kitchen"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [67.1123, 24.8621],
+                    [67.1125, 24.8621],
+                    [67.1125, 24.8622],
+                    [67.1123, 24.8622],
+                    [67.1123, 24.8621]
+                ]]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "feature_type": "dining_table",
+                "level": "1",
+                "room": "Dining Room"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [67.1130, 24.8622],
+                    [67.1133, 24.8622],
+                    [67.1133, 24.8623],
+                    [67.1130, 24.8623],
+                    [67.1130, 24.8622]
+                ]]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "feature_type": "sofa",
+                "level": "1",
+                "room": "Living Room"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [67.1125, 24.8627],
+                    [67.1130, 24.8627],
+                    [67.1130, 24.8628],
+                    [67.1125, 24.8628],
+                    [67.1125, 24.8627]
+                ]]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "feature_type": "chair",
+                "level": "1",
+                "room": "Living Room"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [67.1122, 24.8629]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "feature_type": "chair",
+                "level": "1",
+                "room": "Living Room"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [67.1133, 24.8629]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "feature_type": "desk",
+                "level": "1",
+                "room": "Office/Den"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [67.1129, 24.8613],
+                    [67.1132, 24.8613],
+                    [67.1132, 24.8614],
+                    [67.1129, 24.8614],
+                    [67.1129, 24.8613]
+                ]]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "feature_type": "bed",
+                "level": "1",
+                "room": "Master Suite"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [67.1137, 24.8619],
+                    [67.1141, 24.8619],
+                    [67.1141, 24.8622],
+                    [67.1137, 24.8622],
+                    [67.1137, 24.8619]
+                ]]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "feature_type": "bed",
+                "level": "1",
+                "room": "Bedroom 2"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [67.1123, 24.8613],
+                    [67.1126, 24.8613],
+                    [67.1126, 24.8615],
+                    [67.1123, 24.8615],
+                    [67.1123, 24.8613]
+                ]]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "feature_type": "washer_dryer",
+                "level": "1",
+                "room": "Laundry Room"
+            },
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [67.1134, 24.8626],
+                    [67.1136, 24.8626]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "feature_type": "door_swing",
+                "level": "1",
+                "door_type": "single",
+                "swing_direction": "in",
+                "name": "Main Entry"
+            },
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [67.1133, 24.8617],
+                    [67.1135, 24.8617],
+                    [67.1135, 24.8619]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "feature_type": "door_swing",
+                "level": "1",
+                "door_type": "double",
+                "name": "Garage Door"
+            },
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [67.1110, 24.8612],
+                    [67.1116, 24.8612]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "feature_type": "door_swing",
+                "level": "1",
+                "door_type": "single",
+                "swing_direction": "out"
+            },
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [67.1118, 24.8620],
+                    [67.1120, 24.8620],
+                    [67.1120, 24.8618]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "feature_type": "door_swing",
+                "level": "1",
+                "door_type": "single",
+                "swing_direction": "in"
+            },
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [67.1124, 24.8625],
+                    [67.1124, 24.8623],
+                    [67.1122, 24.8623]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "feature_type": "door_swing",
+                "level": "1",
+                "door_type": "sliding",
+                "name": "Master Bath Door"
+            },
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [67.1143, 24.8620],
+                    [67.1143, 24.8622]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "feature_type": "door_swing",
+                "level": "1",
+                "door_type": "single",
+                "swing_direction": "in"
+            },
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [67.1135, 24.8620],
+                    [67.1137, 24.8620],
+                    [67.1137, 24.8622]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "feature_type": "north_arrow",
+                "level": "all"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [67.1150, 24.8638]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "feature_type": "dimension_line",
+                "level": "1",
+                "dimension": "45-0"
+            },
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [67.1108, 24.8609],
+                    [67.1148, 24.8609]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "feature_type": "dimension_line",
+                "level": "1",
+                "dimension": "50-0"
+            },
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [67.1151, 24.8612],
+                    [67.1151, 24.8637]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "feature_type": "window",
+                "level": "1",
+                "window_type": "double_hung"
+            },
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [67.1120, 24.8637],
+                    [67.1125, 24.8637]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "feature_type": "window",
+                "level": "1",
+                "window_type": "double_hung"
+            },
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [67.1128, 24.8637],
+                    [67.1133, 24.8637]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "feature_type": "window",
+                "level": "1",
+                "window_type": "casement"
+            },
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [67.1148, 24.8620],
+                    [67.1148, 24.8623]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "feature_type": "window",
+                "level": "1",
+                "window_type": "double_hung"
+            },
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [67.1125, 24.8612],
+                    [67.1127, 24.8612]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "feature_type": "window",
+                "level": "1",
+                "window_type": "double_hung"
+            },
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [67.1130, 24.8612],
+                    [67.1132, 24.8612]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "feature_type": "exit_sign",
+                "level": "1",
+                "exit_type": "main"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [67.1134, 24.8617]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "feature_type": "exit_sign",
+                "level": "1",
+                "exit_type": "emergency"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [67.1125, 24.8637]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "feature_type": "exit_sign",
+                "level": "1",
+                "exit_type": "garage"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [67.1113, 24.8612]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "feature_type": "stairs_arrow",
+                "level": "1",
+                "direction": "up",
+                "label": "UP"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [67.1130, 24.8623]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "feature_type": "stairs_arrow",
+                "level": "1",
+                "direction": "down",
+                "label": "DN"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [67.1111, 24.8624]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "feature_type": "wall_thickness",
+                "wall_type": "exterior",
+                "thickness": 8
+            },
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [67.1108, 24.8612],
+                    [67.1148, 24.8612]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "feature_type": "wall_thickness",
+                "wall_type": "interior",
+                "thickness": 4
+            },
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [67.1120, 24.8612],
+                    [67.1120, 24.8637]
+                ]
+            }
+        }
+    ]
+}

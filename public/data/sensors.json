@@ -1,0 +1,139 @@
+{
+  "sensors": [
+    {
+      "id": "temp-001",
+      "type": "temperature",
+      "roomId": "kitchen",
+      "location": [67.1124, 24.8622],
+      "level": "1",
+      "unit": "°C",
+      "threshold": 60,
+      "status": "active"
+    },
+    {
+      "id": "smoke-001",
+      "type": "smoke",
+      "roomId": "kitchen",
+      "location": [67.1125, 24.8623],
+      "level": "1",
+      "unit": "ppm",
+      "threshold": 150,
+      "status": "active"
+    },
+    {
+      "id": "temp-002",
+      "type": "temperature",
+      "roomId": "living-room",
+      "location": [67.1126, 24.8628],
+      "level": "1",
+      "unit": "°C",
+      "threshold": 60,
+      "status": "active"
+    },
+    {
+      "id": "smoke-002",
+      "type": "smoke",
+      "roomId": "living-room",
+      "location": [67.1127, 24.8629],
+      "level": "1",
+      "unit": "ppm",
+      "threshold": 150,
+      "status": "active"
+    },
+    {
+      "id": "motion-001",
+      "type": "occupancy",
+      "roomId": "foyer",
+      "location": [67.1135, 24.8619],
+      "level": "1",
+      "unit": "people",
+      "threshold": 10,
+      "status": "active"
+    },
+    {
+      "id": "motion-002",
+      "type": "occupancy",
+      "roomId": "master-suite",
+      "location": [67.1139, 24.8621],
+      "level": "1",
+      "unit": "people",
+      "threshold": 4,
+      "status": "active"
+    },
+    {
+      "id": "door-001",
+      "type": "door",
+      "roomId": "garage",
+      "location": [67.1113, 24.8612],
+      "level": "1",
+      "states": ["open", "closed", "locked"],
+      "status": "active"
+    },
+    {
+      "id": "door-002",
+      "type": "door",
+      "roomId": "foyer",
+      "location": [67.1135, 24.8617],
+      "level": "1",
+      "states": ["open", "closed", "locked"],
+      "status": "active"
+    },
+    {
+      "id": "emlight-001",
+      "type": "emergency_light",
+      "roomId": "hallway",
+      "location": [67.1128, 24.8625],
+      "level": "1",
+      "states": ["on", "off", "testing"],
+      "status": "active"
+    },
+    {
+      "id": "emlight-002",
+      "type": "emergency_light",
+      "roomId": "stairs",
+      "location": [67.1130, 24.8623],
+      "level": "1",
+      "states": ["on", "off", "testing"],
+      "status": "active"
+    },
+    {
+      "id": "sprinkler-001",
+      "type": "sprinkler",
+      "roomId": "kitchen",
+      "location": [67.1124, 24.8622],
+      "level": "1",
+      "states": ["active", "inactive", "malfunction"],
+      "status": "active"
+    },
+    {
+      "id": "temp-003",
+      "type": "temperature",
+      "roomId": "bedroom-3",
+      "location": [67.1113, 24.8616],
+      "level": "2",
+      "unit": "°C",
+      "threshold": 60,
+      "status": "active"
+    },
+    {
+      "id": "smoke-003",
+      "type": "smoke",
+      "roomId": "bedroom-3",
+      "location": [67.1113, 24.8616],
+      "level": "2",
+      "unit": "ppm",
+      "threshold": 150,
+      "status": "active"
+    },
+    {
+      "id": "motion-003",
+      "type": "occupancy",
+      "roomId": "bonus-room",
+      "location": [67.1125, 24.8628],
+      "level": "2",
+      "unit": "people",
+      "threshold": 15,
+      "status": "active"
+    }
+  ]
+}

@@ -9,6 +9,7 @@ export default function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.png|.*\\.jpg|.*\\.jpeg|.*\\.svg).*)',
+    // Exclude static files, images, and API paths from middleware
+    '/((?!_next/static|_next/image|favicon.ico|fireSafety|api|.*\\.png|.*\\.jpg|.*\\.jpeg|.*\\.svg).*)',
   ],
 };

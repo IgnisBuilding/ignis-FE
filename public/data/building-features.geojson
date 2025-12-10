@@ -1,0 +1,245 @@
+{
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "properties": {
+                "feature_type": "exterior_wall",
+                "level": "1",
+                "name": "Exterior Wall"
+            },
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [67.1108, 24.8612],
+                    [67.1148, 24.8612],
+                    [67.1148, 24.8637],
+                    [67.1108, 24.8637],
+                    [67.1108, 24.8612]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "feature_type": "property_line",
+                "level": "1",
+                "name": "Property Boundary"
+            },
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [67.1105, 24.8609],
+                    [67.1151, 24.8609],
+                    [67.1151, 24.8640],
+                    [67.1105, 24.8640],
+                    [67.1105, 24.8609]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "feature_type": "door",
+                "level": "1",
+                "name": "Main Entrance",
+                "door_type": "main"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [67.1129, 24.8612]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "feature_type": "door",
+                "level": "1",
+                "name": "Garage Door",
+                "door_type": "garage"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [67.1113, 24.8612]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "feature_type": "door",
+                "level": "1",
+                "name": "Kitchen to Living",
+                "door_type": "interior"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [67.1124, 24.8625]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "feature_type": "emergency_exit",
+                "level": "1",
+                "name": "Emergency Exit",
+                "exit_type": "emergency"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [67.1125, 24.8637]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "feature_type": "emergency_exit",
+                "level": "1",
+                "name": "Side Exit",
+                "exit_type": "secondary"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [67.1108, 24.8625]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "feature_type": "fire_extinguisher",
+                "level": "1",
+                "name": "Fire Extinguisher - Kitchen"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [67.1119, 24.8622]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "feature_type": "fire_extinguisher",
+                "level": "1",
+                "name": "Fire Extinguisher - Garage"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [67.1110, 24.8618]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "feature_type": "evacuation_route",
+                "level": "1",
+                "name": "Primary Evacuation Route",
+                "route_type": "primary"
+            },
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [67.1130, 24.8620],
+                    [67.1124, 24.8620],
+                    [67.1124, 24.8625],
+                    [67.1124, 24.8632],
+                    [67.1125, 24.8637]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "feature_type": "evacuation_route",
+                "level": "1",
+                "name": "Secondary Evacuation Route",
+                "route_type": "secondary"
+            },
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [67.1125, 24.8618],
+                    [67.1118, 24.8618],
+                    [67.1113, 24.8618],
+                    [67.1108, 24.8618],
+                    [67.1108, 24.8625]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "feature_type": "window",
+                "level": "1",
+                "name": "Living Room Windows"
+            },
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [67.1120, 24.8632],
+                    [67.1133, 24.8632]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "feature_type": "window",
+                "level": "1",
+                "name": "Master Suite Window"
+            },
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [67.1140, 24.8625],
+                    [67.1143, 24.8625]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "feature_type": "north_arrow",
+                "level": "all"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [67.1150, 24.8638]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "feature_type": "driveway",
+                "level": "1",
+                "name": "Driveway"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [67.1105, 24.8612],
+                    [67.1108, 24.8612],
+                    [67.1108, 24.8620],
+                    [67.1105, 24.8620],
+                    [67.1105, 24.8612]
+                ]]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "feature_type": "corridor",
+                "level": "1",
+                "name": "Main Corridor"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [67.1124, 24.8618],
+                    [67.1128, 24.8618],
+                    [67.1128, 24.8622],
+                    [67.1124, 24.8622],
+                    [67.1124, 24.8618]
+                ]]
+            }
+        }
+    ]
+}

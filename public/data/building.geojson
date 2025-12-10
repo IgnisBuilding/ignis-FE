@@ -1,0 +1,628 @@
+{
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "properties": {
+                "level": "1",
+                "name": "2-Car Garage",
+                "room_type": "garage",
+                "color": "#9E9E9E",
+                "dimensions": "22-6 x 20-0"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [67.1108, 24.8612],
+                    [67.1118, 24.8612],
+                    [67.1118, 24.8622],
+                    [67.1108, 24.8622],
+                    [67.1108, 24.8612]
+                ]]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "level": "1",
+                "name": "Down to Basement",
+                "room_type": "stairs",
+                "color": "#616161",
+                "dimensions": "16-10 x 9-8"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [67.1108, 24.8622],
+                    [67.1115, 24.8622],
+                    [67.1115, 24.8627],
+                    [67.1108, 24.8627],
+                    [67.1108, 24.8622]
+                ]]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "level": "1",
+                "name": "Mud Room",
+                "room_type": "utility",
+                "color": "#8D6E63",
+                "dimensions": "5-0 x 9-0"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [67.1118, 24.8618],
+                    [67.1120, 24.8618],
+                    [67.1120, 24.8621],
+                    [67.1118, 24.8621],
+                    [67.1118, 24.8618]
+                ]]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "level": "1",
+                "name": "Walk-In",
+                "room_type": "closet",
+                "color": "#BCAAA4"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [67.1120, 24.8616],
+                    [67.1122, 24.8616],
+                    [67.1122, 24.8618],
+                    [67.1120, 24.8618],
+                    [67.1120, 24.8616]
+                ]]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "level": "1",
+                "name": "Pantry",
+                "room_type": "storage",
+                "color": "#A1887F"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [67.1120, 24.8618],
+                    [67.1122, 24.8618],
+                    [67.1122, 24.8620],
+                    [67.1120, 24.8620],
+                    [67.1120, 24.8618]
+                ]]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "level": "1",
+                "name": "Kitchen",
+                "room_type": "common",
+                "color": "#FF9800",
+                "dimensions": "13-8 x 14-6"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [67.1120, 24.8620],
+                    [67.1128, 24.8620],
+                    [67.1128, 24.8625],
+                    [67.1120, 24.8625],
+                    [67.1120, 24.8620]
+                ]]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "level": "1",
+                "name": "Dining Room",
+                "room_type": "common",
+                "color": "#FFC107",
+                "dimensions": "14-8 x 12-6"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [67.1128, 24.8620],
+                    [67.1135, 24.8620],
+                    [67.1135, 24.8625],
+                    [67.1128, 24.8625],
+                    [67.1128, 24.8620]
+                ]]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "level": "1",
+                "name": "Living Room",
+                "room_type": "common",
+                "color": "#66BB6A",
+                "dimensions": "18-8 x 13-2",
+                "ceiling": "10' CEILING"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [67.1118, 24.8625],
+                    [67.1135, 24.8625],
+                    [67.1135, 24.8632],
+                    [67.1118, 24.8632],
+                    [67.1118, 24.8625]
+                ]]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "level": "1",
+                "name": "Covered Porch",
+                "room_type": "outdoor",
+                "color": "#81C784",
+                "dimensions": "20-0 x 13-0"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [67.1118, 24.8632],
+                    [67.1135, 24.8632],
+                    [67.1135, 24.8637],
+                    [67.1118, 24.8637],
+                    [67.1118, 24.8632]
+                ]]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "level": "1",
+                "name": "Bedroom 2",
+                "room_type": "bedroom",
+                "color": "#5C6BC0",
+                "dimensions": "11-4 x 10-4"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [67.1122, 24.8612],
+                    [67.1128, 24.8612],
+                    [67.1128, 24.8617],
+                    [67.1122, 24.8617],
+                    [67.1122, 24.8612]
+                ]]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "level": "1",
+                "name": "Office/Den",
+                "room_type": "office",
+                "color": "#7E57C2",
+                "dimensions": "8-4 x 10-4"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [67.1128, 24.8612],
+                    [67.1133, 24.8612],
+                    [67.1133, 24.8617],
+                    [67.1128, 24.8617],
+                    [67.1128, 24.8612]
+                ]]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "level": "1",
+                "name": "Foyer",
+                "room_type": "entry",
+                "color": "#8D6E63",
+                "dimensions": "8-0 x 6-4"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [67.1133, 24.8617],
+                    [67.1137, 24.8617],
+                    [67.1137, 24.8621],
+                    [67.1133, 24.8621],
+                    [67.1133, 24.8617]
+                ]]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "level": "1",
+                "name": "Stoop",
+                "room_type": "outdoor",
+                "color": "#78909C",
+                "dimensions": "7-4 x 4-0"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [67.1133, 24.8612],
+                    [67.1137, 24.8612],
+                    [67.1137, 24.8617],
+                    [67.1133, 24.8617],
+                    [67.1133, 24.8612]
+                ]]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "level": "1",
+                "name": "Shower Room",
+                "room_type": "bathroom",
+                "color": "#4FC3F7"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [67.1125, 24.8620],
+                    [67.1128, 24.8620],
+                    [67.1128, 24.8622],
+                    [67.1125, 24.8622],
+                    [67.1125, 24.8620]
+                ]]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "level": "1",
+                "name": "Laundry Room",
+                "room_type": "utility",
+                "color": "#26A69A"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [67.1133, 24.8625],
+                    [67.1137, 24.8625],
+                    [67.1137, 24.8628],
+                    [67.1133, 24.8628],
+                    [67.1133, 24.8625]
+                ]]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "level": "1",
+                "name": "Master Suite",
+                "room_type": "bedroom",
+                "color": "#29B6F6",
+                "dimensions": "12-0 x 13-0"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [67.1135, 24.8617],
+                    [67.1143, 24.8617],
+                    [67.1143, 24.8625],
+                    [67.1135, 24.8625],
+                    [67.1135, 24.8617]
+                ]]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "level": "1",
+                "name": "Master Bath",
+                "room_type": "bathroom",
+                "color": "#26C6DA"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [67.1143, 24.8617],
+                    [67.1148, 24.8617],
+                    [67.1148, 24.8625],
+                    [67.1143, 24.8625],
+                    [67.1143, 24.8617]
+                ]]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "level": "1",
+                "name": "His Walk-In",
+                "room_type": "closet",
+                "color": "#B2EBF2"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [67.1135, 24.8625],
+                    [67.1139, 24.8625],
+                    [67.1139, 24.8628],
+                    [67.1135, 24.8628],
+                    [67.1135, 24.8625]
+                ]]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "level": "1",
+                "name": "Hers Walk-In",
+                "room_type": "closet",
+                "color": "#B2EBF2"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [67.1139, 24.8625],
+                    [67.1143, 24.8625],
+                    [67.1143, 24.8628],
+                    [67.1139, 24.8628],
+                    [67.1139, 24.8625]
+                ]]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "level": "1",
+                "name": "Privacy Wall",
+                "room_type": "wall",
+                "color": "#757575"
+            },
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [67.1105, 24.8637],
+                    [67.1108, 24.8637]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "level": "1", 
+                "name": "Stairs to Floor 2",
+                "room_type": "stairs",
+                "color": "#757575",
+                "connects_to": "2"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [67.1128, 24.8622],
+                    [67.1133, 24.8622],
+                    [67.1133, 24.8625],
+                    [67.1128, 24.8625],
+                    [67.1128, 24.8622]
+                ]]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "level": "1",
+                "name": "Lockers",
+                "room_type": "storage",
+                "color": "#A1887F"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [67.1120, 24.8614],
+                    [67.1122, 24.8614],
+                    [67.1122, 24.8616],
+                    [67.1120, 24.8616],
+                    [67.1120, 24.8614]
+                ]]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "level": "1",
+                "name": "Linen",
+                "room_type": "storage",
+                "color": "#A1887F"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [67.1125, 24.8617],
+                    [67.1128, 24.8617],
+                    [67.1128, 24.8619],
+                    [67.1125, 24.8619],
+                    [67.1125, 24.8617]
+                ]]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "level": "1",
+                "name": "Seat",
+                "room_type": "furniture",
+                "color": "#E0E0E0"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [67.1120, 24.8632],
+                    [67.1122, 24.8632],
+                    [67.1122, 24.8634],
+                    [67.1120, 24.8634],
+                    [67.1120, 24.8632]
+                ]]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "level": "1",
+                "name": "Shelves",
+                "room_type": "furniture",
+                "color": "#E0E0E0"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [67.1122, 24.8632],
+                    [67.1124, 24.8632],
+                    [67.1124, 24.8634],
+                    [67.1122, 24.8634],
+                    [67.1122, 24.8632]
+                ]]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "level": "2",
+                "name": "Upper Hall",
+                "room_type": "hallway",
+                "color": "#ECEFF1"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [67.1120, 24.8618],
+                    [67.1135, 24.8618],
+                    [67.1135, 24.8625],
+                    [67.1120, 24.8625],
+                    [67.1120, 24.8618]
+                ]]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "level": "2",
+                "name": "Bedroom 3",
+                "room_type": "bedroom",
+                "color": "#AB47BC",
+                "dimensions": "12-0 x 14-0"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [67.1108, 24.8612],
+                    [67.1118, 24.8612],
+                    [67.1118, 24.8620],
+                    [67.1108, 24.8620],
+                    [67.1108, 24.8612]
+                ]]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "level": "2",
+                "name": "Bedroom 4",
+                "room_type": "bedroom",
+                "color": "#EC407A",
+                "dimensions": "14-0 x 14-0"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [67.1135, 24.8612],
+                    [67.1148, 24.8612],
+                    [67.1148, 24.8620],
+                    [67.1135, 24.8620],
+                    [67.1135, 24.8612]
+                ]]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "level": "2",
+                "name": "Bonus Room",
+                "room_type": "recreation",
+                "color": "#66BB6A",
+                "dimensions": "20-0 x 15-0"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [67.1115, 24.8625],
+                    [67.1135, 24.8625],
+                    [67.1135, 24.8632],
+                    [67.1115, 24.8632],
+                    [67.1115, 24.8625]
+                ]]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "level": "2",
+                "name": "Upper Bath",
+                "room_type": "bathroom",
+                "color": "#26C6DA"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [67.1118, 24.8620],
+                    [67.1122, 24.8620],
+                    [67.1122, 24.8623],
+                    [67.1118, 24.8623],
+                    [67.1118, 24.8620]
+                ]]
+            }
+        },
+        {
+            "type": "Feature",
+                "properties": {
+                "level": "2",
+                "name": "Storage",
+                "room_type": "storage",
+                "color": "#A1887F"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [67.1122, 24.8612],
+                    [67.1128, 24.8612],
+                    [67.1128, 24.8615],
+                    [67.1122, 24.8615],
+                    [67.1122, 24.8612]
+                ]]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "level": "2",
+                "name": "Stairs from Floor 1",
+                "room_type": "stairs",
+                "color": "#757575",
+                "connects_to": "1"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [67.1128, 24.8622],
+                    [67.1133, 24.8622],
+                    [67.1133, 24.8625],
+                    [67.1128, 24.8625],
+                    [67.1128, 24.8622]
+                ]]
+            }
+        }
+    ]
+}

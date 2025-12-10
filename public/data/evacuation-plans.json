@@ -1,0 +1,120 @@
+{
+  "evacuationPlans": {
+    "fire": {
+      "name": "Fire Emergency Evacuation",
+      "priority": "high",
+      "exits": [
+        {
+          "id": "main-exit",
+          "name": "Main Entry",
+          "location": [67.1135, 24.8612],
+          "capacity": 50,
+          "type": "primary"
+        },
+        {
+          "id": "garage-exit",
+          "name": "Garage Exit",
+          "location": [67.1113, 24.8612],
+          "capacity": 30,
+          "type": "secondary"
+        },
+        {
+          "id": "porch-exit",
+          "name": "Covered Porch Exit",
+          "location": [67.1126, 24.8637],
+          "capacity": 40,
+          "type": "emergency"
+        }
+      ],
+      "routes": [
+        {
+          "id": "route-1",
+          "name": "Kitchen to Main Exit",
+          "from": "kitchen",
+          "to": "main-exit",
+          "priority": 1,
+          "estimatedTime": 45,
+          "distance": 25
+        },
+        {
+          "id": "route-2",
+          "name": "Living Room to Porch Exit",
+          "from": "living-room",
+          "to": "porch-exit",
+          "priority": 1,
+          "estimatedTime": 20,
+          "distance": 10
+        },
+        {
+          "id": "route-3",
+          "name": "Master Suite to Garage",
+          "from": "master-suite",
+          "to": "garage-exit",
+          "priority": 2,
+          "estimatedTime": 60,
+          "distance": 35
+        },
+        {
+          "id": "route-4",
+          "name": "Upper Floor to Stairs",
+          "from": "bonus-room",
+          "to": "stairs",
+          "priority": 1,
+          "estimatedTime": 30,
+          "distance": 15
+        }
+      ],
+      "assemblyPoints": [
+        {
+          "id": "assembly-1",
+          "name": "Front Lawn Assembly",
+          "location": [67.1135, 24.8608],
+          "capacity": 100
+        },
+        {
+          "id": "assembly-2",
+          "name": "Driveway Assembly",
+          "location": [67.1108, 24.8608],
+          "capacity": 50
+        }
+      ]
+    },
+    "earthquake": {
+      "name": "Earthquake Emergency Plan",
+      "priority": "high",
+      "exits": [
+        {
+          "id": "main-exit",
+          "name": "Main Entry",
+          "location": [67.1135, 24.8612],
+          "capacity": 50,
+          "type": "primary"
+        }
+      ],
+      "safeZones": [
+        {
+          "id": "safe-1",
+          "name": "Garage Door Frame",
+          "location": [67.1113, 24.8612],
+          "type": "doorframe"
+        },
+        {
+          "id": "safe-2",
+          "name": "Living Room Interior Wall",
+          "location": [67.1126, 24.8628],
+          "type": "interior-wall"
+        }
+      ]
+    }
+  },
+  "drillHistory": [
+    {
+      "date": "2024-01-05T14:00:00Z",
+      "type": "fire",
+      "duration": 180,
+      "participants": 45,
+      "success": true,
+      "averageEvacTime": 120
+    }
+  ]
+}
