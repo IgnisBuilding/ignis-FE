@@ -92,6 +92,11 @@ const EvacuationMap = memo(({
   const [fireSeverity, setFireSeverity] = useState<'HIGH' | 'CRITICAL'>('HIGH');
   const [activeFireZones, setActiveFireZones] = useState<Array<{ roomId: string; roomName: string; severity: string }>>([]);
 
+  // Panel collapse states
+  const [isEmergencyPanelCollapsed, setIsEmergencyPanelCollapsed] = useState(false);
+  const [isFireZonePanelCollapsed, setIsFireZonePanelCollapsed] = useState(false);
+  const [isRoutePanelCollapsed, setIsRoutePanelCollapsed] = useState(false);
+
   // Show notification
   const showNotification = useCallback((message: string, type: keyof typeof NOTIFICATION_COLORS = 'info') => {
     setNotification({ message, type });
@@ -1009,8 +1014,12 @@ const EvacuationMap = memo(({
       map.setPaintProperty('floor1-fill', 'fill-opacity', 0.8);
     }, 500);
 
-    // Update state
-    setActiveFireZones(fireZones);
+    // Update state - convert to expected types for activeFireZones
+    setActiveFireZones(fireZones.map(z => ({
+      roomId: String(z.roomId),
+      roomName: z.roomName,
+      severity: z.severity,
+    })));
     setSelectedFireZones([]);
 
     updateEmergencyState({
@@ -1341,9 +1350,11 @@ const EvacuationMap = memo(({
   }, [showNotification]);
 
   return (
-    <div className={`relative w-full h-full ${className}`}>
-      {/* Map Container */}
-      <div ref={mapContainerRef} className="w-full h-full rounded-lg overflow-hidden" />
+    <div className={`flex flex-col w-full h-full ${className}`}>
+      {/* Map Section */}
+      <div className="relative flex-1 min-h-0">
+        {/* Map Container */}
+        <div ref={mapContainerRef} className="w-full h-full rounded-lg overflow-hidden" />
 
       {/* Floor Selector */}
       {isMapLoaded && (
@@ -1373,52 +1384,67 @@ const EvacuationMap = memo(({
 
       {/* Emergency Controls */}
       {showEmergencyControls && isMapLoaded && (
-        <div className="absolute top-4 right-[140px] z-10 flex flex-col gap-2 bg-white/95 backdrop-blur-sm rounded-lg p-4 shadow-lg max-w-[220px]">
-          <h3 className="text-sm font-bold text-gray-800 mb-2">Emergency Controls</h3>
-
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-xs text-gray-600">Status:</span>
-            <span className={`text-xs font-semibold ${
-              emergencyState.mode === 'idle' ? 'text-green-600' :
-              emergencyState.mode === 'fire_detected' ? 'text-red-600' :
-              emergencyState.mode === 'evacuation_in_progress' ? 'text-orange-600' :
-              'text-green-600'
-            }`}>
-              {emergencyState.mode === 'idle' ? 'System Ready' :
-               emergencyState.mode === 'fire_detected' ? 'FIRE DETECTED!' :
-               emergencyState.mode === 'evacuation_in_progress' ? 'EVACUATION IN PROGRESS' :
-               'Evacuation Complete'}
+        <div className="absolute top-4 right-[140px] z-10 bg-white/95 backdrop-blur-sm rounded-lg shadow-lg max-w-[220px] overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setIsEmergencyPanelCollapsed(!isEmergencyPanelCollapsed)}
+            className="w-full flex items-center justify-between px-4 py-2 hover:bg-gray-50 transition-colors"
+          >
+            <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+              <span>🚨</span> Emergency Controls
+            </h3>
+            <span className={`text-gray-500 transition-transform duration-200 ${isEmergencyPanelCollapsed ? '' : 'rotate-180'}`}>
+              ▼
             </span>
-          </div>
+          </button>
 
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-xs text-gray-600">Occupancy:</span>
-            <span className="text-xs font-semibold text-gray-800">{emergencyState.occupancy} people</span>
-          </div>
+          {!isEmergencyPanelCollapsed && (
+            <div className="px-4 pb-4 border-t border-gray-100">
+              <div className="flex items-center gap-2 mb-2 mt-3">
+                <span className="text-xs text-gray-600">Status:</span>
+                <span className={`text-xs font-semibold ${
+                  emergencyState.mode === 'idle' ? 'text-green-600' :
+                  emergencyState.mode === 'fire_detected' ? 'text-red-600' :
+                  emergencyState.mode === 'evacuation_in_progress' ? 'text-orange-600' :
+                  'text-green-600'
+                }`}>
+                  {emergencyState.mode === 'idle' ? 'System Ready' :
+                   emergencyState.mode === 'fire_detected' ? 'FIRE DETECTED!' :
+                   emergencyState.mode === 'evacuation_in_progress' ? 'EVACUATION IN PROGRESS' :
+                   'Evacuation Complete'}
+                </span>
+              </div>
 
-          {activeFireZones.length > 0 && (
-            <div className="text-xs text-red-600 mb-2">
-              Active Fires: {activeFireZones.map(z => z.roomName).join(', ')}
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xs text-gray-600">Occupancy:</span>
+                <span className="text-xs font-semibold text-gray-800">{emergencyState.occupancy} people</span>
+              </div>
+
+              {activeFireZones.length > 0 && (
+                <div className="text-xs text-red-600 mb-2">
+                  Active Fires: {activeFireZones.map(z => z.roomName).join(', ')}
+                </div>
+              )}
+
+              <div className="flex gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={startEvacuation}
+                  disabled={emergencyState.mode !== 'fire_detected'}
+                  className="px-3 py-1.5 text-xs font-semibold bg-orange-500 text-white rounded hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Start Evacuation
+                </button>
+                <button
+                  type="button"
+                  onClick={clearEmergency}
+                  className="px-3 py-1.5 text-xs font-semibold bg-green-500 text-white rounded hover:bg-green-600"
+                >
+                  Clear
+                </button>
+              </div>
             </div>
           )}
-
-          <div className="flex gap-2 flex-wrap">
-            <button
-              type="button"
-              onClick={startEvacuation}
-              disabled={emergencyState.mode !== 'fire_detected'}
-              className="px-3 py-1.5 text-xs font-semibold bg-orange-500 text-white rounded hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Start Evacuation
-            </button>
-            <button
-              type="button"
-              onClick={clearEmergency}
-              className="px-3 py-1.5 text-xs font-semibold bg-green-500 text-white rounded hover:bg-green-600"
-            >
-              Clear
-            </button>
-          </div>
         </div>
       )}
 
@@ -1426,173 +1452,149 @@ const EvacuationMap = memo(({
       {isMapLoaded && (
         <div className="absolute top-20 left-4 z-10 bg-white/95 backdrop-blur-sm rounded-lg shadow-lg max-w-[280px] max-h-[calc(100%-120px)] overflow-y-auto">
           {/* Fire Zone Management */}
-          <div className="p-4 border-b border-gray-200">
-            <h3 className="text-sm font-bold text-orange-600 mb-3 flex items-center gap-2">
-              <span>🔥</span> Fire Zone Management
-            </h3>
+          <div className="border-b border-gray-200">
+            <button
+              type="button"
+              onClick={() => setIsFireZonePanelCollapsed(!isFireZonePanelCollapsed)}
+              className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors"
+            >
+              <h3 className="text-sm font-bold text-orange-600 flex items-center gap-2">
+                <span>🔥</span> Fire Zone Management
+              </h3>
+              <span className={`text-gray-500 transition-transform duration-200 ${isFireZonePanelCollapsed ? '' : 'rotate-180'}`}>
+                ▼
+              </span>
+            </button>
 
-            <div className="space-y-3">
-              <div>
-                <label htmlFor="fire-zones-select" className="text-xs text-gray-600 block mb-1">Select Fire Zones:</label>
-                <select
-                  id="fire-zones-select"
-                  multiple
-                  value={selectedFireZones}
-                  onChange={(e) => {
-                    const values = Array.from(e.target.selectedOptions, option => option.value);
-                    setSelectedFireZones(values);
-                  }}
-                  className="w-full px-2 py-1.5 text-xs border rounded focus:ring-2 focus:ring-orange-500 focus:border-orange-500 h-28"
-                  title="Select rooms where fire should be placed"
-                >
-                  {routeNodes.map(node => (
-                    <option key={node.roomId} value={node.roomId}>{node.name}</option>
-                  ))}
-                </select>
-                <p className="text-[10px] text-gray-500 mt-1">Hold Ctrl/Cmd to select multiple rooms</p>
-              </div>
+            {!isFireZonePanelCollapsed && (
+              <div className="px-4 pb-4 space-y-3">
+                <div>
+                  <label htmlFor="fire-zones-select" className="text-xs text-gray-600 block mb-1">Select Fire Zones:</label>
+                  <select
+                    id="fire-zones-select"
+                    multiple
+                    value={selectedFireZones}
+                    onChange={(e) => {
+                      const values = Array.from(e.target.selectedOptions, option => option.value);
+                      setSelectedFireZones(values);
+                    }}
+                    className="w-full px-2 py-1.5 text-xs border rounded focus:ring-2 focus:ring-orange-500 focus:border-orange-500 h-28"
+                    title="Select rooms where fire should be placed"
+                  >
+                    {routeNodes.map(node => (
+                      <option key={node.roomId} value={node.roomId}>{node.name}</option>
+                    ))}
+                  </select>
+                  <p className="text-[10px] text-gray-500 mt-1">Hold Ctrl/Cmd to select multiple rooms</p>
+                </div>
 
-              <div>
-                <label htmlFor="fire-severity-select" className="text-xs text-gray-600 block mb-1">Fire Severity:</label>
-                <select
-                  id="fire-severity-select"
-                  value={fireSeverity}
-                  onChange={(e) => setFireSeverity(e.target.value as 'HIGH' | 'CRITICAL')}
-                  className="w-full px-2 py-1.5 text-xs border rounded focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                  title="Select fire severity level"
-                >
-                  <option value="HIGH">High (Dangerous - Avoid)</option>
-                  <option value="CRITICAL">Critical (Life Threatening)</option>
-                </select>
-              </div>
+                <div>
+                  <label htmlFor="fire-severity-select" className="text-xs text-gray-600 block mb-1">Fire Severity:</label>
+                  <select
+                    id="fire-severity-select"
+                    value={fireSeverity}
+                    onChange={(e) => setFireSeverity(e.target.value as 'HIGH' | 'CRITICAL')}
+                    className="w-full px-2 py-1.5 text-xs border rounded focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                    title="Select fire severity level"
+                  >
+                    <option value="HIGH">High (Dangerous - Avoid)</option>
+                    <option value="CRITICAL">Critical (Life Threatening)</option>
+                  </select>
+                </div>
 
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={placeFireInZones}
-                  disabled={selectedFireZones.length === 0}
-                  className="flex-1 px-3 py-2 text-xs font-semibold bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
-                >
-                  <span>🔥</span> Place Fire
-                </button>
-                <button
-                  type="button"
-                  onClick={clearFireZones}
-                  disabled={activeFireZones.length === 0}
-                  className="flex-1 px-3 py-2 text-xs font-semibold bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
-                >
-                  <span>✓</span> Clear All
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={placeFireInZones}
+                    disabled={selectedFireZones.length === 0}
+                    className="flex-1 px-3 py-2 text-xs font-semibold bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
+                  >
+                    <span>🔥</span> Place Fire
+                  </button>
+                  <button
+                    type="button"
+                    onClick={clearFireZones}
+                    disabled={activeFireZones.length === 0}
+                    className="flex-1 px-3 py-2 text-xs font-semibold bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
+                  >
+                    <span>✓</span> Clear All
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* Route Computation */}
-          <div className="p-4">
-            <h3 className="text-sm font-bold text-emerald-700 mb-3 flex items-center gap-2">
-              <span>🧭</span> Compute Shortest Route
-            </h3>
+          <div>
+            <button
+              type="button"
+              onClick={() => setIsRoutePanelCollapsed(!isRoutePanelCollapsed)}
+              className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors"
+            >
+              <h3 className="text-sm font-bold text-emerald-700 flex items-center gap-2">
+                <span>🧭</span> Compute Shortest Route
+              </h3>
+              <span className={`text-gray-500 transition-transform duration-200 ${isRoutePanelCollapsed ? '' : 'rotate-180'}`}>
+                ▼
+              </span>
+            </button>
 
-            <div className="space-y-2 mb-3">
-              <div>
-                <label htmlFor="start-location-select" className="text-xs text-gray-600 block mb-1">Start Location:</label>
-                <select
-                  id="start-location-select"
-                  value={selectedStart}
-                  onChange={(e) => setSelectedStart(e.target.value)}
-                  className="w-full px-2 py-1.5 text-xs border rounded focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                  title="Select starting location for route"
-                >
-                  <option value="">Select start...</option>
-                  {routeNodes.map(node => (
-                    <option key={node.id} value={node.nodeId}>{node.name}</option>
-                  ))}
-                </select>
-              </div>
+            {!isRoutePanelCollapsed && (
+              <div className="px-4 pb-4">
+                <div className="space-y-2 mb-3">
+                  <div>
+                    <label htmlFor="start-location-select" className="text-xs text-gray-600 block mb-1">Start Location:</label>
+                    <select
+                      id="start-location-select"
+                      value={selectedStart}
+                      onChange={(e) => setSelectedStart(e.target.value)}
+                      className="w-full px-2 py-1.5 text-xs border rounded focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                      title="Select starting location for route"
+                    >
+                      <option value="">Select start...</option>
+                      {routeNodes.map(node => (
+                        <option key={node.id} value={node.nodeId}>{node.name}</option>
+                      ))}
+                    </select>
+                  </div>
 
-              <div>
-                <label htmlFor="end-location-select" className="text-xs text-gray-600 block mb-1">End Location:</label>
-                <select
-                  id="end-location-select"
-                  value={selectedEnd}
-                  onChange={(e) => setSelectedEnd(e.target.value)}
-                  className="w-full px-2 py-1.5 text-xs border rounded focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                  title="Select destination for route"
-                >
-                  <option value="">Select end...</option>
-                  {routeNodes.map(node => (
-                    <option key={node.id} value={node.nodeId}>{node.name}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
+                  <div>
+                    <label htmlFor="end-location-select" className="text-xs text-gray-600 block mb-1">End Location:</label>
+                    <select
+                      id="end-location-select"
+                      value={selectedEnd}
+                      onChange={(e) => setSelectedEnd(e.target.value)}
+                      className="w-full px-2 py-1.5 text-xs border rounded focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                      title="Select destination for route"
+                    >
+                      <option value="">Select end...</option>
+                      {routeNodes.map(node => (
+                        <option key={node.id} value={node.nodeId}>{node.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
 
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={handleComputeRoute}
-                disabled={!selectedStart || !selectedEnd || isComputingRoute}
-                className="flex-1 px-3 py-2 text-xs font-semibold bg-emerald-600 text-white rounded hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
-              >
-                <span>🧭</span> {isComputingRoute ? 'Computing...' : 'Compute'}
-              </button>
-              <button
-                type="button"
-                onClick={clearComputedRoute}
-                disabled={!hasComputedRoute}
-                className="px-3 py-2 text-xs font-semibold bg-gray-500 text-white rounded hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
-              >
-                <span>✕</span> Clear
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Legend */}
-      {showLegend && isMapLoaded && (
-        <div className="absolute bottom-4 right-4 z-10 bg-white/95 backdrop-blur-sm rounded-lg p-4 shadow-lg">
-          <h3 className="text-sm font-bold text-gray-800 mb-2">Legend</h3>
-          <div className="space-y-2">
-            {/* Markers */}
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow"></div>
-              <span className="text-xs text-gray-700">Interior Door</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-green-500 rounded-full border-2 border-white shadow"></div>
-              <span className="text-xs text-gray-700">Main Entry</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-red-500 rounded-full border-2 border-white shadow"></div>
-              <span className="text-xs text-gray-700">Emergency Exit</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-orange-500 rounded-full border-2 border-white shadow"></div>
-              <span className="text-xs text-gray-700">Stairs / Fire Equipment</span>
-            </div>
-            {/* Routes */}
-            <div className="border-t border-gray-200 my-2 pt-2">
-              <div className="flex items-center gap-2 mb-1">
-                <div className="w-6 h-1 bg-green-500"></div>
-                <span className="text-xs text-gray-700">Primary Route</span>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handleComputeRoute}
+                    disabled={!selectedStart || !selectedEnd || isComputingRoute}
+                    className="flex-1 px-3 py-2 text-xs font-semibold bg-emerald-600 text-white rounded hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
+                  >
+                    <span>🧭</span> {isComputingRoute ? 'Computing...' : 'Compute'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={clearComputedRoute}
+                    disabled={!hasComputedRoute}
+                    className="px-3 py-2 text-xs font-semibold bg-gray-500 text-white rounded hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
+                  >
+                    <span>✕</span> Clear
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center gap-2 mb-1">
-                <div className="w-6 h-1 bg-yellow-500"></div>
-                <span className="text-xs text-gray-700">Secondary Route</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-1 bg-red-600"></div>
-                <span className="text-xs text-gray-700">Computed Route</span>
-              </div>
-            </div>
-            {/* Fire Zone */}
-            <div className="border-t border-gray-200 my-2 pt-2">
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 bg-red-500/40 border-2 border-red-600"></div>
-                <span className="text-xs text-gray-700">Fire Zone</span>
-              </div>
-            </div>
+            )}
           </div>
         </div>
       )}
@@ -1626,6 +1628,65 @@ const EvacuationMap = memo(({
           animation: slide-up 0.3s ease-out;
         }
       `}</style>
+      </div>
+
+      {/* Legend - Horizontal layout below map */}
+      {showLegend && isMapLoaded && (
+        <div className="flex-shrink-0 bg-white/95 backdrop-blur-sm rounded-lg p-3 shadow-lg mt-3">
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+            {/* Title */}
+            <h3 className="text-sm font-bold text-gray-800">Legend:</h3>
+
+            {/* Markers */}
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-3 bg-blue-500 rounded-full border border-white shadow"></div>
+                <span className="text-xs text-gray-700">Interior Door</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-3 bg-green-500 rounded-full border border-white shadow"></div>
+                <span className="text-xs text-gray-700">Main Entry</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-3 bg-red-500 rounded-full border border-white shadow"></div>
+                <span className="text-xs text-gray-700">Emergency Exit</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-3 bg-orange-500 rounded-full border border-white shadow"></div>
+                <span className="text-xs text-gray-700">Stairs/Equipment</span>
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div className="hidden sm:block w-px h-4 bg-gray-300"></div>
+
+            {/* Routes */}
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-1.5">
+                <div className="w-5 h-1 bg-green-500 rounded"></div>
+                <span className="text-xs text-gray-700">Primary</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-5 h-1 bg-yellow-500 rounded"></div>
+                <span className="text-xs text-gray-700">Secondary</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-5 h-1 bg-red-600 rounded"></div>
+                <span className="text-xs text-gray-700">Computed</span>
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div className="hidden sm:block w-px h-4 bg-gray-300"></div>
+
+            {/* Fire Zone */}
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-3 bg-red-500/40 border-2 border-red-600 rounded"></div>
+              <span className="text-xs text-gray-700">Fire Zone</span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 });
