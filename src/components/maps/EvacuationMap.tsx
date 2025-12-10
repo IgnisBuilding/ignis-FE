@@ -16,6 +16,8 @@ import {
   formatFireAlertPopup,
   createStairsPattern,
   computeRoute,
+  placeFires,
+  clearFires,
   extractFeatureFromResponse,
   convertGeometryIfMercator,
   isValidLonLat,
@@ -66,6 +68,7 @@ const EvacuationMap = memo(({
   const fireMarkersRef = useRef<maplibregl.Marker[]>([]);
   const startMarkerRef = useRef<maplibregl.Marker | null>(null);
   const endMarkerRef = useRef<maplibregl.Marker | null>(null);
+  const roomsDataRef = useRef<GeoJSON.FeatureCollection | null>(null);
 
   // State
   const [isMapLoaded, setIsMapLoaded] = useState(false);
@@ -86,7 +89,7 @@ const EvacuationMap = memo(({
 
   // Fire zone management state
   const [selectedFireZones, setSelectedFireZones] = useState<string[]>([]);
-  const [fireSeverity, setFireSeverity] = useState<'low' | 'medium' | 'high'>('high');
+  const [fireSeverity, setFireSeverity] = useState<'HIGH' | 'CRITICAL'>('HIGH');
   const [activeFireZones, setActiveFireZones] = useState<Array<{ roomId: string; roomName: string; severity: string }>>([]);
 
   // Show notification
@@ -124,7 +127,7 @@ const EvacuationMap = memo(({
     map.on('load', async () => {
       try {
         // Load map data from backend API
-        const { rooms, features, details, nodes, sensors, occupancy } = await loadMapData();
+        const { rooms, features, details, nodes, sensors, occupancy, roomNodes: roomNodesMappingData } = await loadMapData();
 
         // Check if rooms data was loaded successfully
         if (!rooms || !rooms.features || rooms.features.length === 0) {
@@ -139,6 +142,9 @@ const EvacuationMap = memo(({
         const featuresData = normalizeGeoJSON(features);
         const detailsData = normalizeGeoJSON(details);
         const nodesData = normalizeGeoJSON(nodes);
+
+        // Store rooms data in ref for later use (fire zone visualization)
+        roomsDataRef.current = roomsData;
 
         // Add stairs pattern image
         const stairsCanvas = createStairsPattern();
@@ -159,24 +165,46 @@ const EvacuationMap = memo(({
           map.fitBounds(bounds, { padding: 50, duration: 1000 });
         }
 
-        // Populate route node options from rooms data with coordinates for fire placement
+        // Use room-nodes mapping from backend for accurate fire placement
+        // This maps room IDs to their corresponding navigation node IDs
+        const roomNodesMapping = roomNodesMappingData || [];
+
+        // Create a map for quick lookup
+        const roomToNodeMap = new Map<number, { nodeId: number; coordinates: [number, number]; nodeType: string }>();
+        roomNodesMapping.forEach((mapping: any) => {
+          roomToNodeMap.set(mapping.room_id, {
+            nodeId: mapping.node_id,
+            coordinates: [mapping.longitude, mapping.latitude],
+            nodeType: mapping.node_type,
+          });
+        });
+
+        // Populate route node options from rooms data with actual node IDs
         const roomNodes = roomsData.features
           .filter(f => f.properties?.name)
           .map(f => {
-            // Get centroid of the room for fire placement
+            const roomId = f.properties?.id || f.id;
+            const mapping = roomToNodeMap.get(Number(roomId));
+
+            // Get centroid of the room for visualization (fallback if no mapping)
             let coordinates: [number, number] | undefined;
-            if (f.geometry && f.geometry.type === 'Polygon') {
+            if (mapping) {
+              coordinates = mapping.coordinates;
+            } else if (f.geometry && f.geometry.type === 'Polygon') {
               const ring = (f.geometry as GeoJSON.Polygon).coordinates[0];
               let cx = 0, cy = 0;
               ring.forEach(([lng, lat]) => { cx += lng; cy += lat; });
               coordinates = [cx / ring.length, cy / ring.length];
             }
+
             return {
-              id: String(f.properties?.id || f.id),
+              id: String(roomId),
               name: f.properties?.name || 'Unknown',
-              nodeId: String(f.properties?.id || f.id),
-              roomId: String(f.properties?.id || f.id),
+              // CRITICAL: Use the actual node ID from room-nodes mapping for fire placement
+              nodeId: mapping ? String(mapping.nodeId) : String(roomId),
+              roomId: String(roomId),
               coordinates,
+              nodeType: mapping?.nodeType,
             };
           });
 
@@ -205,6 +233,7 @@ const EvacuationMap = memo(({
           (window as any)._mapInstance = map;
           (window as any)._roomsData = roomsData;
           (window as any)._nodesData = nodesData;
+          (window as any)._roomNodesMapping = roomNodesMapping;
           (window as any)._sensors = sensors;
           (window as any)._occupancy = occupancy;
         }
@@ -262,16 +291,24 @@ const EvacuationMap = memo(({
       id: 'building-shadow',
       type: 'fill',
       source: 'building',
-      filter: ['==', ['get', 'level'], '1'],
+      filter: [
+        'all',
+        ['==', ['get', 'level'], '0'],
+        ['!=', ['geometry-type'], 'LineString'],
+      ],
       paint: LAYER_STYLES.buildingShadow as any,
     });
 
-    // Floor 1 layers
+    // Floor 1 layers (level '0' = ground floor)
     map.addLayer({
       id: 'floor1-fill',
       type: 'fill',
       source: 'building',
-      filter: ['==', ['get', 'level'], '1'],
+      filter: [
+        'all',
+        ['==', ['get', 'level'], '0'],
+        ['!=', ['geometry-type'], 'LineString'],
+      ],
       paint: LAYER_STYLES.floorFill as any,
     });
 
@@ -279,7 +316,7 @@ const EvacuationMap = memo(({
       id: 'floor1-outline',
       type: 'line',
       source: 'building',
-      filter: ['==', ['get', 'level'], '1'],
+      filter: ['==', ['get', 'level'], '0'],
       paint: LAYER_STYLES.floorOutline as any,
     });
 
@@ -305,7 +342,7 @@ const EvacuationMap = memo(({
       id: 'floor1-labels',
       type: 'symbol',
       source: 'building',
-      filter: ['==', ['get', 'level'], '1'],
+      filter: ['==', ['get', 'level'], '0'],
       layout: {
         'text-field': ['get', 'name'],
         'text-size': 11,
@@ -712,12 +749,12 @@ const EvacuationMap = memo(({
       paint: { 'text-color': '#000000', 'text-halo-color': '#ffffff', 'text-halo-width': 2 },
     });
 
-    // Floor 2 layers (hidden initially)
+    // Floor 2 layers (hidden initially) - level '1' = second floor
     map.addLayer({
       id: 'floor2-fill',
       type: 'fill',
       source: 'building',
-      filter: ['==', ['get', 'level'], '2'],
+      filter: ['==', ['get', 'level'], '1'],
       layout: { visibility: 'none' },
       paint: { 'fill-color': ['get', 'color'], 'fill-opacity': 0.8 },
     });
@@ -726,7 +763,7 @@ const EvacuationMap = memo(({
       id: 'floor2-outline',
       type: 'line',
       source: 'building',
-      filter: ['==', ['get', 'level'], '2'],
+      filter: ['==', ['get', 'level'], '1'],
       layout: { visibility: 'none' },
       paint: { 'line-color': '#2c3e50', 'line-width': 2 },
     });
@@ -735,7 +772,7 @@ const EvacuationMap = memo(({
       id: 'floor2-labels',
       type: 'symbol',
       source: 'building',
-      filter: ['==', ['get', 'level'], '2'],
+      filter: ['==', ['get', 'level'], '1'],
       layout: {
         'text-field': ['get', 'name'],
         'text-size': 11,
@@ -822,7 +859,7 @@ const EvacuationMap = memo(({
   }, [isMapLoaded]);
 
   // Place fire in selected zones
-  const placeFireInZones = useCallback(() => {
+  const placeFireInZones = useCallback(async () => {
     const map = mapRef.current;
     if (!map) return;
 
@@ -831,16 +868,74 @@ const EvacuationMap = memo(({
       return;
     }
 
-    // Get room details for selected zones
+    // Get room details for selected zones - including the actual nodeId for backend
+    // Guard against routeNodes being undefined
+    if (!routeNodes || routeNodes.length === 0) {
+      console.error('[FireZone] routeNodes is empty or undefined');
+      showNotification('Map data not loaded. Please wait and try again.', 'warning');
+      return;
+    }
+
+    console.log('[FireZone] routeNodes available:', routeNodes.length, 'selectedFireZones:', selectedFireZones);
+
     const fireZones = selectedFireZones.map(roomId => {
       const room = routeNodes.find(n => n.roomId === roomId);
+      console.log('[FireZone] Looking for roomId:', roomId, 'found:', room);
       return {
-        roomId,
+        roomId: parseInt(roomId) || 0,
         roomName: room?.name || 'Unknown Room',
+        nodeId: room?.nodeId ? parseInt(room.nodeId) : (parseInt(roomId) || 0),
         severity: fireSeverity,
         coordinates: room?.coordinates,
       };
     });
+
+    // CRITICAL: Call backend API to register hazards in database
+    // This is required for route computation to avoid fire zones
+    // Backend expects: nodeId, roomId, roomName, longitude, latitude, floorLevel
+    // Ensure all values are proper numbers (not NaN or undefined)
+    const floorLevel: number = currentFloor === 'floor1' ? 1 : (currentFloor === 'floor2' ? 2 : 1);
+
+    console.log('[FireZone] Building API payload from fireZones:', fireZones);
+    console.log('[FireZone] Current floor:', currentFloor, '-> floorLevel:', floorLevel);
+
+    const apiFireZones = fireZones.map(zone => {
+      // Extract coordinates safely, ensuring they're valid numbers
+      // Use Number() for explicit conversion and fallback to building center
+      let lng: number = 67.1125; // Default to building center
+      let lat: number = 24.862;  // Default to building center
+
+      if (zone.coordinates && Array.isArray(zone.coordinates) && zone.coordinates.length >= 2) {
+        const rawLng = zone.coordinates[0];
+        const rawLat = zone.coordinates[1];
+        if (typeof rawLng === 'number' && !isNaN(rawLng)) lng = rawLng;
+        if (typeof rawLat === 'number' && !isNaN(rawLat)) lat = rawLat;
+      }
+
+      const payload = {
+        nodeId: Number(zone.nodeId) || 1,
+        roomId: Number(zone.roomId) || 1,
+        roomName: String(zone.roomName || 'Unknown Room'),
+        longitude: Number(lng),
+        latitude: Number(lat),
+        floorLevel: Number(floorLevel),
+      };
+
+      console.log('[FireZone] Zone payload:', payload);
+      return payload;
+    });
+
+    console.log('[FireZone] Final API payload:', JSON.stringify(apiFireZones, null, 2));
+    console.log('[FireZone] Severity value:', fireSeverity, 'type:', typeof fireSeverity);
+
+    const result = await placeFires(apiFireZones, fireSeverity);
+
+    if (!result.success) {
+      showNotification(`Failed to register fire zones: ${result.error}`, 'error');
+      return;
+    }
+
+    console.log('[FireZone] Backend registered hazard IDs:', result.hazardIds);
 
     // Clear existing fire markers
     fireMarkersRef.current.forEach(marker => marker.remove());
@@ -858,15 +953,19 @@ const EvacuationMap = memo(({
     });
 
     // Add fire zone visualization layer
-    const source = map.getSource('building') as maplibregl.GeoJSONSource;
-    if (source) {
-      const data = (source as any)._data as GeoJSON.FeatureCollection;
-      const fireRoomIds = selectedFireZones.map(id => parseInt(id));
+    const roomsData = roomsDataRef.current;
+    console.log('[FireZone] roomsDataRef.current:', roomsData ? 'exists' : 'null');
+    console.log('[FireZone] roomsData.features:', roomsData?.features ? `${roomsData.features.length} features` : 'undefined');
 
-      // Create fire zone overlay
-      const fireZoneFeatures = data.features.filter(f =>
+    if (roomsData && roomsData.features && Array.isArray(roomsData.features)) {
+      const fireRoomIds = selectedFireZones.map(id => parseInt(id));
+      console.log('[FireZone] Looking for room IDs:', fireRoomIds);
+
+      // Create fire zone overlay - with extra safety check
+      const fireZoneFeatures = (roomsData.features || []).filter(f =>
         fireRoomIds.includes(f.properties?.id) || fireRoomIds.includes(parseInt(String(f.id)))
       );
+      console.log('[FireZone] Found matching features:', fireZoneFeatures.length);
 
       if (fireZoneFeatures.length > 0) {
         const fireZoneGeoJSON: GeoJSON.FeatureCollection = {
@@ -921,12 +1020,24 @@ const EvacuationMap = memo(({
     });
 
     showNotification(`🔥 Fire placed in ${fireZones.length} zone(s)! Click "Start Evacuation" to begin.`, 'error');
-  }, [selectedFireZones, fireSeverity, routeNodes, showNotification, updateEmergencyState]);
+  }, [selectedFireZones, fireSeverity, routeNodes, currentFloor, showNotification, updateEmergencyState]);
 
   // Clear all fire zones
-  const clearFireZones = useCallback(() => {
+  const clearFireZones = useCallback(async () => {
     const map = mapRef.current;
     if (!map) return;
+
+    // CRITICAL: Call backend API to remove hazards from database
+    // This ensures route computation won't block cleared fire zones
+    console.log('[FireZone] Clearing fires via API...');
+    const result = await clearFires();
+
+    if (!result.success) {
+      console.error('[FireZone] Failed to clear fires from backend:', result.error);
+      showNotification(`Warning: Failed to clear fire zones from server: ${result.error}`, 'warning');
+    } else {
+      console.log('[FireZone] Backend cleared hazards, count:', result.deletedCount);
+    }
 
     // Remove fire zone layers
     if (map.getLayer('fire-zone-fill')) {
@@ -945,7 +1056,9 @@ const EvacuationMap = memo(({
 
     setActiveFireZones([]);
     setSelectedFireZones([]);
-  }, []);
+
+    showNotification('Fire zones cleared', 'success');
+  }, [showNotification]);
 
   const startEvacuation = useCallback(() => {
     const map = mapRef.current;
@@ -1344,13 +1457,12 @@ const EvacuationMap = memo(({
                 <select
                   id="fire-severity-select"
                   value={fireSeverity}
-                  onChange={(e) => setFireSeverity(e.target.value as 'low' | 'medium' | 'high')}
+                  onChange={(e) => setFireSeverity(e.target.value as 'HIGH' | 'CRITICAL')}
                   className="w-full px-2 py-1.5 text-xs border rounded focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                   title="Select fire severity level"
                 >
-                  <option value="low">Low (Manageable)</option>
-                  <option value="medium">Medium (Spreading)</option>
-                  <option value="high">High (Dangerous - Avoid)</option>
+                  <option value="HIGH">High (Dangerous - Avoid)</option>
+                  <option value="CRITICAL">Critical (Life Threatening)</option>
                 </select>
               </div>
 

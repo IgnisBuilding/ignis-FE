@@ -163,6 +163,7 @@ export const NOTIFICATION_COLORS = {
 export const API_ENDPOINTS = {
   building: '/fireSafety/building',
   rooms: '/fireSafety/rooms',
+  roomNodes: '/fireSafety/room-nodes',
   buildingFeatures: '/fireSafety/building-features',
   buildingDetails: '/fireSafety/building-details',
   nodes: '/fireSafety/nodes',

@@ -36,16 +36,30 @@ export async function fetchFromAPI<T>(
 }
 
 /**
+ * Room-to-node mapping type from backend
+ */
+export interface RoomNodeMapping {
+  room_id: number;
+  room_name: string;
+  node_id: number;
+  node_type: string;
+  floor_level: number;
+  longitude: number;
+  latitude: number;
+}
+
+/**
  * Load all map data sources from backend API
  */
 export async function loadMapData() {
-  const [rooms, features, details, nodes, sensors, occupancy] = await Promise.all([
+  const [rooms, features, details, nodes, sensors, occupancy, roomNodes] = await Promise.all([
     fetchFromAPI<GeoJSON.FeatureCollection>(API_ENDPOINTS.rooms),
     fetchFromAPI<GeoJSON.FeatureCollection>(API_ENDPOINTS.buildingFeatures),
     fetchFromAPI<GeoJSON.FeatureCollection>(API_ENDPOINTS.buildingDetails),
     fetchFromAPI<GeoJSON.FeatureCollection>(API_ENDPOINTS.nodes),
     fetchFromAPI<GeoJSON.FeatureCollection>(API_ENDPOINTS.sensors),
     fetchFromAPI<any>(API_ENDPOINTS.occupancy),
+    fetchFromAPI<RoomNodeMapping[]>(API_ENDPOINTS.roomNodes),
   ]);
 
   return {
@@ -55,11 +69,95 @@ export async function loadMapData() {
     nodes,
     sensors,
     occupancy,
+    roomNodes,
   };
 }
 
 /**
- * Normalize GeoJSON data - ensure proper structure
+ * Room type to color mapping (matching original app.js)
+ */
+const ROOM_TYPE_COLORS: Record<string, string> = {
+  bedroom: '#5C6BC0',
+  kitchen: '#FF9800',
+  common: '#66BB6A',
+  stairs: '#757575',
+  bathroom: '#4FC3F7',
+  office: '#7E57C2',
+  outdoor: '#81C784',
+  garage: '#9E9E9E',
+  corridor: '#E8F5E9',
+  evacuation_route: '#4caf50',
+  living: '#66BB6A',
+  dining: '#66BB6A',
+  laundry: '#80DEEA',
+  storage: '#BCAAA4',
+  pantry: '#FFB74D',
+  mudroom: '#A1887F',
+  recreation: '#7E57C2',
+  utility: '#90A4AE',
+  walk_in: '#BCAAA4',
+};
+
+/**
+ * Normalize a single feature - ensure color, level and useful props exist
+ * This matches the ensureColorForFeature function from original app.js
+ */
+function normalizeFeature(feature: any, idx: number): GeoJSON.Feature {
+  if (!feature.properties) feature.properties = {};
+  const p = feature.properties;
+
+  // Normalize level/floor to a string - check address first (matching backend data)
+  const levelVal =
+    p.level ??
+    p.address ??
+    p.level_id ??
+    p.floor ??
+    p.floor_id ??
+    p.levelName ??
+    p.levelNumber ??
+    '';
+  p.level = levelVal !== undefined && levelVal !== null && levelVal !== ''
+    ? String(levelVal)
+    : '0'; // Default to '0' (ground floor)
+
+  // Also keep address in sync
+  if (p.address === undefined && p.level !== undefined) {
+    p.address = p.level;
+  }
+
+  // Normalize types to lowercase so filters match
+  // Backend sends 'type' field, map it to room_type and feature_type
+  if (p.room_type === undefined && p.type !== undefined)
+    p.room_type = String(p.type).toLowerCase();
+  if (p.room_type === undefined && p.feature_type !== undefined)
+    p.room_type = String(p.feature_type).toLowerCase();
+  if (p.feature_type === undefined && p.room_type !== undefined)
+    p.feature_type = String(p.room_type).toLowerCase();
+  if (p.feature_type === undefined && p.type !== undefined)
+    p.feature_type = String(p.type).toLowerCase();
+  if (p.room_type) p.room_type = String(p.room_type).toLowerCase();
+  if (p.feature_type) p.feature_type = String(p.feature_type).toLowerCase();
+
+  // Friendly name fallback
+  if (!p.name)
+    p.name = p.label || p.title || p.type || `Feature ${feature.id ?? idx}`;
+
+  // Ensure a color exists (matching original app.js color logic)
+  if (!p.color) {
+    const rt = p.room_type || p.feature_type || 'default';
+    p.color = ROOM_TYPE_COLORS[rt] || '#BDBDBD';
+  }
+
+  return {
+    ...feature,
+    id: feature.id ?? p.id ?? idx,
+    properties: p,
+  };
+}
+
+/**
+ * Normalize GeoJSON data - ensure proper structure and properties
+ * Matches original app.js ensureColorForFeature and convertGeometryIfMercator
  */
 export function normalizeGeoJSON(data: any): GeoJSON.FeatureCollection {
   if (!data) {
@@ -69,29 +167,44 @@ export function normalizeGeoJSON(data: any): GeoJSON.FeatureCollection {
   if (data.type === 'FeatureCollection') {
     return {
       ...data,
-      features: data.features.map((f: any, idx: number) => ({
-        ...f,
-        id: f.id ?? f.properties?.id ?? idx,
-      })),
+      features: data.features.map((f: any, idx: number) => {
+        const normalized = normalizeFeature(f, idx);
+        // Convert geometry if in Web Mercator
+        if (normalized.geometry) {
+          normalized.geometry = convertGeometryIfMercator(normalized.geometry);
+        }
+        return normalized;
+      }),
     };
   }
 
   if (data.type === 'Feature') {
+    const normalized = normalizeFeature(data, 0);
+    if (normalized.geometry) {
+      normalized.geometry = convertGeometryIfMercator(normalized.geometry);
+    }
     return {
       type: 'FeatureCollection',
-      features: [{ ...data, id: data.id ?? data.properties?.id ?? 0 }],
+      features: [normalized],
     };
   }
 
   if (Array.isArray(data)) {
     return {
       type: 'FeatureCollection',
-      features: data.map((f: any, idx: number) => ({
-        type: 'Feature',
-        id: f.id ?? idx,
-        geometry: f.geometry || f,
-        properties: f.properties || {},
-      })),
+      features: data.map((f: any, idx: number) => {
+        const feature = {
+          type: 'Feature' as const,
+          id: f.id ?? idx,
+          geometry: f.geometry || f,
+          properties: f.properties || {},
+        };
+        const normalized = normalizeFeature(feature, idx);
+        if (normalized.geometry) {
+          normalized.geometry = convertGeometryIfMercator(normalized.geometry);
+        }
+        return normalized;
+      }),
     };
   }
 
@@ -296,13 +409,18 @@ export async function computeRoute(
   endNodeId: string | number
 ): Promise<GeoJSON.Feature | null> {
   const fullUrl = `${DEFAULT_MAP_CONFIG.apiBase}${API_ENDPOINTS.compute}`;
-  console.log(`[MapAPI] Computing route from ${startNodeId} to ${endNodeId} via ${fullUrl}`);
+
+  // Backend expects integer node IDs
+  const startId = typeof startNodeId === 'string' ? parseInt(startNodeId, 10) : startNodeId;
+  const endId = typeof endNodeId === 'string' ? parseInt(endNodeId, 10) : endNodeId;
+
+  console.log(`[MapAPI] Computing route from ${startId} to ${endId} via ${fullUrl}`);
 
   try {
     const response = await fetch(fullUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ startNodeId, endNodeId }),
+      body: JSON.stringify({ startNodeId: startId, endNodeId: endId }),
     });
 
     if (!response.ok) {
@@ -315,6 +433,85 @@ export async function computeRoute(
   } catch (error) {
     console.error(`[MapAPI] Failed to compute route via ${fullUrl}:`, error);
     return null;
+  }
+}
+
+/**
+ * Place fires in selected zones - calls backend to create hazard records
+ * This is REQUIRED for route computation to avoid fire zones
+ */
+export interface FireZoneInput {
+  nodeId: number;
+  roomId: number;
+  roomName: string;
+  longitude: number;
+  latitude: number;
+  floorLevel: number;
+}
+
+export async function placeFires(
+  fireZones: FireZoneInput[],
+  severity: 'HIGH' | 'CRITICAL' = 'HIGH'
+): Promise<{ success: boolean; hazardIds?: number[]; error?: string }> {
+  const apiBase = DEFAULT_MAP_CONFIG.apiBase;
+  const url = `${apiBase}${API_ENDPOINTS.placeFires}`;
+
+  console.log(`[MapAPI] Placing fires at ${fireZones.length} zone(s):`, fireZones);
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fireZones,
+        severity,
+        type: 'manual_fire',
+        status: 'ACTIVE',
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[MapAPI] Place fires failed: ${response.status}`, errorText);
+      return { success: false, error: `Failed to place fires: ${response.statusText}` };
+    }
+
+    const result = await response.json();
+    console.log(`[MapAPI] Place fires success:`, result);
+    return { success: true, hazardIds: result.hazardIds };
+  } catch (error) {
+    console.error(`[MapAPI] Place fires error:`, error);
+    return { success: false, error: String(error) };
+  }
+}
+
+/**
+ * Clear all active fire zones - removes hazard records from database
+ */
+export async function clearFires(): Promise<{ success: boolean; deletedCount?: number; error?: string }> {
+  const apiBase = DEFAULT_MAP_CONFIG.apiBase;
+  const url = `${apiBase}${API_ENDPOINTS.clearFires}`;
+
+  console.log(`[MapAPI] Clearing all fire zones`);
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[MapAPI] Clear fires failed: ${response.status}`, errorText);
+      return { success: false, error: `Failed to clear fires: ${response.statusText}` };
+    }
+
+    const result = await response.json();
+    console.log(`[MapAPI] Clear fires success:`, result);
+    return { success: true, deletedCount: result.deletedCount };
+  } catch (error) {
+    console.error(`[MapAPI] Clear fires error:`, error);
+    return { success: false, error: String(error) };
   }
 }
 
