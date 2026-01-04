@@ -13,12 +13,15 @@ interface Hazard {
   type: string;
   severity: string;
   status: string;
+  description?: string;
   apartment: {
     id: number;
     unit_number: string;
     floor: {
+      id: number;
       level: number;
       building: {
+        id: number;
         name: string;
         address: string;
       };
@@ -29,6 +32,8 @@ interface Hazard {
   };
   created_at: string;
   updated_at: string;
+  responded_at?: string;
+  resolved_at?: string;
 }
 
 function FirefighterDashboardContent() {
@@ -71,7 +76,33 @@ function FirefighterDashboardContent() {
     }
   };
 
-  const activeIncidents = hazards.filter(e => e.status === 'active' || e.status === 'reported' || e.status === 'responding');
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const getTimeSince = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    
+    if (diffMins < 60) return `${diffMins} min ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours} hr ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+  };
+
+  const activeIncidents = hazards.filter(e => {
+    const status = e.status?.toLowerCase();
+    return status === 'active' || status === 'reported' || status === 'responding' || status === 'responded';
+  });
 
   if (loading) {
     return (
@@ -174,7 +205,7 @@ function FirefighterDashboardContent() {
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ delay: 0.4, type: "spring", stiffness: 200 }}
-                  className="text-7xl md:text-8xl font-bold text-white pulse-glow"
+                  className="text-7xl md:text-8xl font-bold text-white"
                 >
                   {activeIncidents.length}
                 </motion.p>
@@ -235,9 +266,9 @@ function FirefighterDashboardContent() {
                 >
                   {/* Intensity-based gradient overlay */}
                   <div className={`absolute top-0 right-0 w-64 h-64 rounded-full blur-3xl opacity-10 group-hover:opacity-20 transition-opacity ${
-                    incident.severity === 'critical' ? 'bg-red-500' :
-                    incident.severity === 'high' ? 'bg-orange-500' :
-                    incident.severity === 'medium' ? 'bg-yellow-500' :
+                    incident.severity?.toLowerCase() === 'critical' ? 'bg-red-500' :
+                    incident.severity?.toLowerCase() === 'high' ? 'bg-orange-500' :
+                    incident.severity?.toLowerCase() === 'medium' ? 'bg-yellow-500' :
                     'bg-green-500'
                   }`}></div>
 
@@ -246,35 +277,46 @@ function FirefighterDashboardContent() {
                       <div className="flex items-center space-x-3 mb-3">
                         <motion.div
                           animate={{ 
-                            scale: incident.severity === 'critical' ? [1, 1.2, 1] : 1,
+                            scale: incident.severity?.toLowerCase() === 'critical' ? [1, 1.2, 1] : 1,
                           }}
                           transition={{ 
                             duration: 1,
-                            repeat: incident.severity === 'critical' ? Infinity : 0,
+                            repeat: incident.severity?.toLowerCase() === 'critical' ? Infinity : 0,
                           }}
                         >
                           <Flame className={`w-8 h-8 ${
-                            incident.severity === 'critical' ? 'text-red-500' :
-                            incident.severity === 'high' ? 'text-orange-500' :
-                            incident.severity === 'medium' ? 'text-yellow-500' :
+                            incident.severity?.toLowerCase() === 'critical' ? 'text-red-500' :
+                            incident.severity?.toLowerCase() === 'high' ? 'text-orange-500' :
+                            incident.severity?.toLowerCase() === 'medium' ? 'text-yellow-500' :
                             'text-green-500'
                           }`} />
                         </motion.div>
                         <h3 className="text-3xl font-bold text-dark-green-800">{incident.type || 'Fire'}</h3>
                       </div>
-                      <div className="flex items-center space-x-2 text-dark-green-600 ml-11">
-                        <MapPin className="w-5 h-5" />
-                        <span className="text-base font-medium">
-                          {incident.apartment?.floor?.building?.name || 'Unknown Building'} - Unit {incident.apartment?.unit_number}, Floor {incident.apartment?.floor?.level}
-                        </span>
+                      <div className="space-y-2 ml-11">
+                        <div className="flex items-start space-x-2 text-dark-green-700">
+                          <MapPin className="w-5 h-5 mt-0.5 flex-shrink-0" />
+                          <div>
+                            <div className="font-bold text-lg">{incident.apartment?.floor?.building?.name || 'Unknown Building'}</div>
+                            <div className="text-sm text-dark-green-600">{incident.apartment?.floor?.building?.address || 'Address not available'}</div>
+                            <div className="text-sm font-medium mt-1">
+                              {incident.apartment?.floor?.name || `Floor ${incident.apartment?.floor?.level}`} • Apartment {incident.apartment?.unit_number}
+                            </div>
+                            {incident.description && (
+                              <div className="text-sm text-dark-green-600 mt-2 italic">
+                                {incident.description}
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
                     <motion.span 
                       whileHover={{ scale: 1.05 }}
                       className={`px-6 py-3 rounded-2xl font-bold text-base shadow-lg ${
-                        incident.severity === 'critical' ? 'bg-gradient-to-br from-red-500 to-red-600 text-white pulse-glow' :
-                        incident.severity === 'high' ? 'bg-gradient-to-br from-orange-500 to-orange-600 text-white' :
-                        incident.severity === 'medium' ? 'bg-gradient-to-br from-yellow-400 to-yellow-500 text-yellow-900' :
+                        incident.severity?.toLowerCase() === 'critical' ? 'bg-gradient-to-br from-red-500 to-red-600 text-white pulse-glow' :
+                        incident.severity?.toLowerCase() === 'high' ? 'bg-gradient-to-br from-orange-500 to-orange-600 text-white' :
+                        incident.severity?.toLowerCase() === 'medium' ? 'bg-gradient-to-br from-yellow-400 to-yellow-500 text-yellow-900' :
                         'bg-gradient-to-br from-green-400 to-green-500 text-green-900'
                       }`}
                     >
@@ -290,11 +332,14 @@ function FirefighterDashboardContent() {
                       className="bg-gradient-to-br from-blue-100 to-blue-50 p-5 rounded-2xl shadow-md"
                     >
                       <div className="flex items-center space-x-2 mb-2">
-                        <Clock className="w-3 h-3 text-blue-700" />
+                        <Clock className="w-4 h-4 text-blue-700" />
                         <p className="text-xs text-blue-700 font-semibold uppercase tracking-wide">Reported</p>
                       </div>
-                      <p className="text-lg font-bold text-blue-600">
-                        {incident.created_at ? new Date(incident.created_at).toLocaleString() : 'N/A'}
+                      <p className="text-base font-bold text-blue-900">
+                        {incident.created_at ? formatDate(incident.created_at) : 'N/A'}
+                      </p>
+                      <p className="text-xs text-blue-600 mt-1">
+                        {incident.created_at ? getTimeSince(incident.created_at) : ''}
                       </p>
                     </motion.div>
                     <motion.div 
@@ -307,7 +352,7 @@ function FirefighterDashboardContent() {
                   </div>
 
                   <div className="flex gap-4 relative z-10">
-                    {(incident.status === 'active' || incident.status === 'reported') && (
+                    {(incident.status?.toLowerCase() === 'active' || incident.status?.toLowerCase() === 'reported') && (
                       <motion.button
                         onClick={() => handleRespond(incident.id)}
                         whileHover={{ scale: 1.03 }}
@@ -317,7 +362,7 @@ function FirefighterDashboardContent() {
                         Respond to Hazard
                       </motion.button>
                     )}
-                    {incident.status === 'responding' && (
+                    {(incident.status?.toLowerCase() === 'responding' || incident.status?.toLowerCase() === 'responded') && (
                       <motion.button
                         onClick={() => handleResolve(incident.id)}
                         whileHover={{ scale: 1.03 }}

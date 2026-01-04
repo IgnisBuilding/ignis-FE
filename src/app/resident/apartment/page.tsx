@@ -16,26 +16,25 @@ export default function ApartmentDetailsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user || (role !== 'resident' && role !== 'manager')) {
-      router.push('/login');
-      return;
+    if (user && role === 'resident') {
+      const fetchApartment = async () => {
+        try {
+          const data = await api.getMyApartment();
+          setApartment(data);
+        } catch (error) {
+          console.error('Failed to fetch apartment:', error);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      fetchApartment();
+    } else {
+      setLoading(false);
     }
+  }, [user, role]);
 
-    const fetchApartment = async () => {
-      try {
-        const data = await api.getMyApartment();
-        setApartment(data);
-      } catch (error) {
-        console.error('Failed to fetch apartment:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchApartment();
-  }, [user, role, router]);
-
-  if (!user || (role !== 'resident' && role !== 'manager')) return null;
+  if (!user || role !== 'resident') return null;
 
   if (loading) {
     return (
@@ -290,17 +289,17 @@ export default function ApartmentDetailsPage() {
                   <div className="p-4 bg-red-50 border-2 border-red-200 rounded-xl">
                     <h3 className="font-semibold text-red-800 mb-2">Fire Evacuation Route</h3>
                     <ul className="text-sm text-red-700 space-y-1">
-                      <li>â€¢ Exit apartment, turn left</li>
-                      <li>â€¢ Use stairwell A (emergency exit)</li>
-                      <li>â€¢ Assembly point: Front parking lot</li>
+                      <li>• Exit apartment, turn left</li>
+                      <li>• Use stairwell A (emergency exit)</li>
+                      <li>• Assembly point: Front parking lot</li>
                     </ul>
                   </div>
                   <div className="p-4 bg-green-50 border-2 border-green-200 rounded-xl">
                     <h3 className="font-semibold text-green-800 mb-2">Emergency Contacts</h3>
                     <ul className="text-sm text-green-700 space-y-1">
-                      <li>â€¢ Fire Department: 911</li>
-                      <li>â€¢ Building Security: (555) 123-4567</li>
-                      <li>â€¢ Maintenance: (555) 123-4568</li>
+                      <li>• Fire Department: 911</li>
+                      <li>• Building Security: (555) 123-4567</li>
+                      <li>• Maintenance: (555) 123-4568</li>
                     </ul>
                   </div>
                   <button onClick={() => router.push('/emergency')} className="w-full py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl font-semibold transition-colors">

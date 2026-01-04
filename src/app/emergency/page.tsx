@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
@@ -37,12 +37,9 @@ export default function EmergencyPage() {
     "Emergency services on standby."
   ]);
 
-  // Temporarily disabled login check
-  // useEffect(() => {
-  //   if (!isAuthenticated) {
-  //     router.push('/login');
-  //   }
-  // }, [isAuthenticated, router]);
+  useEffect(() => {
+    // No redirect needed - let ProtectedRoute handle it if needed
+  }, [isAuthenticated]);
 
   // Handle emergency state changes from map
   const handleEmergencyStateChange = useCallback((state: EmergencyState) => {

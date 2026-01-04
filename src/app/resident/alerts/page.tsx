@@ -18,24 +18,23 @@ export default function AlertsPage() {
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    if (!user || (role !== 'resident' && role !== 'manager')) {
-      router.push('/login');
-      return;
+    if (user && role === 'resident') {
+      const fetchAlerts = async () => {
+        try {
+          const data = await api.getMyAlerts();
+          setAlerts(data);
+        } catch (error) {
+          console.error('Failed to fetch alerts:', error);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      fetchAlerts();
+    } else {
+      setLoading(false);
     }
-
-    const fetchAlerts = async () => {
-      try {
-        const data = await api.getMyAlerts();
-        setAlerts(data);
-      } catch (error) {
-        console.error('Failed to fetch alerts:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchAlerts();
-  }, [user, role, router]);
+  }, [user, role]);
 
   const unreadCount = alerts.filter(a => !a.read).length;
   const criticalCount = alerts.filter(a => a.priority === 'critical').length;
@@ -48,7 +47,7 @@ export default function AlertsPage() {
     setAlerts(alerts.map(a => ({ ...a, read: true })));
   };
 
-  if (!user || (role !== 'resident' && role !== 'manager')) return null;
+  if (!user || role !== 'resident') return null;
 
   if (loading) {
     return (

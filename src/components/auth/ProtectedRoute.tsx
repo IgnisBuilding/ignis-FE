@@ -24,7 +24,7 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
     if (allowedRoles && role && !allowedRoles.includes(role)) {
       // Redirect to appropriate dashboard
       const dashboardRoute = 
-        role === 'admin' ? '/admin' :
+        role === 'management' ? '/admin' :
         role === 'firefighter' ? '/firefighter' :
         '/resident';
       router.push(dashboardRoute);

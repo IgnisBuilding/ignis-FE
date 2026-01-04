@@ -4,20 +4,252 @@ import { useAuth } from '../../../context/AuthContext';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import PageTransition from '@/components/shared/pageTransition';
 import { motion } from 'framer-motion';
-import { Building, Bell, Shield, AlertTriangle } from 'lucide-react';
-import { mockApartmentInfo, mockAlerts } from '@/lib/mockData';
+import { Building, Bell, Shield, AlertTriangle, Home, MapPin, Users } from 'lucide-react';
+import { mockAlerts } from '@/lib/mockData';
+import { useEffect, useState } from 'react';
+
+interface ApartmentInfo {
+  id: number;
+  number: string;
+  floor: {
+    id: number;
+    name: string;
+    level: number;
+  };
+  building: {
+    id: number;
+    name: string;
+    address: string;
+    type: string;
+  };
+  status: string;
+  occupied: boolean;
+}
 
 function ResidentDashboardContent() {
-  const { user } = useAuth();
+  const { user, isAuthenticated, loading: authLoading } = useAuth();
   const router = useRouter();
+
+  const [apartmentInfo, setApartmentInfo] = useState<ApartmentInfo | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Log every render
+  console.log('=== ResidentDashboard Render ===');
+  console.log('user:', user);
+  console.log('isAuthenticated:', isAuthenticated);
+  console.log('authLoading:', authLoading);
+  console.log('apartmentInfo:', apartmentInfo);
+  console.log('loading:', loading);
+
+  useEffect(() => {
+    console.log('=== useEffect TRIGGERED ===');
+    console.log('Current user:', user);
+    console.log('Is authenticated:', isAuthenticated);
+    console.log('Auth loading:', authLoading);
+
+    // If still loading auth, don't do anything
+    if (authLoading) {
+      console.log('Auth still loading, waiting...');
+      return;
+    }
+
+    // If not authenticated after loading is done, redirect
+    if (!isAuthenticated || !user) {
+      console.log('Not authenticated, redirecting to login');
+      router.push('/login');
+      return;
+    }
+
+    // User is authenticated, fetch apartment data
+    console.log('User authenticated, calling fetchApartmentData');
+    fetchApartmentData();
+  }, [user, isAuthenticated, authLoading]);
+
+  const fetchApartmentData = async () => {
+    console.log('=== fetchApartmentData STARTED ===');
+    
+    try {
+      setLoading(true);
+      setError(null);
+
+      const token = localStorage.getItem('ignis_token');
+      console.log('Token exists:', !!token);
+      console.log('Token length:', token?.length);
+      console.log('Token preview:', token?.substring(0, 30) + '...');
+
+      if (!token) {
+        console.error('No token found in localStorage');
+        throw new Error('No authentication token found');
+      }
+
+      const url = 'http://localhost:7000/apartments/my-apartment';
+      console.log('Making fetch request to:', url);
+      console.log('With Authorization header');
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      });
+
+      console.log('Response received:');
+      console.log('- status:', response.status);
+      console.log('- statusText:', response.statusText);
+      console.log('- ok:', response.ok);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API error response:', errorText);
+        throw new Error(`Failed to fetch apartment data: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      console.log('Raw API data:', JSON.stringify(data, null, 2));
+
+      // Transform the data
+      const transformedData: ApartmentInfo = {
+        id: data.id,
+        number: data.unit_number || data.number,
+        floor: {
+          id: data.floor.id,
+          name: data.floor.name || `Floor ${data.floor.level}`,
+          level: data.floor.level,
+        },
+        building: {
+          id: data.building.id,
+          name: data.building.name,
+          address: data.building.address,
+          type: data.building.type || 'residential',
+        },
+        status: data.occupied ? 'Occupied' : 'Vacant',
+        occupied: data.occupied,
+      };
+
+      console.log('Transformed data:', transformedData);
+      console.log('Setting apartmentInfo state');
+      setApartmentInfo(transformedData);
+      console.log('apartmentInfo state set successfully');
+    } catch (err) {
+      console.error('=== ERROR in fetchApartmentData ===');
+      console.error('Error type:', err instanceof Error ? err.constructor.name : typeof err);
+      console.error('Error message:', err instanceof Error ? err.message : String(err));
+      console.error('Full error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load apartment information');
+    } finally {
+      console.log('Setting loading to false');
+      setLoading(false);
+    }
+  };
 
   const recentAlerts = mockAlerts.filter(a => !a.read).slice(0, 3);
 
+  if (authLoading) {
+    console.log('Rendering: Auth Loading Screen');
+    return (
+      <div className="min-h-screen flex items-center justify-center cream-gradient">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-green-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-xl text-gray-600">Loading authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated || !user) {
+    console.log('Rendering: Not authenticated (returning null)');
+    return null;
+  }
+
+  if (loading) {
+    console.log('Rendering: Loading Skeleton');
+    return (
+      <PageTransition>
+        <div className="min-h-screen cream-gradient p-6">
+          <div className="max-w-7xl mx-auto">
+            <div className="bg-white rounded-2xl shadow-lg p-8">
+              <div className="animate-pulse space-y-4">
+                <div className="h-8 bg-gray-200 rounded w-1/4"></div>
+                <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                <div className="h-32 bg-gray-200 rounded"></div>
+              </div>
+              <p className="text-center text-gray-600 mt-4">Fetching your apartment data...</p>
+            </div>
+          </div>
+        </div>
+      </PageTransition>
+    );
+  }
+
+  if (error) {
+    console.log('Rendering: Error State');
+    return (
+      <PageTransition>
+        <div className="min-h-screen cream-gradient p-6">
+          <div className="max-w-7xl mx-auto">
+            <div className="bg-red-50 border border-red-200 rounded-2xl shadow-lg p-8 text-center">
+              <AlertTriangle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+              <h2 className="text-2xl font-bold text-red-800 mb-2">Error Loading Data</h2>
+              <p className="text-red-600 mb-4">{error}</p>
+              <button
+                onClick={fetchApartmentData}
+                className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        </div>
+      </PageTransition>
+    );
+  }
+
+  if (!apartmentInfo) {
+    console.log('Rendering: No Apartment Assigned');
+    return (
+      <PageTransition>
+        <div className="min-h-screen cream-gradient p-6">
+          <div className="max-w-7xl mx-auto">
+            <div className="bg-yellow-50 border border-yellow-200 rounded-2xl shadow-lg p-8 text-center">
+              <Home className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
+              <h2 className="text-2xl font-bold text-yellow-800 mb-2">No Apartment Assigned</h2>
+              <p className="text-yellow-600">You don't have an apartment assigned yet. Please contact management.</p>
+            </div>
+          </div>
+        </div>
+      </PageTransition>
+    );
+  }
+
+  console.log('Rendering: Main Dashboard with apartment data');
+  
   return (
     <PageTransition>
-      <div className="min-h-screen cream-gradient py-8 px-4 relative overflow-hidden">
-        {/* Animated background elements */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      <div className="min-h-screen cream-gradient p-6">
+        <div className="max-w-7xl mx-auto space-y-6">
+          {/* Header */}
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-2xl shadow-lg p-6"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                  Resident Dashboard
+                </h1>
+                <p className="text-gray-600">Welcome back, {user.name}! View your apartment information and safety status</p>
+              </div>
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+                <Shield className="w-8 h-8 text-green-600" />
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Apartment Info Card */}
           <motion.div 
             animate={{ 
               scale: [1, 1.2, 1],
@@ -37,6 +269,7 @@ function ResidentDashboardContent() {
             className="absolute bottom-20 left-10 w-80 h-80 bg-gradient-to-tr from-green-200/10 to-transparent rounded-full blur-3xl"
           />
         </div>
+
 
         <div className="max-w-7xl mx-auto relative z-10">
           <motion.div
@@ -84,50 +317,37 @@ function ResidentDashboardContent() {
                   className="flex justify-between items-center py-4 px-4 rounded-xl bg-gradient-to-r from-cream-50 to-transparent hover:from-cream-100 transition-all"
                 >
                   <span className="text-dark-green-600 font-medium">Apartment</span>
-                  <span className="font-bold text-dark-green-800 text-lg">{mockApartmentInfo.number}</span>
+                  <span className="font-bold text-dark-green-800 text-lg">{apartmentInfo.number}</span>
                 </motion.div>
                 <motion.div 
                   whileHover={{ x: 5 }}
                   className="flex justify-between items-center py-4 px-4 rounded-xl bg-gradient-to-r from-cream-50 to-transparent hover:from-cream-100 transition-all"
                 >
                   <span className="text-dark-green-600 font-medium">Floor</span>
-                  <span className="font-bold text-dark-green-800 text-lg">{mockApartmentInfo.floor}</span>
+                  <span className="font-bold text-dark-green-800 text-lg">{apartmentInfo.floor.name}</span>
                 </motion.div>
                 <motion.div 
                   whileHover={{ x: 5 }}
                   className="flex justify-between items-center py-4 px-4 rounded-xl bg-gradient-to-r from-cream-50 to-transparent hover:from-cream-100 transition-all"
                 >
                   <span className="text-dark-green-600 font-medium">Building</span>
-                  <span className="font-bold text-dark-green-800 text-lg">{mockApartmentInfo.building}</span>
+                  <span className="font-bold text-dark-green-800 text-lg">{apartmentInfo.building.name}</span>
                 </motion.div>
                 <motion.div 
                   whileHover={{ x: 5 }}
                   className="flex justify-between items-center py-4 px-4 rounded-xl bg-gradient-to-r from-cream-50 to-transparent hover:from-cream-100 transition-all"
                 >
-                  <span className="text-dark-green-600 font-medium">Active Sensors</span>
-                  <span className="font-bold text-dark-green-800 text-lg">{mockApartmentInfo.sensors}</span>
+                  <span className="text-dark-green-600 font-medium">Address</span>
+                  <span className="font-bold text-dark-green-800 text-lg">{apartmentInfo.building.address}</span>
                 </motion.div>
                 <motion.div 
-                  whileHover={{ scale: 1.02 }}
-                  className="flex justify-between items-center py-6 px-4 rounded-xl bg-gradient-to-r from-green-50 via-green-100 to-green-50 shadow-lg"
+                  whileHover={{ x: 5 }}
+                  className="flex justify-between items-center py-4 px-4 rounded-xl bg-gradient-to-r from-cream-50 to-transparent hover:from-cream-100 transition-all"
                 >
-                  <span className="text-green-700 font-bold text-lg">Safety Score</span>
-                  <div className="flex items-center space-x-3">
-                    <motion.div 
-                      initial={{ width: 0 }}
-                      animate={{ width: "100px" }}
-                      transition={{ delay: 0.5, duration: 1 }}
-                      className="h-3 bg-cream-200 rounded-full overflow-hidden"
-                    >
-                      <motion.div 
-                        initial={{ width: 0 }}
-                        animate={{ width: `${mockApartmentInfo.safetyScore}%` }}
-                        transition={{ delay: 0.7, duration: 1.2 }}
-                        className="h-full bg-gradient-to-r from-green-500 to-green-600"
-                      />
-                    </motion.div>
-                    <span className="font-bold text-green-600 text-2xl pulse-glow">{mockApartmentInfo.safetyScore}%</span>
-                  </div>
+                  <span className="text-dark-green-600 font-medium">Status</span>
+                  <span className={`font-bold text-lg ${apartmentInfo.occupied ? 'text-green-600' : 'text-gray-600'}`}>
+                    {apartmentInfo.status}
+                  </span>
                 </motion.div>
               </div>
 
@@ -257,7 +477,7 @@ function ResidentDashboardContent() {
 
 export default function ResidentDashboard() {
   return (
-    <ProtectedRoute allowedRoles={['resident', 'manager']}>
+    <ProtectedRoute allowedRoles={['resident']}>
       <ResidentDashboardContent />
     </ProtectedRoute>
   );

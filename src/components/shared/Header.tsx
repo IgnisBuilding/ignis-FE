@@ -18,14 +18,13 @@ const Header = () => {
   const getRedirectPath = () => {
     if (role === "building_authority") return "/authority/dashboard";
     if (role === "firefighter") return "/firefighter";
-    if (role === "admin") return "/admin";
+    if (role === "management") return "/admin";
     if (role === "resident") return "/resident";
-    if (role === "manager") return "/resident";
     return "/login";
   };
 
   const getNavItems = useMemo(() => (userRole: UserRole | null) => {
-    if (userRole === 'building_authority' || userRole === 'admin') {
+    if (userRole === 'building_authority' || userRole === 'management') {
       return [
         { href: '/admin', label: 'Dashboard', icon: Home },
         { href: '/admin/residents', label: 'Residents', icon: Users },
@@ -34,7 +33,7 @@ const Header = () => {
         { href: '/emergency', label: 'Emergency', icon: AlertTriangle }
       ];
     }
-    if (userRole === 'resident' || userRole === 'manager') {
+    if (userRole === 'resident') {
       return [
         { href: '/resident', label: 'Dashboard', icon: Home },
         { href: '/resident/apartment', label: 'My Apartment', icon: Building },

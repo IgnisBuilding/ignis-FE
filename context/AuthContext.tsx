@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { User, UserRole, SignupData } from '../types';
 import { api } from '@/lib/api';
 
@@ -17,6 +18,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
+  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -76,7 +78,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = useCallback(() => {
     setUser(null);
     api.clearToken();
-  }, []);
+    router.push('/login');
+  }, [router]);
 
   const signup = useCallback(async (data: SignupData): Promise<boolean> => {
     setLoading(true);

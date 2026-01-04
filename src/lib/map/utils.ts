@@ -266,8 +266,21 @@ export function calculateBounds(
     maxLat = -Infinity;
 
   function processCoords(coords: any): void {
-    if (typeof coords[0] === 'number') {
+    // Ensure coords is actually an array
+    if (!Array.isArray(coords)) {
+      return;
+    }
+    
+    if (typeof coords[0] === 'number' && coords.length >= 2) {
       const [lng, lat] = coords;
+      // Skip invalid coordinates like [0, 0] or very small values that are likely placeholder/null values
+      if ((lng === 0 && lat === 0) || (Math.abs(lng) < 0.0001 && Math.abs(lat) < 0.0001)) {
+        return;
+      }
+      // Skip coordinates outside valid lat/lng ranges
+      if (!isFinite(lng) || !isFinite(lat) || Math.abs(lng) > 180 || Math.abs(lat) > 90) {
+        return;
+      }
       minLng = Math.min(minLng, lng);
       minLat = Math.min(minLat, lat);
       maxLng = Math.max(maxLng, lng);
@@ -555,13 +568,23 @@ export function extractFeatureFromResponse(data: any): GeoJSON.Feature | null {
 /**
  * Validate coordinates are within valid lon/lat range
  */
-export function isValidLonLat(coords: number[]): boolean {
-  const [lng, lat] = coords;
+export function isValidLonLat(lng: number, lat: number): boolean;
+export function isValidLonLat(coords: number[]): boolean;
+export function isValidLonLat(lngOrCoords: number | number[], lat?: number): boolean {
+  let lng: number, latValue: number;
+  
+  if (Array.isArray(lngOrCoords)) {
+    [lng, latValue] = lngOrCoords;
+  } else {
+    lng = lngOrCoords;
+    latValue = lat!;
+  }
+  
   return (
     isFinite(lng) &&
-    isFinite(lat) &&
+    isFinite(latValue) &&
     Math.abs(lng) <= 180 &&
-    Math.abs(lat) <= 90
+    Math.abs(latValue) <= 90
   );
 }
 

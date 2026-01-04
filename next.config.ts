@@ -20,6 +20,14 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ['framer-motion', 'lucide-react'],
   },
   
+  // Disable caching in development
+  webpack: (config, { dev }) => {
+    if (dev) {
+      config.cache = false;
+    }
+    return config;
+  },
+  
   // Turbopack optimizations
   turbopack: {
     resolveAlias: {

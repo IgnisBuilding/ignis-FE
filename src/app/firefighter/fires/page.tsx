@@ -17,6 +17,8 @@ interface Hazard {
     id: number;
     unit_number: string;
     floor: {
+      id: number;
+      name: string;
       level: number;
       building: {
         name: string;
@@ -39,12 +41,10 @@ export default function FiresPage() {
   const [filter, setFilter] = useState<'all' | 'active' | 'responding' | 'resolved'>('all');
 
   useEffect(() => {
-    if (!user || role !== 'firefighter') {
-      router.push('/login');
-      return;
+    if (user && role === 'firefighter') {
+      fetchHazards();
     }
-    fetchHazards();
-  }, [user, role, router]);
+  }, [user, role]);
 
   const fetchHazards = async () => {
     try {
@@ -58,13 +58,14 @@ export default function FiresPage() {
     }
   };
 
-  const filteredHazards = filter === 'all' ? hazards : hazards.filter(h => h.status === filter);
-  const activeCount = hazards.filter(h => h.status === 'active' || h.status === 'reported').length;
-  const respondingCount = hazards.filter(h => h.status === 'responding').length;
-  const resolvedCount = hazards.filter(h => h.status === 'resolved').length;
+  const filteredHazards = filter === 'all' ? hazards : hazards.filter(h => h.status?.toLowerCase() === filter);
+  const activeCount = hazards.filter(h => h.status?.toLowerCase() === 'active' || h.status?.toLowerCase() === 'reported').length;
+  const respondingCount = hazards.filter(h => h.status?.toLowerCase() === 'responding' || h.status?.toLowerCase() === 'responded').length;
+  const resolvedCount = hazards.filter(h => h.status?.toLowerCase() === 'resolved').length;
 
   const getSeverityColor = (severity: string) => {
-    switch (severity) {
+    const severityLower = severity?.toLowerCase();
+    switch (severityLower) {
       case 'critical': return 'bg-red-500';
       case 'high': return 'bg-orange-500';
       case 'medium': return 'bg-yellow-500';
@@ -74,10 +75,12 @@ export default function FiresPage() {
   };
 
   const getStatusColor = (status: string) => {
-    switch (status) {
+    const statusLower = status?.toLowerCase();
+    switch (statusLower) {
       case 'active':
       case 'reported': return 'bg-red-100 text-red-700 border-red-200';
-      case 'responding': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
+      case 'responding':
+      case 'responded': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
       case 'resolved': return 'bg-green-100 text-green-700 border-green-200';
       default: return 'bg-gray-100 text-gray-700 border-gray-200';
     }
@@ -234,7 +237,7 @@ export default function FiresPage() {
                               <span>{hazard.apartment?.floor?.building?.address || 'N/A'}</span>
                             </p>
                             <p className="text-sm text-dark-green-500 mt-1">
-                              Unit {hazard.apartment?.unit_number || 'N/A'} - Floor {hazard.apartment?.floor?.level || 'N/A'}
+                              Unit {hazard.apartment?.unit_number || 'N/A'} - {hazard.apartment?.floor?.name || `Floor ${hazard.apartment?.floor?.level}`}
                             </p>
                           </div>
                         </div>

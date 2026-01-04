@@ -19,6 +19,7 @@ import { useAuth } from '../../../../context/AuthContext'
 import { useRouter } from 'next/navigation'
 import { buildingApi } from '../../../lib/api'
 import PageTransition from '@/components/shared/pageTransition'
+import ProtectedRoute from '@/components/auth/ProtectedRoute'
 
 interface Building {
   id: number
@@ -36,7 +37,7 @@ interface BuildingFormData {
   type: string
 }
 
-export default function BuildingsManagementPage() {
+function BuildingsManagementContent() {
   const { user, isAuthenticated, loading: authLoading } = useAuth()
   const router = useRouter()
   const [buildings, setBuildings] = useState<Building[]>([])
@@ -52,12 +53,6 @@ export default function BuildingsManagementPage() {
   })
   const [error, setError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!authLoading && (!isAuthenticated || (user?.role !== 'admin' && user?.role !== 'building_authority'))) {
-      router.push('/login')
-    }
-  }, [isAuthenticated, user, router, authLoading])
 
   useEffect(() => {
     fetchBuildings()
@@ -164,23 +159,6 @@ export default function BuildingsManagementPage() {
       month: 'short',
       day: 'numeric'
     })
-  }
-
-  if (authLoading || loading) {
-    return (
-      <PageTransition>
-        <div className="min-h-screen flex items-center justify-center cream-gradient">
-          <div className="text-center">
-            <div className="w-16 h-16 border-4 border-green-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-xl text-dark-green-600">Loading buildings...</p>
-          </div>
-        </div>
-      </PageTransition>
-    )
-  }
-
-  if (!isAuthenticated || (user?.role !== 'admin' && user?.role !== 'building_authority')) {
-    return null
   }
 
   return (
@@ -497,3 +475,10 @@ export default function BuildingsManagementPage() {
   )
 }
 
+export default function BuildingsManagementPage() {
+  return (
+    <ProtectedRoute allowedRoles={['management', 'building_authority']}>
+      <BuildingsManagementContent />
+    </ProtectedRoute>
+  );
+}

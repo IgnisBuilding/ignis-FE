@@ -7,8 +7,9 @@ import PageTransition from '@/components/shared/pageTransition';
 import { fadeIn } from '@/lib/animations';
 import { useAuth } from '../../../../context/AuthContext';
 import { api, Sensor as ApiSensor } from '@/lib/api';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
 
-export default function SensorsManagementPage() {
+function SensorsManagementContent() {
   const router = useRouter();
   const { user, role } = useAuth();
   const [sensors, setSensors] = useState<ApiSensor[]>([]);
@@ -29,12 +30,10 @@ export default function SensorsManagementPage() {
   });
 
   useEffect(() => {
-    if (!user || (role !== 'building_authority' && role !== 'admin')) {
-      router.push('/login');
-    } else {
+    if (user && (role === 'building_authority' || role === 'management')) {
       loadSensors();
     }
-  }, [user, role, router]);
+  }, [user, role]);
 
   const loadSensors = async () => {
     try {
@@ -125,8 +124,6 @@ export default function SensorsManagementPage() {
     }
   };
 
-  if (!user || (role !== 'building_authority' && role !== 'admin')) return null;
-
   return (
     <PageTransition>
       <div className="min-h-screen cream-gradient py-8 px-4">
@@ -187,7 +184,7 @@ export default function SensorsManagementPage() {
                           </td>
                           <td className="px-6 py-4 text-dark-green-600">{sensor.name}</td>
                           <td className="px-6 py-4 text-dark-green-600">{sensor.value} {sensor.unit}</td>
-                          <td className="px-6 py-4 text-dark-green-600">{sensor.roomId || 'N/A'}</td>
+                          <td className="px-6 py-4 text-dark-green-600">{sensor.room?.name || sensor.roomId || 'N/A'}</td>
                           <td className="px-6 py-4">
                             <span className={`px-3 py-1.5 rounded-full text-xs font-bold ${sensor.status === 'active' ? 'bg-gradient-to-r from-green-100 to-green-50 text-green-700 border border-green-200' : sensor.status === 'alert' ? 'bg-gradient-to-r from-red-100 to-red-50 text-red-700 border border-red-200' : 'bg-gradient-to-r from-gray-100 to-gray-50 text-gray-700 border border-gray-200'}`}>
                               {sensor.status}
@@ -281,5 +278,13 @@ export default function SensorsManagementPage() {
         </div>
       </div>
     </PageTransition>
+  );
+}
+
+export default function SensorsManagementPage() {
+  return (
+    <ProtectedRoute allowedRoles={['management', 'building_authority']}>
+      <SensorsManagementContent />
+    </ProtectedRoute>
   );
 }

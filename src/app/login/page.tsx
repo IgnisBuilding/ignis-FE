@@ -23,8 +23,25 @@ export default function LoginPage() {
       const success = await login(email, password);
       
       if (success) {
-        // Redirect based on role will be handled by the page after login
-        router.push('/admin');
+        // Get user data from localStorage to determine role
+        const storedUser = localStorage.getItem('ignis_user');
+        if (storedUser) {
+          const userData = JSON.parse(storedUser);
+          const role = userData.role;
+          
+          // Redirect based on role
+          if (role === 'management' || role === 'building_authority') {
+            router.push('/admin');
+          } else if (role === 'firefighter') {
+            router.push('/firefighter');
+          } else if (role === 'resident') {
+            router.push('/resident');
+          } else {
+            router.push('/');
+          }
+        } else {
+          router.push('/');
+        }
       } else {
         setError('Invalid email or password');
       }
@@ -35,11 +52,11 @@ export default function LoginPage() {
     }
   };
 
-  const fillDemoCredentials = (role: 'admin' | 'firefighter' | 'manager') => {
+  const fillDemoCredentials = (role: 'management' | 'firefighter' | 'resident') => {
     const credentials = {
-      admin: { email: 'admin@ignis.com', password: 'admin123' },
+      management: { email: 'management@ignis.com', password: 'admin123' },
       firefighter: { email: 'firefighter@ignis.com', password: 'admin123' },
-      manager: { email: 'manager@ignis.com', password: 'admin123' },
+      resident: { email: 'resident@ignis.com', password: 'admin123' },
     };
     setEmail(credentials[role].email);
     setPassword(credentials[role].password);
@@ -103,7 +120,7 @@ export default function LoginPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    placeholder="admin@ignis.com"
+                    placeholder="management@ignis.com"
                     className="w-full pl-12 pr-4 py-3 border-2 border-dark-green-200 rounded-xl focus:border-dark-green-500 focus:ring-2 focus:ring-dark-green-100 focus:outline-none transition-all"
                   />
                 </div>
@@ -158,10 +175,10 @@ export default function LoginPage() {
               <div className="grid grid-cols-3 gap-2">
                 <button
                   type="button"
-                  onClick={() => fillDemoCredentials('admin')}
+                  onClick={() => fillDemoCredentials('management')}
                   className="px-3 py-2 text-xs font-semibold bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors border border-blue-200"
                 >
-                  Admin
+                  Management
                 </button>
                 <button
                   type="button"
@@ -172,10 +189,10 @@ export default function LoginPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => fillDemoCredentials('manager')}
+                  onClick={() => fillDemoCredentials('resident')}
                   className="px-3 py-2 text-xs font-semibold bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors border border-green-200"
                 >
-                  Manager
+                  Resident
                 </button>
               </div>
             </div>
