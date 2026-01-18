@@ -244,7 +244,7 @@ export function convertGeometryIfMercator(geometry: GeoJSON.Geometry): GeoJSON.G
     return coords.map(convertCoords);
   }
 
-  if (!geometry || !geometry.coordinates) return geometry;
+  if (!geometry || geometry.type === 'GeometryCollection' || !('coordinates' in geometry)) return geometry;
 
   return {
     ...geometry,
@@ -278,7 +278,7 @@ export function calculateBounds(
   }
 
   geojson.features.forEach((feature) => {
-    if (feature.geometry?.coordinates) {
+    if (feature.geometry && 'coordinates' in feature.geometry) {
       processCoords(feature.geometry.coordinates);
     }
   });
@@ -407,7 +407,7 @@ export function createStairsPattern(): HTMLCanvasElement {
 export interface IsolationResponse {
   isolated: true;
   message: string;
-  shelterInstructions: string;
+  shelterInstructions: string | string[];
   roomName?: string;
 }
 
@@ -624,5 +624,732 @@ export function debounce<T extends (...args: any[]) => any>(
   return (...args: Parameters<T>) => {
     clearTimeout(timeoutId);
     timeoutId = setTimeout(() => fn(...args), delay);
+  };
+}
+
+/**
+ * ============================================
+ * CLIENT-SIDE ROUTING FOR IMPORTED BUILDINGS
+ * ============================================
+ * When using imported building data from Map Editor, routing is computed
+ * locally using Dijkstra's algorithm instead of calling the backend API.
+ */
+
+/**
+ * Routing graph node for client-side computation
+ */
+export interface LocalRoutingNode {
+  id: string | number;
+  name: string;
+  type: string;
+  level: string;
+  lat: number;
+  lng: number;
+  is_exit?: boolean;
+}
+
+/**
+ * Routing graph edge for client-side computation
+ */
+export interface LocalRoutingEdge {
+  id: number;
+  source: string | number;
+  target: string | number;
+  cost: number;
+  reverse_cost: number;
+  opening_type?: string;
+}
+
+/**
+ * Local routing graph structure
+ */
+export interface LocalRoutingGraph {
+  nodes: LocalRoutingNode[];
+  edges: LocalRoutingEdge[];
+}
+
+/**
+ * Local fire zone manager - tracks fire zones for client-side routing
+ */
+class LocalFireZoneManager {
+  private fireZones: Map<string | number, FireZoneInput> = new Map();
+  private blockedNodes: Set<string | number> = new Set();
+
+  addFire(zone: FireZoneInput): void {
+    const key = zone.nodeId;
+    this.fireZones.set(key, zone);
+    this.blockedNodes.add(zone.nodeId);
+    console.log(`[LocalFireManager] Added fire at node ${key}, total fires: ${this.fireZones.size}`);
+  }
+
+  removeFire(nodeId: number): void {
+    this.fireZones.delete(nodeId);
+    this.blockedNodes.delete(nodeId);
+    console.log(`[LocalFireManager] Removed fire at node ${nodeId}, remaining: ${this.fireZones.size}`);
+  }
+
+  clearAll(): number {
+    const count = this.fireZones.size;
+    this.fireZones.clear();
+    this.blockedNodes.clear();
+    console.log(`[LocalFireManager] Cleared ${count} fires`);
+    return count;
+  }
+
+  isNodeBlocked(nodeId: string | number): boolean {
+    return this.blockedNodes.has(nodeId);
+  }
+
+  getBlockedNodes(): Set<string | number> {
+    return new Set(this.blockedNodes);
+  }
+
+  getFireZones(): FireZoneInput[] {
+    return Array.from(this.fireZones.values());
+  }
+}
+
+// Singleton instance for local fire management
+export const localFireManager = new LocalFireZoneManager();
+
+/**
+ * Store for imported routing graph - set when building is imported
+ */
+let importedRoutingGraph: LocalRoutingGraph | null = null;
+
+/**
+ * Set the imported routing graph for client-side routing
+ */
+export function setImportedRoutingGraph(routing: LocalRoutingGraph | null): void {
+  importedRoutingGraph = routing;
+  console.log('[LocalRouter] Routing graph set:', routing ? `${routing.nodes.length} nodes, ${routing.edges.length} edges` : 'null');
+}
+
+/**
+ * Get the imported routing graph
+ */
+export function getImportedRoutingGraph(): LocalRoutingGraph | null {
+  return importedRoutingGraph;
+}
+
+/**
+ * Check if we're using imported data (has local routing graph)
+ */
+export function isUsingImportedRouting(): boolean {
+  return importedRoutingGraph !== null && importedRoutingGraph.nodes.length > 0;
+}
+
+/**
+ * Dijkstra's algorithm for finding shortest path
+ */
+function dijkstra(
+  graph: LocalRoutingGraph,
+  startId: string | number,
+  endId: string | number,
+  blockedNodes: Set<string | number>
+): { path: (string | number)[]; cost: number } | null {
+  // Build adjacency list
+  const adjacency = new Map<string | number, Array<{ target: string | number; cost: number }>>();
+
+  for (const node of graph.nodes) {
+    adjacency.set(node.id, []);
+  }
+
+  for (const edge of graph.edges) {
+    // Skip edges to/from blocked nodes (fire zones)
+    if (blockedNodes.has(edge.source) || blockedNodes.has(edge.target)) {
+      continue;
+    }
+
+    // Add forward edge
+    const sourceAdj = adjacency.get(edge.source);
+    if (sourceAdj) {
+      sourceAdj.push({ target: edge.target, cost: edge.cost });
+    }
+
+    // Add reverse edge if cost is positive
+    if (edge.reverse_cost > 0) {
+      const targetAdj = adjacency.get(edge.target);
+      if (targetAdj) {
+        targetAdj.push({ target: edge.source, cost: edge.reverse_cost });
+      }
+    }
+  }
+
+  // Priority queue implementation using sorted array
+  const distances = new Map<string | number, number>();
+  const previous = new Map<string | number, string | number | null>();
+  const visited = new Set<string | number>();
+
+  // Initialize
+  for (const node of graph.nodes) {
+    distances.set(node.id, Infinity);
+    previous.set(node.id, null);
+  }
+  distances.set(startId, 0);
+
+  // Check if start node is blocked
+  if (blockedNodes.has(startId)) {
+    console.log('[Dijkstra] Start node is blocked by fire');
+    return null;
+  }
+
+  const queue: Array<{ id: string | number; dist: number }> = [{ id: startId, dist: 0 }];
+
+  while (queue.length > 0) {
+    // Sort by distance and get minimum
+    queue.sort((a, b) => a.dist - b.dist);
+    const current = queue.shift()!;
+
+    if (visited.has(current.id)) continue;
+    visited.add(current.id);
+
+    if (current.id === endId) {
+      // Found path - reconstruct it
+      const path: (string | number)[] = [];
+      let node: string | number | null = endId;
+
+      while (node !== null) {
+        path.unshift(node);
+        node = previous.get(node) ?? null;
+      }
+
+      return { path, cost: distances.get(endId) ?? Infinity };
+    }
+
+    // Explore neighbors
+    const neighbors = adjacency.get(current.id) || [];
+    for (const { target, cost } of neighbors) {
+      if (visited.has(target)) continue;
+
+      const newDist = current.dist + cost;
+      const oldDist = distances.get(target) ?? Infinity;
+
+      if (newDist < oldDist) {
+        distances.set(target, newDist);
+        previous.set(target, current.id);
+        queue.push({ id: target, dist: newDist });
+      }
+    }
+  }
+
+  // No path found
+  return null;
+}
+
+/**
+ * Build route geometry from path nodes
+ */
+function buildRouteGeometry(
+  path: (string | number)[],
+  nodes: LocalRoutingNode[]
+): GeoJSON.Feature<GeoJSON.LineString> {
+  const nodeMap = new Map(nodes.map(n => [n.id, n]));
+
+  const coordinates: [number, number][] = path.map(nodeId => {
+    const node = nodeMap.get(nodeId);
+    if (!node) {
+      console.warn(`[LocalRouter] Node ${nodeId} not found in graph`);
+      return [0, 0] as [number, number];
+    }
+    return [node.lng, node.lat];
+  });
+
+  return {
+    type: 'Feature',
+    geometry: {
+      type: 'LineString',
+      coordinates,
+    },
+    properties: {
+      route_type: 'computed',
+      source: 'local',
+    },
+  };
+}
+
+/**
+ * Compute route using local routing graph (for imported buildings)
+ */
+export function computeLocalRoute(
+  startNodeId: string | number,
+  endNodeId: string | number
+): RouteComputationResult {
+  if (!importedRoutingGraph) {
+    return { success: false, error: 'No routing graph available' };
+  }
+
+  console.log(`[LocalRouter] Computing route from ${startNodeId} to ${endNodeId}`);
+  console.log(`[LocalRouter] Graph has ${importedRoutingGraph.nodes.length} nodes, ${importedRoutingGraph.edges.length} edges`);
+  console.log(`[LocalRouter] Blocked nodes: ${localFireManager.getBlockedNodes().size}`);
+
+  // Check if start node is in a fire zone
+  if (localFireManager.isNodeBlocked(startNodeId)) {
+    const nodeInfo = importedRoutingGraph.nodes.find(n => n.id === startNodeId);
+    return {
+      success: false,
+      isolated: true,
+      isolationData: {
+        isolated: true,
+        message: 'Your location is in a fire zone. Seek shelter immediately.',
+        shelterInstructions: [
+          'Stay low to avoid smoke inhalation',
+          'Seal door gaps with wet cloth',
+          'Signal for help from window',
+          'Call emergency services',
+        ],
+        roomName: nodeInfo?.name || 'Unknown Location',
+      },
+    };
+  }
+
+  // Run Dijkstra
+  const result = dijkstra(
+    importedRoutingGraph,
+    startNodeId,
+    endNodeId,
+    localFireManager.getBlockedNodes()
+  );
+
+  if (!result) {
+    // Check if it's because of fire blocking the path
+    const blockedNodes = localFireManager.getBlockedNodes();
+    if (blockedNodes.size > 0) {
+      const nodeInfo = importedRoutingGraph.nodes.find(n => n.id === startNodeId);
+      return {
+        success: false,
+        isolated: true,
+        isolationData: {
+          isolated: true,
+          message: 'All evacuation routes are blocked by fire. Shelter in place.',
+          shelterInstructions: [
+            'Move to a room with a window',
+            'Close the door and seal gaps',
+            'Signal your location to rescuers',
+            'Stay low to avoid smoke',
+          ],
+          roomName: nodeInfo?.name || 'Current Location',
+        },
+      };
+    }
+    return { success: false, error: 'No route found between selected locations' };
+  }
+
+  console.log(`[LocalRouter] Found path with ${result.path.length} nodes, cost: ${result.cost.toFixed(2)}`);
+
+  // Build route geometry
+  const routeFeature = buildRouteGeometry(result.path, importedRoutingGraph.nodes);
+
+  return {
+    success: true,
+    route: routeFeature,
+  };
+}
+
+/**
+ * Place fires locally (for imported buildings)
+ */
+export function placeLocalFires(
+  fireZones: FireZoneInput[],
+  severity: 'HIGH' | 'CRITICAL' = 'HIGH'
+): { success: boolean; hazardIds: number[] } {
+  console.log(`[LocalRouter] Placing ${fireZones.length} local fire(s)`);
+
+  const hazardIds: number[] = [];
+
+  for (const zone of fireZones) {
+    localFireManager.addFire(zone);
+    hazardIds.push(zone.nodeId);
+  }
+
+  return { success: true, hazardIds };
+}
+
+/**
+ * Clear all local fires (for imported buildings)
+ */
+export function clearLocalFires(): { success: boolean; deletedCount: number } {
+  const deletedCount = localFireManager.clearAll();
+  return { success: true, deletedCount };
+}
+
+/**
+ * Imported building data structure from Map Editor
+ */
+export interface ImportedBuildingData {
+  buildingId: string;
+  building?: {
+    name: string;
+    center: { lat: number; lng: number };
+    scale_pixels_per_meter: number;
+    levels: string[];
+    generated_at: string;
+  };
+  geojson: GeoJSON.FeatureCollection;
+  routing?: {
+    nodes: Array<{
+      id: string | number;
+      name: string;
+      type: string;
+      level: string;
+      lat: number;
+      lng: number;
+      is_exit?: boolean;
+    }>;
+    edges: Array<{
+      id: number;
+      source: string | number;
+      target: string | number;
+      cost: number;
+      reverse_cost: number;
+      opening_type?: string;
+    }>;
+  };
+  safePoints?: Array<{
+    id: string;
+    name: string;
+    level: string;
+    capacity: number;
+    coordinates: { lat: number; lng: number };
+  }>;
+  metadata: {
+    uploadedAt: string;
+    roomCount: number;
+    openingCount: number;
+    safePointCount: number;
+    routingNodes?: number;
+    routingEdges?: number;
+  };
+}
+
+/**
+ * Check if imported building data is available
+ */
+export async function checkImportedBuilding(): Promise<boolean> {
+  try {
+    const response = await fetch('/api/building/upload', {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(5000),
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+      return result.success && result.data != null;
+    }
+    return false;
+  } catch (error) {
+    console.log('[MapAPI] No imported building data available');
+    return false;
+  }
+}
+
+/**
+ * Load imported building data from Map Editor upload API
+ */
+export async function loadImportedBuilding(): Promise<ImportedBuildingData | null> {
+  console.log('[MapAPI] Checking for imported building data...');
+
+  try {
+    const response = await fetch('/api/building/upload', {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(10000),
+    });
+
+    if (!response.ok) {
+      console.log('[MapAPI] No imported building data available');
+      return null;
+    }
+
+    const result = await response.json();
+
+    if (!result.success || !result.data) {
+      console.log('[MapAPI] Imported building data not found');
+      return null;
+    }
+
+    console.log('[MapAPI] Loaded imported building data:', {
+      buildingId: result.data.buildingId,
+      roomCount: result.data.metadata?.roomCount,
+      openingCount: result.data.metadata?.openingCount,
+    });
+
+    return result.data as ImportedBuildingData;
+  } catch (error) {
+    console.error('[MapAPI] Failed to load imported building:', error);
+    return null;
+  }
+}
+
+/**
+ * Convert imported building data to the format expected by EvacuationMap
+ */
+export function convertImportedToMapData(imported: ImportedBuildingData) {
+  const geojson = imported.geojson;
+
+  // Extract rooms (Polygons)
+  const roomFeatures = geojson.features?.filter((f: any) =>
+    f.geometry?.type === 'Polygon'
+  ) || [];
+
+  // Extract openings/doors (LineStrings with opening type)
+  const openingFeatures = geojson.features?.filter((f: any) =>
+    f.geometry?.type === 'LineString' &&
+    (f.properties?.type === 'opening' || f.properties?.opening_type)
+  ) || [];
+
+  // Extract safe points (Points)
+  const safePointFeatures = geojson.features?.filter((f: any) =>
+    f.geometry?.type === 'Point' &&
+    (f.properties?.type === 'safe_point' || f.properties?.is_safe_point)
+  ) || [];
+
+  // Helper to normalize level values (Map Editor uses '1' for ground floor, EvacuationMap uses '0')
+  const normalizeLevel = (level: string | undefined): string => {
+    // Convert Map Editor levels to EvacuationMap levels
+    // Map Editor: '1' = ground floor, '2' = second floor, etc.
+    // EvacuationMap: '0' = ground floor, '1' = second floor, etc.
+    if (!level) return '0';
+    const numLevel = parseInt(level, 10);
+    if (isNaN(numLevel)) return '0';
+    return String(numLevel - 1);
+  };
+
+  // Create rooms GeoJSON (normalized for map display)
+  const rooms: GeoJSON.FeatureCollection = {
+    type: 'FeatureCollection',
+    features: roomFeatures.map((f: any, idx: number) => ({
+      type: 'Feature',
+      id: f.properties?.id || idx,
+      geometry: f.geometry,
+      properties: {
+        ...f.properties,
+        id: f.properties?.id || idx,
+        name: f.properties?.name || `Room ${idx + 1}`,
+        room_type: f.properties?.room_type || 'common',
+        color: f.properties?.color || '#999999',
+        level: normalizeLevel(f.properties?.level),
+        area_sqm: f.properties?.area_sqm,
+      },
+    })),
+  };
+
+  // Create building features (openings/doors)
+  const features: GeoJSON.FeatureCollection = {
+    type: 'FeatureCollection',
+    features: openingFeatures.map((f: any, idx: number) => ({
+      type: 'Feature',
+      id: f.properties?.id || `opening-${idx}`,
+      geometry: f.geometry,
+      properties: {
+        ...f.properties,
+        id: f.properties?.id || `opening-${idx}`,
+        type: 'opening',
+        opening_type: f.properties?.opening_type || 'door',
+        level: normalizeLevel(f.properties?.level),
+      },
+    })),
+  };
+
+  // Create navigation nodes from routing data or room centroids
+  let nodes: GeoJSON.FeatureCollection;
+
+  if (imported.routing?.nodes && imported.routing.nodes.length > 0) {
+    // Use routing nodes from Map Editor
+    nodes = {
+      type: 'FeatureCollection',
+      features: imported.routing.nodes.map((n, idx) => ({
+        type: 'Feature' as const,
+        id: n.id,
+        geometry: {
+          type: 'Point' as const,
+          coordinates: [n.lng, n.lat],
+        },
+        properties: {
+          id: n.id,
+          name: n.name,
+          type: n.type,
+          level: normalizeLevel(n.level),
+          is_exit: n.is_exit || false,
+        },
+      })),
+    };
+  } else {
+    // Generate nodes from room centroids
+    nodes = {
+      type: 'FeatureCollection',
+      features: roomFeatures.map((f: any, idx: number) => {
+        const centroid = getFeatureCentroid(f);
+        return {
+          type: 'Feature' as const,
+          id: f.properties?.id || idx,
+          geometry: {
+            type: 'Point' as const,
+            coordinates: centroid || [0, 0],
+          },
+          properties: {
+            id: f.properties?.id || idx,
+            name: f.properties?.name || `Node ${idx + 1}`,
+            type: 'room',
+            level: normalizeLevel(f.properties?.level),
+          },
+        };
+      }),
+    };
+  }
+
+  // Add safe points to nodes
+  if (safePointFeatures.length > 0 || imported.safePoints?.length) {
+    const safeNodes = safePointFeatures.map((f: any, idx: number) => ({
+      type: 'Feature' as const,
+      id: f.properties?.id || `safe-${idx}`,
+      geometry: f.geometry,
+      properties: {
+        id: f.properties?.id || `safe-${idx}`,
+        name: f.properties?.name || `Safe Point ${idx + 1}`,
+        type: 'safe_point',
+        is_exit: true,
+        level: normalizeLevel(f.properties?.level),
+        capacity: f.properties?.capacity,
+      },
+    }));
+
+    // Also add safe points from the safePoints array if available
+    if (imported.safePoints?.length) {
+      imported.safePoints.forEach((sp, idx) => {
+        safeNodes.push({
+          type: 'Feature' as const,
+          id: sp.id || `safe-arr-${idx}`,
+          geometry: {
+            type: 'Point' as const,
+            coordinates: [sp.coordinates.lng, sp.coordinates.lat],
+          },
+          properties: {
+            id: sp.id || `safe-arr-${idx}`,
+            name: sp.name || `Safe Point ${idx + 1}`,
+            type: 'safe_point',
+            is_exit: true,
+            level: normalizeLevel(sp.level),
+            capacity: sp.capacity,
+          },
+        });
+      });
+    }
+
+    nodes.features.push(...safeNodes);
+  }
+
+  // Create details GeoJSON (empty for now, can be enhanced later)
+  const details: GeoJSON.FeatureCollection = {
+    type: 'FeatureCollection',
+    features: [],
+  };
+
+  // Get building center for map view
+  let buildingCenter: [number, number] | null = null;
+
+  if (imported.building?.center) {
+    buildingCenter = [imported.building.center.lng, imported.building.center.lat] as [number, number];
+    console.log('[convertImportedToMapData] Using building center from metadata:', buildingCenter);
+  } else {
+    const bounds = calculateBounds(rooms);
+    if (bounds) {
+      buildingCenter = [
+        (bounds[0][0] + bounds[1][0]) / 2,
+        (bounds[0][1] + bounds[1][1]) / 2,
+      ] as [number, number];
+      console.log('[convertImportedToMapData] Calculated building center from bounds:', buildingCenter);
+    }
+  }
+
+  // Set up local routing graph for client-side route computation
+  if (imported.routing?.nodes && imported.routing.nodes.length > 0) {
+    const localRoutingNodes: LocalRoutingNode[] = imported.routing.nodes.map(n => ({
+      id: n.id,
+      name: n.name,
+      type: n.type,
+      level: normalizeLevel(n.level),
+      lat: n.lat,
+      lng: n.lng,
+      is_exit: n.is_exit,
+    }));
+
+    const localRoutingEdges: LocalRoutingEdge[] = (imported.routing.edges || []).map((e, idx) => ({
+      id: e.id || idx,
+      source: e.source,
+      target: e.target,
+      cost: e.cost,
+      reverse_cost: e.reverse_cost,
+      opening_type: e.opening_type,
+    }));
+
+    setImportedRoutingGraph({ nodes: localRoutingNodes, edges: localRoutingEdges });
+    console.log('[convertImportedToMapData] Set up local routing graph:', {
+      nodes: localRoutingNodes.length,
+      edges: localRoutingEdges.length,
+    });
+  } else {
+    // No routing data - generate simple routing from room centroids
+    console.log('[convertImportedToMapData] No routing data provided, using room centroids');
+    const centroidNodes: LocalRoutingNode[] = roomFeatures.map((f: any, idx: number) => {
+      const centroid = getFeatureCentroid(f);
+      return {
+        id: f.properties?.id || idx,
+        name: f.properties?.name || `Room ${idx + 1}`,
+        type: 'room',
+        level: normalizeLevel(f.properties?.level),
+        lat: centroid ? centroid[1] : 0,
+        lng: centroid ? centroid[0] : 0,
+      };
+    });
+
+    // Create edges connecting all rooms (fully connected graph for basic routing)
+    const edges: LocalRoutingEdge[] = [];
+    let edgeId = 0;
+    for (let i = 0; i < centroidNodes.length; i++) {
+      for (let j = i + 1; j < centroidNodes.length; j++) {
+        const dx = centroidNodes[i].lng - centroidNodes[j].lng;
+        const dy = centroidNodes[i].lat - centroidNodes[j].lat;
+        const cost = Math.sqrt(dx * dx + dy * dy) * 111000; // Approximate meters
+        edges.push({
+          id: edgeId++,
+          source: centroidNodes[i].id,
+          target: centroidNodes[j].id,
+          cost,
+          reverse_cost: cost,
+        });
+      }
+    }
+
+    setImportedRoutingGraph({ nodes: centroidNodes, edges });
+    console.log('[convertImportedToMapData] Generated routing graph from centroids:', {
+      nodes: centroidNodes.length,
+      edges: edges.length,
+    });
+  }
+
+  // Clear any existing local fires when loading new building
+  clearLocalFires();
+
+  console.log('[convertImportedToMapData] Final data:', {
+    roomCount: rooms.features.length,
+    nodeCount: nodes.features.length,
+    buildingCenter,
+    sampleRoomCoords: rooms.features[0]?.geometry,
+  });
+
+  return {
+    rooms: normalizeGeoJSON(rooms),
+    features: normalizeGeoJSON(features),
+    details: normalizeGeoJSON(details),
+    nodes: normalizeGeoJSON(nodes),
+    sensors: null as GeoJSON.FeatureCollection | null,
+    occupancy: null,
+    roomNodes: null,
+    buildingInfo: imported.building,
+    buildingCenter,
+    routing: imported.routing,
+    isImported: true,
   };
 }

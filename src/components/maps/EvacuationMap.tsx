@@ -22,6 +22,13 @@ import {
   extractFeatureFromResponse,
   convertGeometryIfMercator,
   isValidLonLat,
+  loadImportedBuilding,
+  convertImportedToMapData,
+  // Local routing for imported buildings
+  isUsingImportedRouting,
+  computeLocalRoute,
+  placeLocalFires,
+  clearLocalFires,
 } from '@/lib/map';
 
 import type { EmergencyState, MapCallbacks, Sensor, HazardData, IsolationResponse } from '@/lib/map';
@@ -108,6 +115,10 @@ const EvacuationMap = memo(({
   // Isolation alert state (when person is trapped by fire)
   const [isolationAlert, setIsolationAlert] = useState<IsolationResponse | null>(null);
 
+  // Imported building state
+  const [isUsingImportedData, setIsUsingImportedData] = useState(false);
+  const [importedBuildingName, setImportedBuildingName] = useState<string>('');
+
   // Show notification
   const showNotification = useCallback((message: string, type: keyof typeof NOTIFICATION_COLORS = 'info') => {
     setNotification({ message, type });
@@ -142,22 +153,65 @@ const EvacuationMap = memo(({
 
     map.on('load', async () => {
       try {
-        // Load map data from backend API
-        const { rooms, features, details, nodes, sensors, occupancy, roomNodes: roomNodesMappingData } = await loadMapData();
+        // First, check for imported building data from Map Editor
+        const importedBuilding = await loadImportedBuilding();
 
-        // Check if rooms data was loaded successfully
-        if (!rooms || !rooms.features || rooms.features.length === 0) {
-          console.error('Rooms data not loaded - backend may be unavailable');
-          showNotification('Backend server not available. Please ensure the backend is running.', 'error');
-          setIsMapLoaded(true); // Still mark as loaded to show error state
-          return;
+        let roomsData: GeoJSON.FeatureCollection;
+        let featuresData: GeoJSON.FeatureCollection;
+        let detailsData: GeoJSON.FeatureCollection;
+        let nodesData: GeoJSON.FeatureCollection;
+        let roomNodesMappingData: any[] = [];
+        let sensors: GeoJSON.FeatureCollection | null = null;
+        let occupancy: any = null;
+        let buildingCenter: [number, number] | null = null;
+
+        if (importedBuilding) {
+          // Use imported building data from Map Editor
+          console.log('[EvacuationMap] Using imported building data:', importedBuilding.buildingId);
+          const convertedData = convertImportedToMapData(importedBuilding);
+
+          roomsData = convertedData.rooms;
+          featuresData = convertedData.features;
+          detailsData = convertedData.details;
+          nodesData = convertedData.nodes;
+          sensors = convertedData.sensors;
+          occupancy = convertedData.occupancy;
+          buildingCenter = convertedData.buildingCenter;
+
+          setIsUsingImportedData(true);
+          setImportedBuildingName(importedBuilding.building?.name || 'Imported Building');
+
+          showNotification(`Loaded imported building: ${importedBuilding.building?.name || 'Custom Floor Plan'}`, 'success');
+        } else {
+          // Fall back to loading from backend API
+          console.log('[EvacuationMap] No imported building, loading from backend API...');
+          const backendData = await loadMapData();
+
+          // Check if rooms data was loaded successfully
+          if (!backendData.rooms || !backendData.rooms.features || backendData.rooms.features.length === 0) {
+            console.error('Rooms data not loaded - backend may be unavailable');
+            showNotification('Backend server not available. Please ensure the backend is running.', 'error');
+            setIsMapLoaded(true); // Still mark as loaded to show error state
+            return;
+          }
+
+          // Normalize and add sources
+          roomsData = normalizeGeoJSON(backendData.rooms);
+          featuresData = normalizeGeoJSON(backendData.features);
+          detailsData = normalizeGeoJSON(backendData.details);
+          nodesData = normalizeGeoJSON(backendData.nodes);
+          roomNodesMappingData = backendData.roomNodes || [];
+          sensors = backendData.sensors;
+          occupancy = backendData.occupancy;
         }
 
-        // Normalize and add sources
-        const roomsData = normalizeGeoJSON(rooms);
-        const featuresData = normalizeGeoJSON(features);
-        const detailsData = normalizeGeoJSON(details);
-        const nodesData = normalizeGeoJSON(nodes);
+        // Check if rooms data was loaded successfully (for imported data)
+        if (!roomsData || !roomsData.features || roomsData.features.length === 0) {
+          console.error('No room data available');
+          showNotification('No building data available. Please import a floor plan from Map Editor.', 'error');
+          setIsMapLoaded(true);
+          return;
+        }
 
         // Store rooms data in ref for later use (fire zone visualization)
         roomsDataRef.current = roomsData;
@@ -175,10 +229,19 @@ const EvacuationMap = memo(({
         // Add all layers
         addMapLayers(map);
 
-        // Fit to building bounds
-        const bounds = calculateBounds(roomsData);
-        if (bounds) {
-          map.fitBounds(bounds, { padding: 50, duration: 1000 });
+        // Fit to building bounds or center
+        if (buildingCenter) {
+          // Use building center from imported data
+          map.flyTo({
+            center: buildingCenter,
+            zoom: 19,
+            duration: 1000,
+          });
+        } else {
+          const bounds = calculateBounds(roomsData);
+          if (bounds) {
+            map.fitBounds(bounds, { padding: 50, duration: 1000 });
+          }
         }
 
         // Use room-nodes mapping from backend for accurate fire placement
@@ -265,7 +328,10 @@ const EvacuationMap = memo(({
         setupRoomInteractions(map);
 
         setIsMapLoaded(true);
-        showNotification('Map loaded successfully from backend', 'success');
+        // Show success notification only if not using imported data (already shown earlier)
+        if (!importedBuilding) {
+          showNotification('Map loaded successfully from backend', 'success');
+        }
       } catch (error) {
         console.error('Failed to initialize map:', error);
         showNotification('Failed to load map data. Please check if the backend server is running.', 'error');
@@ -952,14 +1018,17 @@ const EvacuationMap = memo(({
     console.log('[FireZone] Final API payload:', JSON.stringify(apiFireZones, null, 2));
     console.log('[FireZone] Severity value:', fireSeverity, 'type:', typeof fireSeverity);
 
-    const result = await placeFires(apiFireZones, fireSeverity);
+    // Use local fire placement for imported buildings, backend API otherwise
+    const result = isUsingImportedRouting()
+      ? placeLocalFires(apiFireZones, fireSeverity)
+      : await placeFires(apiFireZones, fireSeverity);
 
     if (!result.success) {
       showNotification(`Failed to register fire zones: ${result.error}`, 'error');
       return;
     }
 
-    console.log('[FireZone] Backend registered hazard IDs:', result.hazardIds);
+    console.log('[FireZone] Registered hazard IDs:', result.hazardIds, isUsingImportedRouting() ? '(local)' : '(backend)');
 
     // Clear existing fire markers
     fireMarkersRef.current.forEach(marker => marker.remove());
@@ -1091,7 +1160,10 @@ const EvacuationMap = memo(({
     };
 
     try {
-      const result = await placeFires([fireZone], 'CRITICAL');
+      // Use local fire placement for imported buildings, backend API otherwise
+      const result = isUsingImportedRouting()
+        ? placeLocalFires([fireZone], 'CRITICAL')
+        : await placeFires([fireZone], 'CRITICAL');
 
       if (result.success) {
         // Add fire marker
@@ -1232,16 +1304,17 @@ const EvacuationMap = memo(({
     const map = mapRef.current;
     if (!map) return;
 
-    // CRITICAL: Call backend API to remove hazards from database
-    // This ensures route computation won't block cleared fire zones
-    console.log('[FireZone] Clearing fires via API...');
-    const result = await clearFires();
+    // Clear fires - use local for imported buildings, backend API otherwise
+    console.log('[FireZone] Clearing fires...', isUsingImportedRouting() ? '(local)' : '(backend API)');
+    const result = isUsingImportedRouting()
+      ? clearLocalFires()
+      : await clearFires();
 
     if (!result.success) {
-      console.error('[FireZone] Failed to clear fires from backend:', result.error);
-      showNotification(`Warning: Failed to clear fire zones from server: ${result.error}`, 'warning');
+      console.error('[FireZone] Failed to clear fires:', result.error);
+      showNotification(`Warning: Failed to clear fire zones: ${result.error}`, 'warning');
     } else {
-      console.log('[FireZone] Backend cleared hazards, count:', result.deletedCount);
+      console.log('[FireZone] Cleared hazards, count:', result.deletedCount);
     }
 
     // Remove fire zone layers
@@ -1396,7 +1469,10 @@ const EvacuationMap = memo(({
     showNotification('Computing shortest route...', 'info');
 
     try {
-      const result = await computeRoute(selectedStart, selectedEnd);
+      // Use local routing for imported buildings, backend API otherwise
+      const result = isUsingImportedRouting()
+        ? computeLocalRoute(selectedStart, selectedEnd)
+        : await computeRoute(selectedStart, selectedEnd);
 
       // Handle isolation case - person is trapped by fire
       if (result.isolated && result.isolationData) {
@@ -1917,9 +1993,17 @@ const EvacuationMap = memo(({
                 <h3 className="text-amber-800 font-bold text-sm mb-2 flex items-center gap-2">
                   <span>🏠</span> SHELTER IN PLACE INSTRUCTIONS
                 </h3>
-                <p className="text-amber-700 text-sm whitespace-pre-line">
-                  {isolationAlert.shelterInstructions}
-                </p>
+                {Array.isArray(isolationAlert.shelterInstructions) ? (
+                  <ul className="text-amber-700 text-sm space-y-1">
+                    {isolationAlert.shelterInstructions.map((instruction, idx) => (
+                      <li key={idx}>• {instruction}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-amber-700 text-sm whitespace-pre-line">
+                    {isolationAlert.shelterInstructions}
+                  </p>
+                )}
               </div>
 
               {/* Safety Tips */}
@@ -1973,6 +2057,27 @@ const EvacuationMap = memo(({
         }
       `}</style>
       </div>
+
+      {/* Imported Building Indicator */}
+      {isUsingImportedData && isMapLoaded && (
+        <div className="flex-shrink-0 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg p-3 shadow-lg mt-3">
+          <div className="flex items-center justify-between text-white">
+            <div className="flex items-center gap-2">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+              </svg>
+              <span className="font-semibold">Imported Floor Plan:</span>
+              <span className="font-normal">{importedBuildingName}</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm opacity-90">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>From Map Editor</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Legend - Horizontal layout below map */}
       {showLegend && isMapLoaded && (

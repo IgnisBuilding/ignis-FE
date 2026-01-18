@@ -4,7 +4,7 @@ import type { MapConfig, FloorLayer } from './types';
 
 // Default map configuration
 export const DEFAULT_MAP_CONFIG: MapConfig = {
-  center: [67.1125, 24.862],
+  center: [67.1128, 24.8621],
   zoom: 19,
   minZoom: 17,
   maxZoom: 22,

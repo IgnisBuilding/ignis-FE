@@ -2,7 +2,7 @@
 import { useState, useMemo, memo, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, Home, Users, Building, Flame, Activity, Bell, AlertTriangle, LogOut } from 'lucide-react';
+import { Menu, X, Home, Users, Building, Flame, Activity, Bell, AlertTriangle, LogOut, Pencil } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { UserRole } from '../../../types';
 
@@ -31,6 +31,7 @@ const Header = () => {
         { href: '/admin/residents', label: 'Residents', icon: Users },
         { href: '/admin/sensors', label: 'Sensors', icon: Activity },
         { href: '/admin/buildings', label: 'Buildings', icon: Building },
+        { href: '/editor', label: 'Editor', icon: Pencil },
         { href: '/emergency', label: 'Emergency', icon: AlertTriangle }
       ];
     }

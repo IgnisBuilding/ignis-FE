@@ -1,0 +1,24 @@
+/* Editor-specific styles - scoped to editor component */
+
+/* Ensure editor takes full height of its container */
+.editor-root {
+  font-family: 'JetBrains Mono', monospace;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Animation for notifications */
+@keyframes slide-in-from-right {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-in.slide-in-from-right {
+  animation: slide-in-from-right 0.3s ease-out;
+}
