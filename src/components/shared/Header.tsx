@@ -30,6 +30,7 @@ const Header = () => {
         { href: '/admin/residents', label: 'Residents', icon: Users },
         { href: '/admin/sensors', label: 'Sensors', icon: Activity },
         { href: '/admin/buildings', label: 'Buildings', icon: Building },
+        { href: '/editor', label: 'Editor', icon: Pencil },
         { href: '/emergency', label: 'Emergency', icon: AlertTriangle }
       ];
     }
