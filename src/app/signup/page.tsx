@@ -8,8 +8,8 @@ import PageTransition from '@/components/shared/pageTransition';
 import Button from '@/components/shared/Button';
 import Input from '@/components/ui/Input';
 import { scaleIn } from '@/lib/animations';
-import { useAuth } from '../../../context/AuthContext';
-import { UserRole } from '../../../types';
+import { useAuth } from '@/context/AuthContext';
+import { UserRole } from '@/types';
 
 export default function SignupPage() {
   const router = useRouter();
@@ -58,7 +58,7 @@ export default function SignupPage() {
                 <div className="grid grid-cols-3 gap-2">
                   <button type="button" onClick={() => setFormData({...formData, role: 'building_authority'})} className={'p-3 rounded-lg border-2 transition-all border-dark-green-500 bg-dark-green-50'}>
                     <Shield className="w-6 h-6 mx-auto mb-1 text-dark-green-600" />
-                    <span className="text-xs font-medium">Admin</span>
+                    <span className="text-xs font-medium">Management</span>
                   </button>
                   <button type="button" onClick={() => setFormData({...formData, role: 'resident'})} className={'p-3 rounded-lg border-2 transition-all border-gray-200 hover:border-dark-green-300'}>
                     <Building className="w-6 h-6 mx-auto mb-1 text-dark-green-600" />

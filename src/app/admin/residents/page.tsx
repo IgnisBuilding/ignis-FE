@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { Plus, Edit2, Trash2, Search, Mail, Phone, Home, AlertCircle } from 'lucide-react';
 import PageTransition from '@/components/shared/pageTransition';
 import { fadeIn } from '@/lib/animations';
-import { useAuth } from '../../../../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { api, Resident as ApiResident } from '@/lib/api';
 
 export default function ResidentsManagementPage() {
@@ -28,12 +28,10 @@ export default function ResidentsManagementPage() {
   });
 
   useEffect(() => {
-    if (!user || (role !== 'building_authority' && role !== 'admin')) {
-      router.push('/login');
-    } else {
+    if (user && (role === 'building_authority' || role === 'management')) {
       loadResidents();
     }
-  }, [user, role, router]);
+  }, [user, role]);
 
   const loadResidents = async () => {
     try {
@@ -109,7 +107,7 @@ export default function ResidentsManagementPage() {
     }
   };
 
-  if (!user || (role !== 'building_authority' && role !== 'admin')) return null;
+  if (!user || (role !== 'building_authority' && role !== 'management')) return null;
 
   return (
     <PageTransition>
@@ -181,7 +179,7 @@ export default function ResidentsManagementPage() {
                               <span>{resident.phone || 'N/A'}</span>
                             </div>
                           </td>
-                          <td className="px-6 py-4 text-dark-green-600">{resident.apartmentId || 'N/A'}</td>
+                          <td className="px-6 py-4 text-dark-green-600">{resident.apartment?.unit_number || resident.apartmentId || 'N/A'}</td>
                           <td className="px-6 py-4">
                             <span className={`px-3 py-1.5 rounded-full text-xs font-bold ${
                               resident.type === 'owner' ? 'bg-gradient-to-r from-blue-100 to-blue-50 text-blue-700 border border-blue-200' :

@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html class="light" dir="rtl" lang="ur"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Ignis Command - بلڈنگ ڈائرکٹری</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;700&amp;family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#1a3d35",
+                        "accent": "#FDFBF7",
+                        "background-light": "#FDFBF7",
+                        "background-dark": "#151d1b",
+                        "forest": "#1a3d35",
+                        "cream": "#FDFBF7",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "Noto Nastaliq Urdu", "sans-serif"],
+                        "urdu": ["Noto Nastaliq Urdu", "serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style type="text/tailwindcss">
+        @layer base {
+            body {
+                @apply bg-background-light text-slate-900;
+                font-family: 'Inter', 'Noto Nastaliq Urdu', sans-serif;
+            }
+        }
+        .urdu-text {
+            font-family: 'Noto Nastaliq Urdu', serif;
+            line-height: 2;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(26, 61, 53, 0.05);
+            box-shadow: 0 4px 6px -1px rgba(26, 61, 53, 0.05);
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark min-h-screen flex overflow-hidden">
+<main class="flex-1 flex flex-col h-screen overflow-y-auto">
+<header class="flex items-center justify-between border-b border-primary/5 bg-white/50 backdrop-blur-md px-8 py-4 sticky top-0 z-10">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-3">
+<div class="w-2.5 h-2.5 rounded-full bg-green-500"></div>
+<span class="text-primary font-semibold text-sm">سسٹم: فعال</span>
+</div>
+<div class="flex items-center gap-3 text-primary/50">
+<span class="material-symbols-outlined text-lg">location_on</span>
+<span class="text-sm font-medium">مقام: مقفل</span>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute right-3 text-primary/40">search</span>
+<input class="pr-10 pl-4 py-2 bg-primary/5 border-none rounded-full w-80 text-sm focus:ring-2 focus:ring-primary/20 placeholder:text-primary/30 urdu-text" placeholder="عمارت تلاش کریں..." type="text"/>
+</div>
+<div class="flex items-center gap-4">
+<button class="size-10 flex items-center justify-center bg-primary/5 rounded-full text-primary hover:bg-primary/10 relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-2 left-2 size-2 bg-red-500 rounded-full border-2 border-white"></span>
+</button>
+<div class="h-8 w-[1px] bg-primary/10 mx-2"></div>
+<div class="flex items-center gap-3">
+<div class="text-left text-right">
+<p class="text-sm font-bold text-primary urdu-text">کمانڈر اسٹرلنگ</p>
+<p class="text-[10px] uppercase tracking-wider font-bold text-primary/50">سینئر ڈائریکٹر</p>
+</div>
+<div class="size-10 rounded-full bg-primary/10 overflow-hidden bg-cover bg-center border-2 border-primary/10" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBTbTosSu5r1_wqmdmjxmxMqktoiRNihNJwtsZ73WHA7E7bZZorsMg83uiUpVxgpOVtWaYKdy82qGw0demtSG8dP8S48YcAt31xtXrkn8VISHB8ZWo3dbBggaqzu-2PsdxKO-snCaotprK_csWeFfFHbUxB8PLK--zpAYEU0kdrTka_nwwTAis1eIvt9gcRJPuS6XBLiPY3a8YI0oXuylxmu4bbO-WarE7OGLtVG7W2g_OkZ9lDAdBmjhy-DhZqRAuyVcy6L4BZh_s')"></div>
+</div>
+</div>
+</div>
+</header>
+<div class="p-8 space-y-8 max-w-[1400px] w-full mx-auto">
+<div class="flex items-center justify-between">
+<div>
+<h1 class="text-3xl font-bold text-primary urdu-text">عمارتوں کی حفاظتی ڈائرکٹری</h1>
+<p class="text-primary/60 text-sm mt-1 urdu-text">شہر کی تمام رجسٹرڈ عمارتوں کا ڈیٹا بیس اور حفاظتی اسکور</p>
+</div>
+<div class="flex gap-3">
+<button class="bg-primary text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-primary/90 transition-all shadow-lg shadow-primary/20">
+<span class="material-symbols-outlined text-xl">add</span>
+<span class="urdu-text">نئی عمارت شامل کریں</span>
+</button>
+</div>
+</div>
+<div class="grid grid-cols-12 gap-8">
+<div class="col-span-12 lg:col-span-9 space-y-6">
+<div class="flex items-center justify-between bg-white p-4 rounded-2xl border border-primary/5">
+<div class="flex gap-4">
+<button class="px-5 py-2 bg-primary text-white rounded-lg text-sm font-bold urdu-text">تمام عمارتیں</button>
+<button class="px-5 py-2 hover:bg-primary/5 text-primary/60 rounded-lg text-sm font-bold urdu-text">ہائی رسک</button>
+<button class="px-5 py-2 hover:bg-primary/5 text-primary/60 rounded-lg text-sm font-bold urdu-text">کمرشل</button>
+</div>
+<div class="flex items-center gap-2 text-primary/40">
+<span class="text-xs font-bold uppercase urdu-text">ترتیب دیں:</span>
+<select class="bg-transparent border-none text-sm font-bold text-primary focus:ring-0 cursor-pointer urdu-text">
+<option>حالیہ اپ ڈیٹ</option>
+<option>حفاظتی اسکور</option>
+<option>حروف تہجی</option>
+</select>
+</div>
+</div>
+<div class="bg-white rounded-2xl border border-primary/5 overflow-hidden shadow-sm">
+<table class="w-full text-right border-collapse">
+<thead class="bg-primary/5 border-b border-primary/5">
+<tr>
+<th class="px-6 py-4 text-xs font-bold text-primary uppercase urdu-text">نام عمارت / مقام</th>
+<th class="px-6 py-4 text-xs font-bold text-primary uppercase urdu-text">استعمال کی قسم</th>
+<th class="px-6 py-4 text-xs font-bold text-primary uppercase urdu-text">حفاظتی اسکور</th>
+<th class="px-6 py-4 text-xs font-bold text-primary uppercase urdu-text">آخری معائنہ</th>
+<th class="px-6 py-4 text-xs font-bold text-primary uppercase urdu-text">ایکشن</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-50">
+<tr class="hover:bg-primary/[0.01] transition-colors">
+<td class="px-6 py-5">
+<div class="flex items-center gap-4">
+<div class="size-12 rounded-xl bg-slate-100 bg-cover bg-center border border-primary/5" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAlHiioGEsRzPlHPtpVVxo4eRrhLL7vyKidgs7Bn6_0hq9v17sL01Cnh-lHlEtU-tB1CHdrni2pTZKG2J5WU9fASnCcxHNaZ9XvLgOs3B8y_lp7WaN6dJ6685bxBqDZDA5vCaruRz10dNqsM5wuSJaZbR0-1cB1n_fXyB1hcXXQ_iO5zojltuXDhVOLENLUo4MV9rRfXI9pqLTK6g4OBrKE24iqwVp0-7I0ppfVx-za0yBDRFM2KYCgkzeK9sVy6yGJL_4X3LCh-7A')"></div>
+<div>
+<p class="font-bold text-primary urdu-text">سینٹرل پلازہ ٹاور</p>
+<p class="text-[11px] text-slate-400">سیکٹر 4، ڈاؤن ٹاؤن</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-5">
+<span class="px-3 py-1 bg-blue-50 text-blue-700 text-[10px] font-bold rounded-full urdu-text">تجارتی / دفاتر</span>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-3">
+<div class="flex-1 h-2 bg-slate-100 rounded-full w-24 overflow-hidden">
+<div class="h-full bg-green-500 w-[92%]"></div>
+</div>
+<span class="text-sm font-bold text-green-600 tracking-tighter">92%</span>
+</div>
+</td>
+<td class="px-6 py-5 text-sm text-slate-500 urdu-text">12 مارچ، 2024</td>
+<td class="px-6 py-5">
+<button class="text-primary/40 hover:text-primary transition-colors material-symbols-outlined">more_horiz</button>
+</td>
+</tr>
+<tr class="hover:bg-primary/[0.01] transition-colors">
+<td class="px-6 py-5">
+<div class="flex items-center gap-4">
+<div class="size-12 rounded-xl bg-slate-100 bg-cover bg-center border border-primary/5" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDbYVxo3O2YV05UD5yvS1uN6tWf05st7hZQZhokd8Jx2L6AGDcv4_39PQXARHr5i-It4wKI1dqfVZYh7MDdHOcSoe-ZTUCZ744ZGHvNI5TxTDCc1SEmJOFkit_pUovMdPFt6wfKkimXkD8wXoKZceAHbmi6__ht4yYq1bfz4mI4p-P_DugqaF75UUAUFK8ZFXTNr_-Bcrb-qFmxZFIATIAcSgLm_OdHTb8dXzbq1ZxGFrnDjYWqpopNlCGOsaMp1mDkqFbFmXfPvSg')"></div>
+<div>
+<p class="font-bold text-primary urdu-text">الفلاح انڈسٹریل کمپلیکس</p>
+<p class="text-[11px] text-slate-400">زون بی، انڈسٹریل ایریا</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-5">
+<span class="px-3 py-1 bg-orange-50 text-orange-700 text-[10px] font-bold rounded-full urdu-text">صنعتی</span>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-3">
+<div class="flex-1 h-2 bg-slate-100 rounded-full w-24 overflow-hidden">
+<div class="h-full bg-orange-500 w-[64%]"></div>
+</div>
+<span class="text-sm font-bold text-orange-600 tracking-tighter">64%</span>
+</div>
+</td>
+<td class="px-6 py-5 text-sm text-slate-500 urdu-text">05 فروری، 2024</td>
+<td class="px-6 py-5">
+<button class="text-primary/40 hover:text-primary transition-colors material-symbols-outlined">more_horiz</button>
+</td>
+</tr>
+<tr class="hover:bg-primary/[0.01] transition-colors">
+<td class="px-6 py-5">
+<div class="flex items-center gap-4">
+<div class="size-12 rounded-xl bg-slate-100 bg-cover bg-center border border-primary/5" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuChfcz6YoLlipqq3MW2Xmslywz40CnNRGJtdhnC_GgUMbqcwgPoJBc80zR_8bmmsaUvEo9sC9g5Edc4ukq3LF0KA4kuEybJH79qPPWtSDclDXEENnwdJE-WO1EHcJKMBrOOvGHG4jmYaozYoWmNQ4-vUe0DlTjOEHmlDOr8Gix4Uw_6lKS0yChMVRZiU1Ix33JCRYoXcIa0G8S9qvK3gpJmhkZiYhx_9ArzT8W61KWBLoTz7sj9dck65W1qEsj8cTZYfByevYeX_G8')"></div>
+<div>
+<p class="font-bold text-primary urdu-text">گرینڈ ریذیڈنسی</p>
+<p class="text-[11px] text-slate-400">بلاک سی، گلبرگ</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-5">
+<span class="px-3 py-1 bg-purple-50 text-purple-700 text-[10px] font-bold rounded-full urdu-text">رہائشی</span>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-3">
+<div class="flex-1 h-2 bg-slate-100 rounded-full w-24 overflow-hidden">
+<div class="h-full bg-red-500 w-[42%]"></div>
+</div>
+<span class="text-sm font-bold text-red-600 tracking-tighter">42%</span>
+</div>
+</td>
+<td class="px-6 py-5 text-sm text-slate-500 urdu-text">28 فروری، 2024</td>
+<td class="px-6 py-5">
+<button class="text-primary/40 hover:text-primary transition-colors material-symbols-outlined">more_horiz</button>
+</td>
+</tr>
+<tr class="hover:bg-primary/[0.01] transition-colors">
+<td class="px-6 py-5">
+<div class="flex items-center gap-4">
+<div class="size-12 rounded-xl bg-slate-100 bg-cover bg-center border border-primary/5" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAYfPwjhtFHoUA06JQ2kB032XybpWc9Fv5pEYETKfNYQWgKYwwbI3jn-qXFN-VxHUCo0LQFefI6dSgVoJ-xr86Df7FOcV6-OyYAO5zjhqycyLn4GWNICh16WVmGyJSB8I1a9F6SE74BuqODjXQtzuLG9rmU2-VJmzVJrGYdAW22uSyyN121lZnP_Dzvn_T1OjHMoHbjf0s7QxgCOF1R8RtB5e0utzoQa-FHhwqRzTnpssSLSaPG6-3S_b1g-wOTnGAx6RlPxw847pc')"></div>
+<div>
+<p class="font-bold text-primary urdu-text">ٹیک پارک ایونیو</p>
+<p class="text-[11px] text-slate-400">آئی ٹی حب، فیز 2</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-5">
+<span class="px-3 py-1 bg-blue-50 text-blue-700 text-[10px] font-bold rounded-full urdu-text">آئی ٹی / کمرشل</span>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-3">
+<div class="flex-1 h-2 bg-slate-100 rounded-full w-24 overflow-hidden">
+<div class="h-full bg-green-500 w-[88%]"></div>
+</div>
+<span class="text-sm font-bold text-green-600 tracking-tighter">88%</span>
+</div>
+</td>
+<td class="px-6 py-5 text-sm text-slate-500 urdu-text">10 مارچ، 2024</td>
+<td class="px-6 py-5">
+<button class="text-primary/40 hover:text-primary transition-colors material-symbols-outlined">more_horiz</button>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="p-6 bg-slate-50/50 flex items-center justify-between border-t border-primary/5">
+<p class="text-xs font-medium text-slate-500 urdu-text">450 عمارتوں میں سے 1-10 دکھائی جا رہی ہیں</p>
+<div class="flex gap-2">
+<button class="size-8 rounded-lg border border-slate-200 flex items-center justify-center hover:bg-white text-slate-600">
+<span class="material-symbols-outlined text-sm">chevron_right</span>
+</button>
+<button class="size-8 rounded-lg border border-slate-200 flex items-center justify-center hover:bg-white text-slate-600">
+<span class="material-symbols-outlined text-sm">chevron_left</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<aside class="col-span-12 lg:col-span-3 space-y-6">
+<div class="glass-card p-6 rounded-2xl">
+<h3 class="text-primary font-bold mb-4 urdu-text">ایڈوانس فلٹرز</h3>
+<div class="space-y-6">
+<div>
+<label class="block text-xs font-bold text-primary/60 uppercase mb-3 urdu-text">رسک کی سطح</label>
+<div class="space-y-2">
+<label class="flex items-center gap-3 cursor-pointer group">
+<input class="rounded text-primary focus:ring-primary/20 border-primary/10" type="checkbox"/>
+<span class="text-sm text-slate-600 group-hover:text-primary transition-colors urdu-text">انتہائی خطرہ (High)</span>
+</label>
+<label class="flex items-center gap-3 cursor-pointer group">
+<input class="rounded text-primary focus:ring-primary/20 border-primary/10" type="checkbox"/>
+<span class="text-sm text-slate-600 group-hover:text-primary transition-colors urdu-text">درمیانہ خطرہ</span>
+</label>
+<label class="flex items-center gap-3 cursor-pointer group">
+<input class="rounded text-primary focus:ring-primary/20 border-primary/10" type="checkbox"/>
+<span class="text-sm text-slate-600 group-hover:text-primary transition-colors urdu-text">محفوظ (Safe)</span>
+</label>
+</div>
+</div>
+<div class="h-[1px] bg-primary/5"></div>
+<div>
+<label class="block text-xs font-bold text-primary/60 uppercase mb-3 urdu-text">پیرامیٹرز</label>
+<div class="space-y-4">
+<div>
+<div class="flex justify-between text-[11px] font-bold mb-2">
+<span class="text-primary/60 urdu-text">کم از کم اسکور</span>
+<span class="text-primary">60%</span>
+</div>
+<input class="w-full h-1.5 bg-primary/10 rounded-lg appearance-none cursor-pointer accent-primary" type="range"/>
+</div>
+<div>
+<div class="flex justify-between text-[11px] font-bold mb-2">
+<span class="text-primary/60 urdu-text">عمارت کی اونچائی</span>
+<span class="text-primary">15+ منزلیں</span>
+</div>
+<input class="w-full h-1.5 bg-primary/10 rounded-lg appearance-none cursor-pointer accent-primary" type="range"/>
+</div>
+</div>
+</div>
+<button class="w-full bg-primary/5 text-primary font-bold py-3 rounded-xl hover:bg-primary/10 transition-all text-sm urdu-text">
+                            فلٹر اپ ڈیٹ کریں
+                        </button>
+</div>
+</div>
+<div class="bg-forest p-6 rounded-2xl text-white overflow-hidden relative">
+<div class="relative z-10">
+<h4 class="font-bold text-lg mb-2 urdu-text">رپورٹ ایکسپورٹ کریں</h4>
+<p class="text-white/60 text-xs mb-4 urdu-text">منتخب کردہ تمام عمارتوں کی حفاظتی رپورٹ پی ڈی ایف فارمیٹ میں ڈاؤن لوڈ کریں</p>
+<button class="bg-white/10 hover:bg-white/20 text-white w-full py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all">
+<span class="material-symbols-outlined text-lg">download</span>
+<span class="urdu-text">ڈاؤن لوڈ کریں</span>
+</button>
+</div>
+<span class="material-symbols-outlined absolute -bottom-4 -left-4 text-white/5 text-8xl rotate-12">description</span>
+</div>
+</aside>
+</div>
+</div>
+</main>
+<aside class="w-64 border-l border-primary/10 flex flex-col justify-between bg-white h-screen sticky top-0">
+<div class="p-6">
+<div class="flex items-center gap-3 mb-10">
+<div class="bg-primary size-10 rounded-lg flex items-center justify-center text-white">
+<span class="material-symbols-outlined">local_fire_department</span>
+</div>
+<div>
+<h1 class="text-primary text-lg font-bold leading-tight">Ignis Command</h1>
+<p class="text-primary/60 text-[10px] font-medium uppercase tracking-widest urdu-text">اعلیٰ سطحی ریسپانس</p>
+</div>
+</div>
+<nav class="space-y-2">
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-primary/70 hover:bg-primary/5 transition-all" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-medium text-sm urdu-text">ڈیش بورڈ</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-primary/70 hover:bg-primary/5 transition-all" href="#">
+<span class="material-symbols-outlined">map</span>
+<span class="font-medium text-sm urdu-text">لائیو نقشہ</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl bg-primary text-white shadow-lg shadow-primary/20 transition-all" href="#">
+<span class="material-symbols-outlined">apartment</span>
+<span class="font-medium text-sm urdu-text">عمارتوں کی فہرست</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-primary/70 hover:bg-primary/5 transition-all" href="#">
+<span class="material-symbols-outlined">group</span>
+<span class="font-medium text-sm urdu-text">اہلکار</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-primary/70 hover:bg-primary/5 transition-all" href="#">
+<span class="material-symbols-outlined">bar_chart</span>
+<span class="font-medium text-sm urdu-text">رپورٹس</span>
+</a>
+</nav>
+</div>
+<div class="p-6">
+<button class="w-full bg-red-600 hover:bg-red-700 text-white rounded-xl py-3 flex items-center justify-center gap-2 font-bold transition-colors shadow-lg shadow-red-600/20">
+<span class="material-symbols-outlined">emergency_share</span>
+<span class="urdu-text">ایمرجنسی ڈسپیچ</span>
+</button>
+</div>
+</aside>
+
+</body></html>

@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Ignis Command - Premium Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#1a3d35",
+                        "accent": "#FDFBF7",
+                        "background-light": "#FDFBF7",
+                        "background-dark": "#151d1b",
+                        "forest": "#1a3d35",
+                        "cream": "#FDFBF7",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #FDFBF7;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(26, 61, 53, 0.05);
+            box-shadow: 0 4px 6px -1px rgba(26, 61, 53, 0.05);
+        }
+        .pulse-red {
+            box-shadow: 0 0 0 0 rgba(231, 46, 8, 0.7);
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(231, 46, 8, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(231, 46, 8, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(231, 46, 8, 0); }
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen flex overflow-hidden">
+<!-- Sidebar Navigation -->
+<aside class="w-64 border-r border-primary/10 flex flex-col justify-between bg-white dark:bg-background-dark h-screen sticky top-0">
+<div class="p-6">
+<div class="flex items-center gap-3 mb-10">
+<div class="bg-primary size-10 rounded-lg flex items-center justify-center text-white">
+<span class="material-symbols-outlined">local_fire_department</span>
+</div>
+<div>
+<h1 class="text-primary dark:text-cream text-lg font-bold leading-tight">Ignis Command</h1>
+<p class="text-primary/60 dark:text-cream/60 text-xs font-medium uppercase tracking-widest">Elite Response</p>
+</div>
+</div>
+<nav class="space-y-2">
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl bg-primary text-white shadow-lg shadow-primary/20 transition-all" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-medium text-sm">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-primary/70 hover:bg-primary/5 transition-all" href="#">
+<span class="material-symbols-outlined">map</span>
+<span class="font-medium text-sm">Live Map</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-primary/70 hover:bg-primary/5 transition-all" href="#">
+<span class="material-symbols-outlined">group</span>
+<span class="font-medium text-sm">Personnel</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-primary/70 hover:bg-primary/5 transition-all" href="#">
+<span class="material-symbols-outlined">local_shipping</span>
+<span class="font-medium text-sm">Logistics</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-primary/70 hover:bg-primary/5 transition-all" href="#">
+<span class="material-symbols-outlined">bar_chart</span>
+<span class="font-medium text-sm">Reports</span>
+</a>
+</nav>
+</div>
+<div class="p-6">
+<button class="w-full bg-red-600 hover:bg-red-700 text-white rounded-xl py-3 flex items-center justify-center gap-2 font-bold transition-colors shadow-lg shadow-red-600/20">
+<span class="material-symbols-outlined">emergency_share</span>
+<span>Dispatch</span>
+</button>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col h-screen overflow-y-auto">
+<!-- Header -->
+<header class="flex items-center justify-between border-b border-primary/5 bg-white/50 dark:bg-background-dark/50 backdrop-blur-md px-8 py-4 sticky top-0 z-10">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-3">
+<div class="w-2.5 h-2.5 rounded-full bg-green-500"></div>
+<span class="text-primary font-semibold text-sm">System: Optimal</span>
+</div>
+<div class="flex items-center gap-3 text-primary/50">
+<span class="material-symbols-outlined text-lg">location_on</span>
+<span class="text-sm font-medium">GPS: Locked</span>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute left-3 text-primary/40">search</span>
+<input class="pl-10 pr-4 py-2 bg-primary/5 border-none rounded-full w-64 text-sm focus:ring-2 focus:ring-primary/20 placeholder:text-primary/30" placeholder="Search incidents, units..." type="text"/>
+</div>
+<div class="flex items-center gap-4">
+<button class="size-10 flex items-center justify-center bg-primary/5 rounded-full text-primary hover:bg-primary/10 relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-2 right-2 size-2 bg-red-500 rounded-full border-2 border-white"></span>
+</button>
+<button class="size-10 flex items-center justify-center bg-primary/5 rounded-full text-primary hover:bg-primary/10">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<div class="h-8 w-[1px] bg-primary/10 mx-2"></div>
+<div class="flex items-center gap-3">
+<div class="text-right">
+<p class="text-sm font-bold text-primary">Cmdr. Sterling</p>
+<p class="text-[10px] uppercase tracking-wider font-bold text-primary/50">Senior Director</p>
+</div>
+<div class="size-10 rounded-full bg-primary/10 overflow-hidden bg-cover bg-center border-2 border-primary/10" data-alt="Professional user profile avatar" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBTbTosSu5r1_wqmdmjxmxMqktoiRNihNJwtsZ73WHA7E7bZZorsMg83uiUpVxgpOVtWaYKdy82qGw0demtSG8dP8S48YcAt31xtXrkn8VISHB8ZWo3dbBggaqzu-2PsdxKO-snCaotprK_csWeFfFHbUxB8PLK--zpAYEU0kdrTka_nwwTAis1eIvt9gcRJPuS6XBLiPY3a8YI0oXuylxmu4bbO-WarE7OGLtVG7W2g_OkZ9lDAdBmjhy-DhZqRAuyVcy6L4BZh_s')"></div>
+</div>
+</div>
+</div>
+</header>
+<div class="p-8 space-y-8 max-w-[1400px] mx-auto w-full">
+<!-- Metrics Row -->
+<section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+<div class="glass-card p-6 rounded-2xl flex flex-col gap-3">
+<div class="flex items-center justify-between">
+<p class="text-primary/60 text-sm font-semibold uppercase tracking-wider">Active Alarms</p>
+<span class="material-symbols-outlined text-primary bg-primary/5 p-2 rounded-lg">campaign</span>
+</div>
+<p class="text-4xl font-bold text-primary">12</p>
+<div class="flex items-center gap-1 text-green-600 text-xs font-bold">
+<span class="material-symbols-outlined text-sm">trending_up</span>
+<span>+2% vs yesterday</span>
+</div>
+</div>
+<div class="glass-card p-6 rounded-2xl flex flex-col gap-3">
+<div class="flex items-center justify-between">
+<p class="text-primary/60 text-sm font-semibold uppercase tracking-wider">Personnel On-Site</p>
+<span class="material-symbols-outlined text-primary bg-primary/5 p-2 rounded-lg">groups</span>
+</div>
+<p class="text-4xl font-bold text-primary">148</p>
+<div class="flex items-center gap-1 text-red-600 text-xs font-bold">
+<span class="material-symbols-outlined text-sm">trending_down</span>
+<span>-5% current shift</span>
+</div>
+</div>
+<div class="glass-card p-6 rounded-2xl flex flex-col gap-3">
+<div class="flex items-center justify-between">
+<p class="text-primary/60 text-sm font-semibold uppercase tracking-wider">Resource Ready</p>
+<span class="material-symbols-outlined text-primary bg-primary/5 p-2 rounded-lg">inventory_2</span>
+</div>
+<p class="text-4xl font-bold text-primary">94%</p>
+<div class="flex items-center gap-1 text-green-600 text-xs font-bold">
+<span class="material-symbols-outlined text-sm">trending_up</span>
+<span>+1% optimized</span>
+</div>
+</div>
+<div class="glass-card p-6 rounded-2xl flex flex-col gap-3">
+<div class="flex items-center justify-between">
+<p class="text-primary/60 text-sm font-semibold uppercase tracking-wider">Avg Response</p>
+<span class="material-symbols-outlined text-primary bg-primary/5 p-2 rounded-lg">timer</span>
+</div>
+<p class="text-4xl font-bold text-primary">4m 12s</p>
+<div class="flex items-center gap-1 text-red-600 text-xs font-bold">
+<span class="material-symbols-outlined text-sm">trending_down</span>
+<span>-12% target efficiency</span>
+</div>
+</div>
+</section>
+<!-- Hero Critical Alarm -->
+<section>
+<div class="flex items-center justify-between mb-4">
+<h2 class="text-primary text-xl font-bold flex items-center gap-2">
+<span class="size-2 rounded-full bg-red-500 pulse-red"></span>
+                        Critical Priority Incident
+                    </h2>
+<a class="text-primary text-sm font-bold border-b border-primary" href="#">View Full Incident Queue</a>
+</div>
+<div class="bg-white rounded-3xl p-8 flex flex-col lg:flex-row gap-8 shadow-2xl shadow-primary/10 border border-primary/5">
+<div class="lg:w-1/3 h-64 lg:h-auto bg-cover bg-center rounded-2xl relative overflow-hidden" data-alt="Satellite map view of the emergency zone" data-location="Metropolis Central" style="background-image: url('https://placeholder.pics/svg/300')">
+<div class="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
+<div class="absolute bottom-4 left-4 bg-white/90 backdrop-blur rounded-lg px-3 py-1.5 flex items-center gap-2">
+<span class="material-symbols-outlined text-red-600 text-sm">location_on</span>
+<span class="text-xs font-bold text-slate-800">Sector 4 (Commercial)</span>
+</div>
+</div>
+<div class="flex-1 flex flex-col justify-between py-2">
+<div>
+<div class="flex items-center gap-3 mb-2">
+<span class="px-3 py-1 bg-red-100 text-red-700 text-[10px] font-bold uppercase tracking-widest rounded-full">Severity: Extreme</span>
+<span class="px-3 py-1 bg-orange-100 text-orange-700 text-[10px] font-bold uppercase tracking-widest rounded-full">Grade A Response</span>
+</div>
+<h3 class="text-3xl font-bold text-primary mb-3">Structure Fire - Central Plaza Complex</h3>
+<p class="text-slate-500 leading-relaxed max-w-2xl mb-6">
+                                Multiple alarms triggered in the North Wing. Structural integrity alert in B-block. 
+                                Heavy smoke reported on floors 4-7. Evacuation in progress. 
+                                <span class="font-bold text-primary">Units Assigned: Engine 42, Truck 18, Rescue 09.</span>
+</p>
+</div>
+<div class="flex flex-col md:flex-row items-center gap-8 border-t border-slate-100 pt-6">
+<div class="flex items-center gap-4">
+<div class="text-center px-4 border-r border-slate-100">
+<p class="text-[10px] text-slate-400 font-bold uppercase mb-1">Elapsed</p>
+<p class="text-lg font-bold text-primary tracking-tighter">08:42</p>
+</div>
+<div class="text-center px-4">
+<p class="text-[10px] text-slate-400 font-bold uppercase mb-1">Backup ETA</p>
+<p class="text-lg font-bold text-primary tracking-tighter">03m 15s</p>
+</div>
+</div>
+<div class="flex-1 w-full flex gap-3">
+<button class="flex-1 bg-primary text-white font-bold py-4 rounded-xl flex items-center justify-center gap-3 hover:bg-primary/90 transition-all shadow-xl shadow-primary/20">
+<span class="material-symbols-outlined">radiology</span>
+                                    Respond to Incident
+                                </button>
+<button class="bg-primary/5 text-primary font-bold px-6 rounded-xl hover:bg-primary/10 transition-all">
+<span class="material-symbols-outlined">share</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Active Feed -->
+<section class="pb-10">
+<div class="flex items-center justify-between mb-4">
+<h2 class="text-primary text-xl font-bold uppercase tracking-tight">Active Incident Feed</h2>
+<div class="flex gap-2">
+<button class="px-4 py-1.5 bg-primary/5 rounded-full text-xs font-bold text-primary border border-primary/10">All Units</button>
+<button class="px-4 py-1.5 bg-white rounded-full text-xs font-bold text-slate-400 border border-slate-100">Priority Only</button>
+</div>
+</div>
+<div class="overflow-hidden rounded-2xl border border-primary/5 bg-white">
+<table class="w-full text-left border-collapse">
+<thead class="bg-primary/5 border-b border-primary/5">
+<tr>
+<th class="px-6 py-4 text-[11px] font-bold text-primary uppercase tracking-widest">ID / Status</th>
+<th class="px-6 py-4 text-[11px] font-bold text-primary uppercase tracking-widest">Incident Details</th>
+<th class="px-6 py-4 text-[11px] font-bold text-primary uppercase tracking-widest">Resources</th>
+<th class="px-6 py-4 text-[11px] font-bold text-primary uppercase tracking-widest">Duration</th>
+<th class="px-6 py-4 text-[11px] font-bold text-primary uppercase tracking-widest text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-50">
+<tr class="hover:bg-primary/[0.02] transition-colors group">
+<td class="px-6 py-4">
+<div class="flex flex-col gap-1">
+<span class="text-xs font-bold text-slate-400">#4922-A</span>
+<span class="flex items-center gap-1.5 text-xs font-bold text-orange-600">
+<span class="size-1.5 rounded-full bg-orange-600"></span> EN ROUTE
+                                        </span>
+</div>
+</td>
+<td class="px-6 py-4">
+<p class="font-bold text-primary text-sm">Vegetation Fire - Oak Canyon</p>
+<p class="text-xs text-slate-500">2.5 acres involved, zero containment</p>
+</td>
+<td class="px-6 py-4">
+<div class="flex -space-x-2">
+<div class="size-7 rounded-full bg-slate-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-slate-600">B2</div>
+<div class="size-7 rounded-full bg-slate-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-slate-600">T4</div>
+<div class="size-7 rounded-full bg-primary/10 border-2 border-white flex items-center justify-center text-[10px] font-bold text-primary">+2</div>
+</div>
+</td>
+<td class="px-6 py-4">
+<span class="text-sm font-medium text-slate-600">42m 12s</span>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="text-primary hover:text-primary/70 material-symbols-outlined">more_vert</button>
+</td>
+</tr>
+<tr class="hover:bg-primary/[0.02] transition-colors group">
+<td class="px-6 py-4">
+<div class="flex flex-col gap-1">
+<span class="text-xs font-bold text-slate-400">#4921-X</span>
+<span class="flex items-center gap-1.5 text-xs font-bold text-green-600">
+<span class="size-1.5 rounded-full bg-green-600"></span> STAGED
+                                        </span>
+</div>
+</td>
+<td class="px-6 py-4">
+<p class="font-bold text-primary text-sm">Gas Leak Report - Industrial Park</p>
+<p class="text-xs text-slate-500">Hazmat unit 02 on site, isolation successful</p>
+</td>
+<td class="px-6 py-4">
+<div class="flex -space-x-2">
+<div class="size-7 rounded-full bg-slate-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-slate-600">H2</div>
+</div>
+</td>
+<td class="px-6 py-4">
+<span class="text-sm font-medium text-slate-600">01h 12m</span>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="text-primary hover:text-primary/70 material-symbols-outlined">more_vert</button>
+</td>
+</tr>
+<tr class="hover:bg-primary/[0.02] transition-colors group">
+<td class="px-6 py-4">
+<div class="flex flex-col gap-1">
+<span class="text-xs font-bold text-slate-400">#4920-R</span>
+<span class="flex items-center gap-1.5 text-xs font-bold text-blue-600">
+<span class="size-1.5 rounded-full bg-blue-600"></span> CLEARING
+                                        </span>
+</div>
+</td>
+<td class="px-6 py-4">
+<p class="font-bold text-primary text-sm">Medical Assist - Residential</p>
+<p class="text-xs text-slate-500">Patient stabilized and transported</p>
+</td>
+<td class="px-6 py-4">
+<div class="flex -space-x-2">
+<div class="size-7 rounded-full bg-slate-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-slate-600">M1</div>
+<div class="size-7 rounded-full bg-slate-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-slate-600">R2</div>
+</div>
+</td>
+<td class="px-6 py-4">
+<span class="text-sm font-medium text-slate-600">22m 04s</span>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="text-primary hover:text-primary/70 material-symbols-outlined">more_vert</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</div>
+</main>
+</body></html>

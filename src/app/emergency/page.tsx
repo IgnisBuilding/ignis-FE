@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '../../../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import PageTransition from '@/components/shared/pageTransition';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Flame, User as UserIcon, MessageCircle, X, AlertTriangle, Shield, Users } from 'lucide-react';
@@ -37,12 +37,9 @@ export default function EmergencyPage() {
     "Emergency services on standby."
   ]);
 
-  // Temporarily disabled login check
-  // useEffect(() => {
-  //   if (!isAuthenticated) {
-  //     router.push('/login');
-  //   }
-  // }, [isAuthenticated, router]);
+  useEffect(() => {
+    // No redirect needed - let ProtectedRoute handle it if needed
+  }, [isAuthenticated]);
 
   // Handle emergency state changes from map
   const handleEmergencyStateChange = useCallback((state: EmergencyState) => {

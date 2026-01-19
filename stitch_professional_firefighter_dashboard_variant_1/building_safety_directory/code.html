@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Building Safety Directory | Ignis Command</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#1a3d35",
+                        "background-light": "#f6f7f7",
+                        "background-dark": "#151d1b",
+                        "cream-bg": "#f9fbfa",
+                        "muted-teal": "#60857d",
+                        "border-teal": "#eaf0ef"
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            vertical-align: middle;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-primary">
+<div class="relative flex min-h-screen w-full flex-col overflow-x-hidden">
+<!-- Header / TopNavBar -->
+<header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-border-teal bg-cream-bg px-10 py-3 dark:bg-background-dark dark:border-primary/20">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-4 text-primary dark:text-white">
+<div class="size-6 text-primary dark:text-white flex items-center justify-center">
+<span class="material-symbols-outlined text-3xl">local_fire_department</span>
+</div>
+<h2 class="text-primary dark:text-white text-lg font-bold leading-tight tracking-[-0.015em]">Ignis Command</h2>
+</div>
+<nav class="flex items-center gap-9">
+<a class="text-muted-teal hover:text-primary dark:hover:text-white text-sm font-medium leading-normal transition-colors" href="#">Dashboard</a>
+<a class="text-primary dark:text-white border-b-2 border-primary text-sm font-bold leading-normal pb-1" href="#">Buildings</a>
+<a class="text-muted-teal hover:text-primary dark:hover:text-white text-sm font-medium leading-normal transition-colors" href="#">Incidents</a>
+<a class="text-muted-teal hover:text-primary dark:hover:text-white text-sm font-medium leading-normal transition-colors" href="#">Resources</a>
+<a class="text-muted-teal hover:text-primary dark:hover:text-white text-sm font-medium leading-normal transition-colors" href="#">Reports</a>
+</nav>
+</div>
+<div class="flex flex-1 justify-end gap-6 items-center">
+<label class="flex flex-col min-w-40 h-9 max-w-64">
+<div class="flex w-full flex-1 items-stretch rounded-lg h-full">
+<div class="text-muted-teal flex border-none bg-border-teal dark:bg-primary/20 items-center justify-center pl-3 rounded-l-lg">
+<span class="material-symbols-outlined text-lg">search</span>
+</div>
+<input class="form-input flex w-full min-w-0 flex-1 border-none bg-border-teal dark:bg-primary/20 focus:ring-0 text-primary dark:text-white placeholder:text-muted-teal px-3 rounded-r-lg text-sm" placeholder="Search buildings..." value=""/>
+</div>
+</label>
+<div class="flex gap-3">
+<button class="flex h-9 items-center justify-center rounded-lg px-4 bg-primary text-white text-sm font-bold tracking-[0.015em] hover:bg-opacity-90 transition-all">
+<span class="truncate">Add Building</span>
+</button>
+<button class="flex size-9 items-center justify-center rounded-lg bg-border-teal dark:bg-primary/20 text-primary dark:text-white hover:bg-muted-teal/10 transition-colors">
+<span class="material-symbols-outlined text-lg">notifications</span>
+</button>
+<button class="flex size-9 items-center justify-center rounded-lg bg-border-teal dark:bg-primary/20 text-primary dark:text-white hover:bg-muted-teal/10 transition-colors">
+<span class="material-symbols-outlined text-lg">settings</span>
+</button>
+</div>
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-9 border border-border-teal" data-alt="User profile avatar for building commander" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuASIVOP3EHdUGCtiSVR9PYoFC62xzmwW__6kxeQL0Z3Va53pq-lzmpt-DEGc0AjnbtDH3g8JILj-qk9vCei0ZyQinzYcuvUpjzqj0eHKMqdhpT2f0cqKT89SLEhu0zJXYxXx7U9idPXmJvjHK63lyBgToFQSkVMo8OCpM8SmakaANSA7Te4nU3rUU35kmIlGhwJEMdKOGejV5FTHVGpt5zV0cQ4V8GghkijTnCk-WzkMCByX9uzNKs1ZYPV50wEJYuYIuoeYNC75Tc");'></div>
+</div>
+</header>
+<main class="flex flex-1 bg-cream-bg dark:bg-background-dark">
+<!-- SideNavBar (Directory Filters) -->
+<aside class="w-72 border-r border-border-teal dark:border-primary/20 p-6 flex flex-col justify-between bg-cream-bg dark:bg-background-dark shrink-0">
+<div class="flex flex-col gap-8">
+<div class="flex flex-col">
+<h1 class="text-primary dark:text-white text-base font-bold leading-normal">Directory Filters</h1>
+<p class="text-muted-teal text-xs font-normal leading-normal">Refine monitored building list</p>
+</div>
+<div class="flex flex-col gap-2">
+<div class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-primary text-white shadow-sm">
+<span class="material-symbols-outlined text-xl">map</span>
+<p class="text-sm font-semibold">Area Districts</p>
+</div>
+<div class="flex items-center gap-3 px-3 py-2.5 text-muted-teal hover:bg-border-teal dark:hover:bg-primary/10 rounded-lg cursor-pointer transition-colors">
+<span class="material-symbols-outlined text-xl">warning</span>
+<p class="text-sm font-medium">Risk Priority</p>
+</div>
+<div class="flex items-center gap-3 px-3 py-2.5 text-muted-teal hover:bg-border-teal dark:hover:bg-primary/10 rounded-lg cursor-pointer transition-colors">
+<span class="material-symbols-outlined text-xl">group</span>
+<p class="text-sm font-medium">Occupancy Range</p>
+</div>
+<div class="flex items-center gap-3 px-3 py-2.5 text-muted-teal hover:bg-border-teal dark:hover:bg-primary/10 rounded-lg cursor-pointer transition-colors">
+<span class="material-symbols-outlined text-xl">apartment</span>
+<p class="text-sm font-medium">Structure Type</p>
+</div>
+<div class="flex items-center gap-3 px-3 py-2.5 text-muted-teal hover:bg-border-teal dark:hover:bg-primary/10 rounded-lg cursor-pointer transition-colors">
+<span class="material-symbols-outlined text-xl">calendar_month</span>
+<p class="text-sm font-medium">Inspection Status</p>
+</div>
+</div>
+<div class="pt-6 border-t border-border-teal dark:border-primary/20">
+<h3 class="text-xs font-bold text-muted-teal uppercase tracking-widest mb-4">Saved Views</h3>
+<div class="flex flex-col gap-2">
+<div class="flex items-center justify-between text-sm text-primary dark:text-white px-3">
+<span>High-Rise Residential</span>
+<span class="text-[10px] bg-border-teal dark:bg-primary px-1.5 py-0.5 rounded">12</span>
+</div>
+<div class="flex items-center justify-between text-sm text-primary dark:text-white px-3">
+<span>Overdue Inspections</span>
+<span class="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded">04</span>
+</div>
+</div>
+</div>
+</div>
+<button class="flex w-full items-center justify-center gap-2 rounded-lg h-10 bg-border-teal dark:bg-primary/20 text-primary dark:text-white text-xs font-bold uppercase tracking-wider hover:bg-opacity-80 transition-all border border-primary/5">
+<span class="material-symbols-outlined text-sm">filter_alt_off</span>
+<span>Clear Filters</span>
+</button>
+</aside>
+<!-- Main Content Container -->
+<div class="flex-1 flex flex-col overflow-y-auto">
+<!-- PageHeading -->
+<div class="flex flex-wrap justify-between items-end gap-4 px-10 pt-8 pb-4">
+<div class="flex flex-col gap-1">
+<p class="text-primary dark:text-white text-3xl font-black leading-tight tracking-[-0.033em]">Building Safety Directory</p>
+<p class="text-muted-teal text-sm font-medium leading-normal">Managing safety protocols for 1,284 monitored complexes</p>
+</div>
+<div class="flex gap-3">
+<button class="flex h-10 items-center justify-center rounded-lg px-4 bg-border-teal dark:bg-primary/20 text-primary dark:text-white text-sm font-bold tracking-[0.015em] hover:bg-opacity-70 transition-all">
+<span class="material-symbols-outlined mr-2 text-lg">download</span>
+<span class="truncate">Export Report</span>
+</button>
+<button class="flex h-10 items-center justify-center rounded-lg px-4 bg-primary text-white text-sm font-bold tracking-[0.015em] hover:bg-opacity-90 shadow-md transition-all">
+<span class="material-symbols-outlined mr-2 text-lg">add_location</span>
+<span class="truncate">Register Facility</span>
+</button>
+</div>
+</div>
+<!-- Chips (Active Filters) -->
+<div class="flex gap-2 px-10 py-4 flex-wrap">
+<button class="flex h-7 items-center justify-center gap-2 rounded-full bg-border-teal dark:bg-primary/30 pl-3 pr-2 border border-primary/5">
+<p class="text-primary dark:text-white text-[11px] font-bold uppercase tracking-wider">North District</p>
+<span class="material-symbols-outlined text-sm">close</span>
+</button>
+<button class="flex h-7 items-center justify-center gap-2 rounded-full bg-border-teal dark:bg-primary/30 pl-3 pr-2 border border-primary/5">
+<p class="text-primary dark:text-white text-[11px] font-bold uppercase tracking-wider">Residential High-Rise</p>
+<span class="material-symbols-outlined text-sm">close</span>
+</button>
+<button class="flex h-7 items-center justify-center gap-2 rounded-full border border-dashed border-muted-teal px-3">
+<p class="text-muted-teal text-[11px] font-bold uppercase tracking-wider">Add District</p>
+<span class="material-symbols-outlined text-sm">add</span>
+</button>
+</div>
+<!-- Table Section -->
+<div class="px-10 py-2 pb-12">
+<div class="overflow-hidden rounded-xl border border-border-teal dark:border-primary/20 bg-white dark:bg-background-dark/50 shadow-sm">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-border-teal/50 dark:bg-primary/10 border-b border-border-teal dark:border-primary/20">
+<th class="px-6 py-4 text-primary dark:text-white text-xs font-bold uppercase tracking-wider w-[35%]">
+<div class="flex items-center gap-2">
+                                            Building Name
+                                            <span class="material-symbols-outlined text-xs">arrow_downward</span>
+</div>
+</th>
+<th class="px-6 py-4 text-primary dark:text-white text-xs font-bold uppercase tracking-wider">Occupancy</th>
+<th class="px-6 py-4 text-primary dark:text-white text-xs font-bold uppercase tracking-wider">Last Inspection</th>
+<th class="px-6 py-4 text-primary dark:text-white text-xs font-bold uppercase tracking-wider">Safety Score</th>
+<th class="px-6 py-4 text-primary dark:text-white text-xs font-bold uppercase tracking-wider text-right">Status</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-border-teal dark:divide-primary/10">
+<!-- Row 1 -->
+<tr class="hover:bg-border-teal/30 dark:hover:bg-primary/5 cursor-pointer transition-colors group">
+<td class="px-6 py-4">
+<div class="flex items-center gap-4">
+<div class="size-10 rounded bg-border-teal flex items-center justify-center dark:bg-primary/20">
+<span class="material-symbols-outlined text-primary dark:text-white">apartment</span>
+</div>
+<div>
+<p class="text-primary dark:text-white text-sm font-bold">Grandview Heights</p>
+<p class="text-muted-teal text-xs">1022 Marina Way, North District</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 text-muted-teal text-sm font-medium">
+                                        450 Residents
+                                    </td>
+<td class="px-6 py-4 text-muted-teal text-sm font-medium">
+                                        Oct 12, 2023
+                                    </td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="w-24 overflow-hidden rounded-full bg-border-teal dark:bg-primary/20 h-1.5">
+<div class="h-full bg-primary" style="width: 92%;"></div>
+</div>
+<p class="text-primary dark:text-white text-sm font-bold">92</p>
+</div>
+</td>
+<td class="px-6 py-4 text-right">
+<span class="inline-flex items-center rounded-full bg-green-100 dark:bg-green-900/30 px-2.5 py-0.5 text-xs font-bold text-green-700 dark:text-green-400">
+                                            CERTIFIED
+                                        </span>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-border-teal/30 dark:hover:bg-primary/5 cursor-pointer transition-colors group">
+<td class="px-6 py-4">
+<div class="flex items-center gap-4">
+<div class="size-10 rounded bg-border-teal flex items-center justify-center dark:bg-primary/20">
+<span class="material-symbols-outlined text-primary dark:text-white">corporate_fare</span>
+</div>
+<div>
+<p class="text-primary dark:text-white text-sm font-bold">The Meridian</p>
+<p class="text-muted-teal text-xs">404 Skyline Dr, North District</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 text-muted-teal text-sm font-medium">
+                                        820 Residents
+                                    </td>
+<td class="px-6 py-4 text-muted-teal text-sm font-medium">
+                                        Nov 05, 2023
+                                    </td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="w-24 overflow-hidden rounded-full bg-border-teal dark:bg-primary/20 h-1.5">
+<div class="h-full bg-primary/60" style="width: 78%;"></div>
+</div>
+<p class="text-primary dark:text-white text-sm font-bold">78</p>
+</div>
+</td>
+<td class="px-6 py-4 text-right">
+<span class="inline-flex items-center rounded-full bg-blue-100 dark:bg-blue-900/30 px-2.5 py-0.5 text-xs font-bold text-blue-700 dark:text-blue-400">
+                                            PENDING
+                                        </span>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-border-teal/30 dark:hover:bg-primary/5 cursor-pointer transition-colors group">
+<td class="px-6 py-4">
+<div class="flex items-center gap-4">
+<div class="size-10 rounded bg-red-50 flex items-center justify-center dark:bg-red-900/20">
+<span class="material-symbols-outlined text-red-600">emergency</span>
+</div>
+<div>
+<p class="text-primary dark:text-white text-sm font-bold">Oakwood Lofts</p>
+<p class="text-muted-teal text-xs">88 Forest Ave, East District</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 text-muted-teal text-sm font-medium">
+                                        120 Residents
+                                    </td>
+<td class="px-6 py-4 text-muted-teal text-sm font-medium">
+                                        Sep 28, 2023
+                                    </td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="w-24 overflow-hidden rounded-full bg-border-teal dark:bg-primary/20 h-1.5">
+<div class="h-full bg-red-500" style="width: 45%;"></div>
+</div>
+<p class="text-primary dark:text-white text-sm font-bold">45</p>
+</div>
+</td>
+<td class="px-6 py-4 text-right">
+<span class="inline-flex items-center rounded-full bg-red-100 dark:bg-red-900/30 px-2.5 py-0.5 text-xs font-bold text-red-700 dark:text-red-400">
+                                            AT RISK
+                                        </span>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="hover:bg-border-teal/30 dark:hover:bg-primary/5 cursor-pointer transition-colors group">
+<td class="px-6 py-4">
+<div class="flex items-center gap-4">
+<div class="size-10 rounded bg-border-teal flex items-center justify-center dark:bg-primary/20">
+<span class="material-symbols-outlined text-primary dark:text-white">location_city</span>
+</div>
+<div>
+<p class="text-primary dark:text-white text-sm font-bold">Harbor Plaza</p>
+<p class="text-muted-teal text-xs">22 Port St, Harbor District</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 text-muted-teal text-sm font-medium">
+                                        1,100 Residents
+                                    </td>
+<td class="px-6 py-4 text-muted-teal text-sm font-medium">
+                                        Dec 01, 2023
+                                    </td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="w-24 overflow-hidden rounded-full bg-border-teal dark:bg-primary/20 h-1.5">
+<div class="h-full bg-primary" style="width: 88%;"></div>
+</div>
+<p class="text-primary dark:text-white text-sm font-bold">88</p>
+</div>
+</td>
+<td class="px-6 py-4 text-right">
+<span class="inline-flex items-center rounded-full bg-green-100 dark:bg-green-900/30 px-2.5 py-0.5 text-xs font-bold text-green-700 dark:text-green-400">
+                                            CERTIFIED
+                                        </span>
+</td>
+</tr>
+<!-- Row 5 -->
+<tr class="hover:bg-border-teal/30 dark:hover:bg-primary/5 cursor-pointer transition-colors group">
+<td class="px-6 py-4">
+<div class="flex items-center gap-4">
+<div class="size-10 rounded bg-border-teal flex items-center justify-center dark:bg-primary/20">
+<span class="material-symbols-outlined text-primary dark:text-white">business</span>
+</div>
+<div>
+<p class="text-primary dark:text-white text-sm font-bold">Emerald Towers</p>
+<p class="text-muted-teal text-xs">71 Central Ave, Main District</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 text-muted-teal text-sm font-medium">
+                                        640 Residents
+                                    </td>
+<td class="px-6 py-4 text-muted-teal text-sm font-medium">
+                                        Oct 20, 2023
+                                    </td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="w-24 overflow-hidden rounded-full bg-border-teal dark:bg-primary/20 h-1.5">
+<div class="h-full bg-yellow-500" style="width: 62%;"></div>
+</div>
+<p class="text-primary dark:text-white text-sm font-bold">62</p>
+</div>
+</td>
+<td class="px-6 py-4 text-right">
+<span class="inline-flex items-center rounded-full bg-yellow-100 dark:bg-yellow-900/30 px-2.5 py-0.5 text-xs font-bold text-yellow-700 dark:text-yellow-400">
+                                            REVIEW REQ.
+                                        </span>
+</td>
+</tr>
+</tbody>
+</table>
+<!-- Pagination (Market Standard) -->
+<div class="flex items-center justify-between px-6 py-4 border-t border-border-teal dark:border-primary/20 bg-border-teal/20 dark:bg-primary/5">
+<p class="text-xs text-muted-teal font-medium">Showing <span class="text-primary dark:text-white font-bold">1 - 5</span> of 1,284 results</p>
+<div class="flex gap-1">
+<button class="flex size-8 items-center justify-center rounded border border-border-teal dark:border-primary/30 text-muted-teal hover:bg-white dark:hover:bg-primary/20">
+<span class="material-symbols-outlined text-sm">chevron_left</span>
+</button>
+<button class="flex size-8 items-center justify-center rounded bg-primary text-white text-xs font-bold">1</button>
+<button class="flex size-8 items-center justify-center rounded border border-border-teal dark:border-primary/30 text-muted-teal hover:bg-white dark:hover:bg-primary/20 text-xs font-bold">2</button>
+<button class="flex size-8 items-center justify-center rounded border border-border-teal dark:border-primary/30 text-muted-teal hover:bg-white dark:hover:bg-primary/20 text-xs font-bold">3</button>
+<span class="px-2 text-muted-teal">...</span>
+<button class="flex size-8 items-center justify-center rounded border border-border-teal dark:border-primary/30 text-muted-teal hover:bg-white dark:hover:bg-primary/20 text-xs font-bold">257</button>
+<button class="flex size-8 items-center justify-center rounded border border-border-teal dark:border-primary/30 text-muted-teal hover:bg-white dark:hover:bg-primary/20">
+<span class="material-symbols-outlined text-sm">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

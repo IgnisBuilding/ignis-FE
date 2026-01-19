@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Ignis | Responder Team Management</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#1a3d35",
+                        "background-light": "#f6f7f7",
+                        "background-dark": "#151d1b",
+                        "status-green": "#07882e",
+                        "status-red": "#e72e08",
+                        "status-gray": "#60857d",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen">
+<div class="layout-container flex flex-col min-h-screen">
+<!-- Top Navigation Bar -->
+<header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-primary/10 bg-white dark:bg-background-dark px-10 py-3 sticky top-0 z-50">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-4 text-primary dark:text-white">
+<div class="size-6 text-primary">
+<span class="material-symbols-outlined text-3xl">local_fire_department</span>
+</div>
+<h2 class="text-primary dark:text-white text-lg font-bold leading-tight tracking-[-0.015em]">Ignis</h2>
+</div>
+<nav class="flex items-center gap-9">
+<a class="text-primary/70 hover:text-primary dark:text-slate-400 dark:hover:text-white text-sm font-medium leading-normal" href="#">Dashboard</a>
+<a class="text-primary/70 hover:text-primary dark:text-slate-400 dark:hover:text-white text-sm font-medium leading-normal" href="#">Incidents</a>
+<a class="text-primary dark:text-white text-sm font-bold leading-normal border-b-2 border-primary" href="#">Teams</a>
+<a class="text-primary/70 hover:text-primary dark:text-slate-400 dark:hover:text-white text-sm font-medium leading-normal" href="#">Personnel</a>
+<a class="text-primary/70 hover:text-primary dark:text-slate-400 dark:hover:text-white text-sm font-medium leading-normal" href="#">Map</a>
+</nav>
+</div>
+<div class="flex flex-1 justify-end gap-6 items-center">
+<label class="flex flex-col min-w-40 !h-10 max-w-64">
+<div class="flex w-full flex-1 items-stretch rounded-lg h-full">
+<div class="text-primary/50 flex border-none bg-primary/5 items-center justify-center pl-4 rounded-l-lg border-r-0">
+<span class="material-symbols-outlined text-xl">search</span>
+</div>
+<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-primary focus:outline-0 focus:ring-0 border-none bg-primary/5 focus:border-none h-full placeholder:text-primary/50 px-4 rounded-l-none border-l-0 pl-2 text-sm font-normal" placeholder="Search teams..." value=""/>
+</div>
+</label>
+<div class="flex gap-2">
+<button class="flex items-center justify-center rounded-lg h-10 w-10 bg-primary/5 text-primary hover:bg-primary/10 transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="flex items-center justify-center rounded-lg h-10 w-10 bg-primary/5 text-primary hover:bg-primary/10 transition-colors">
+<span class="material-symbols-outlined">settings</span>
+</button>
+</div>
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 border-2 border-primary/10" data-alt="User avatar of command officer" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCuPuhiPeYHlCJxvO1L6WntfhwMNKpqohB6XoaJf3VfAsNboQO6PHJvdv1wcdgub0cLhDDlrz6d1oDxzT01uBgzxk68AEklLL5m2N4i-vCfT0NSYfKGKlvejHyJ4eIW9w0mKkZxwWq50M5sXpIIy06bOMtLdOStu58yjAyaUABK8BZvt7D6hBiO7vAJS9P9jRZUq8c9X3byZnDjZRl7TFt6BIQidKu9OcBF-Fm3pxQz9PR_-wyR4Ls2URPaqm9tno8N5yX6Jjy4Dkk");'></div>
+</div>
+</header>
+<main class="flex-1 max-w-[1280px] mx-auto w-full px-10 py-8">
+<!-- Breadcrumbs -->
+<div class="flex flex-wrap gap-2 mb-4">
+<a class="text-primary/60 text-sm font-medium hover:text-primary transition-colors" href="#">Ignis</a>
+<span class="text-primary/40 text-sm font-medium">/</span>
+<span class="text-primary dark:text-white text-sm font-semibold">Teams Management</span>
+</div>
+<!-- Page Heading -->
+<div class="flex flex-wrap justify-between items-end gap-3 mb-8">
+<div class="flex min-w-72 flex-col gap-2">
+<h1 class="text-primary dark:text-white text-4xl font-black leading-tight tracking-[-0.033em]">Responder Team Management</h1>
+<p class="text-primary/60 dark:text-slate-400 text-base font-normal leading-normal">Manage and allocate elite fire response units across sectors.</p>
+</div>
+<div class="flex gap-3">
+<button class="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-11 px-6 bg-primary/5 text-primary text-sm font-bold border border-primary/10 hover:bg-primary/10 transition-all">
+<span class="truncate">Export Report</span>
+</button>
+<button class="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-11 px-6 bg-primary text-white text-sm font-bold shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all">
+<span class="truncate">Schedule Shift</span>
+</button>
+</div>
+</div>
+<!-- Stats Overview -->
+<div class="flex flex-wrap gap-4 mb-10">
+<div class="flex min-w-[200px] flex-1 flex-col gap-2 rounded-xl p-6 bg-white dark:bg-primary/10 border border-primary/5 shadow-sm">
+<p class="text-primary/60 dark:text-slate-400 text-sm font-medium uppercase tracking-wider">Active Teams</p>
+<div class="flex items-baseline gap-2">
+<p class="text-primary dark:text-white text-3xl font-bold leading-tight">12</p>
+<span class="text-status-green text-sm font-semibold flex items-center"><span class="material-symbols-outlined text-sm">arrow_upward</span>5%</span>
+</div>
+</div>
+<div class="flex min-w-[200px] flex-1 flex-col gap-2 rounded-xl p-6 bg-white dark:bg-primary/10 border border-primary/5 shadow-sm">
+<p class="text-primary/60 dark:text-slate-400 text-sm font-medium uppercase tracking-wider">On-Duty Personnel</p>
+<div class="flex items-baseline gap-2">
+<p class="text-primary dark:text-white text-3xl font-bold leading-tight">42</p>
+<span class="text-status-green text-sm font-semibold flex items-center"><span class="material-symbols-outlined text-sm">arrow_upward</span>12%</span>
+</div>
+</div>
+<div class="flex min-w-[200px] flex-1 flex-col gap-2 rounded-xl p-6 bg-white dark:bg-primary/10 border border-primary/5 shadow-sm">
+<p class="text-primary/60 dark:text-slate-400 text-sm font-medium uppercase tracking-wider">Vehicles Active</p>
+<div class="flex items-baseline gap-2">
+<p class="text-primary dark:text-white text-3xl font-bold leading-tight">18</p>
+<span class="text-status-red text-sm font-semibold flex items-center"><span class="material-symbols-outlined text-sm">arrow_downward</span>2%</span>
+</div>
+</div>
+<div class="flex min-w-[200px] flex-1 flex-col gap-2 rounded-xl p-6 bg-white dark:bg-primary/10 border border-primary/5 shadow-sm">
+<p class="text-primary/60 dark:text-slate-400 text-sm font-medium uppercase tracking-wider">Available Capacity</p>
+<div class="flex items-baseline gap-2">
+<p class="text-primary dark:text-white text-3xl font-bold leading-tight">15%</p>
+<span class="text-primary/40 text-sm font-semibold">Steady</span>
+</div>
+</div>
+</div>
+<!-- Team Grid Sections -->
+<div class="space-y-12">
+<!-- Section 1: On-Duty (Responding) -->
+<div>
+<div class="flex items-center gap-3 mb-6">
+<h2 class="text-primary dark:text-white text-2xl font-bold">On-Duty: Responding</h2>
+<span class="px-2.5 py-0.5 rounded-full bg-status-red/10 text-status-red text-xs font-bold uppercase tracking-wider">Priority Alpha</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+<!-- Card 1 -->
+<div class="bg-white dark:bg-primary/5 border border-primary/5 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow group">
+<div class="flex justify-between items-start mb-4">
+<div class="flex items-center gap-3">
+<div class="size-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-2xl">groups</span>
+</div>
+<div>
+<h3 class="text-primary dark:text-white font-bold text-lg">Team Alpha</h3>
+<div class="flex items-center gap-1.5">
+<span class="size-2 rounded-full bg-status-red animate-pulse"></span>
+<p class="text-status-red text-xs font-bold uppercase">Responding</p>
+</div>
+</div>
+</div>
+<span class="text-primary/40 material-symbols-outlined cursor-pointer hover:text-primary transition-colors">more_vert</span>
+</div>
+<div class="bg-primary/5 rounded-lg p-3 mb-5 flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary/60 text-sm">local_fire_department</span>
+<span class="text-primary/80 dark:text-slate-300 text-sm font-medium tracking-tight leading-none">Ladder 12</span>
+</div>
+<span class="text-xs text-primary/40 font-bold uppercase">Unit ID: 402-A</span>
+</div>
+<div class="flex gap-3">
+<button class="flex-1 bg-primary text-white text-sm font-bold py-2.5 rounded-lg hover:bg-primary/90 transition-colors">Assign</button>
+<button class="flex-1 bg-white dark:bg-transparent border border-primary/20 text-primary dark:text-white text-sm font-bold py-2.5 rounded-lg hover:bg-primary/5 transition-colors">Contact</button>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="bg-white dark:bg-primary/5 border border-primary/5 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
+<div class="flex justify-between items-start mb-4">
+<div class="flex items-center gap-3">
+<div class="size-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-2xl">groups</span>
+</div>
+<div>
+<h3 class="text-primary dark:text-white font-bold text-lg">Team Sigma</h3>
+<div class="flex items-center gap-1.5">
+<span class="size-2 rounded-full bg-status-red animate-pulse"></span>
+<p class="text-status-red text-xs font-bold uppercase">Responding</p>
+</div>
+</div>
+</div>
+<span class="text-primary/40 material-symbols-outlined cursor-pointer">more_vert</span>
+</div>
+<div class="bg-primary/5 rounded-lg p-3 mb-5 flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary/60 text-sm">earth_engine</span>
+<span class="text-primary/80 dark:text-slate-300 text-sm font-medium tracking-tight leading-none">Engine 42</span>
+</div>
+<span class="text-xs text-primary/40 font-bold uppercase">Unit ID: 101-C</span>
+</div>
+<div class="flex gap-3">
+<button class="flex-1 bg-primary text-white text-sm font-bold py-2.5 rounded-lg hover:bg-primary/90 transition-colors">Assign</button>
+<button class="flex-1 bg-white dark:bg-transparent border border-primary/20 text-primary dark:text-white text-sm font-bold py-2.5 rounded-lg hover:bg-primary/5 transition-colors">Contact</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Section 2: On-Duty (Idle/Available) -->
+<div>
+<div class="flex items-center gap-3 mb-6 border-t border-primary/10 pt-10">
+<h2 class="text-primary dark:text-white text-2xl font-bold">On-Duty: Idle</h2>
+<span class="px-2.5 py-0.5 rounded-full bg-status-green/10 text-status-green text-xs font-bold uppercase tracking-wider">Ready for Deployment</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+<!-- Card 3 -->
+<div class="bg-white dark:bg-primary/5 border border-primary/5 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
+<div class="flex justify-between items-start mb-4">
+<div class="flex items-center gap-3">
+<div class="size-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-2xl">groups</span>
+</div>
+<div>
+<h3 class="text-primary dark:text-white font-bold text-lg">Team Delta</h3>
+<div class="flex items-center gap-1.5">
+<span class="size-2 rounded-full bg-status-green"></span>
+<p class="text-status-green text-xs font-bold uppercase">Idle</p>
+</div>
+</div>
+</div>
+<span class="text-primary/40 material-symbols-outlined cursor-pointer">more_vert</span>
+</div>
+<div class="bg-primary/5 rounded-lg p-3 mb-5 flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary/60 text-sm">airport_shuttle</span>
+<span class="text-primary/80 dark:text-slate-300 text-sm font-medium tracking-tight leading-none">Rescue 5</span>
+</div>
+<span class="text-xs text-primary/40 font-bold uppercase">Unit ID: 305-R</span>
+</div>
+<div class="flex gap-3">
+<button class="flex-1 bg-primary text-white text-sm font-bold py-2.5 rounded-lg hover:bg-primary/90 transition-colors">Assign</button>
+<button class="flex-1 bg-white dark:bg-transparent border border-primary/20 text-primary dark:text-white text-sm font-bold py-2.5 rounded-lg hover:bg-primary/5 transition-colors">Contact</button>
+</div>
+</div>
+<!-- Card 4 -->
+<div class="bg-white dark:bg-primary/5 border border-primary/5 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
+<div class="flex justify-between items-start mb-4">
+<div class="flex items-center gap-3">
+<div class="size-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-2xl">groups</span>
+</div>
+<div>
+<h3 class="text-primary dark:text-white font-bold text-lg">Team Bravo</h3>
+<div class="flex items-center gap-1.5">
+<span class="size-2 rounded-full bg-status-green"></span>
+<p class="text-status-green text-xs font-bold uppercase">Idle</p>
+</div>
+</div>
+</div>
+<span class="text-primary/40 material-symbols-outlined cursor-pointer">more_vert</span>
+</div>
+<div class="bg-primary/5 rounded-lg p-3 mb-5 flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary/60 text-sm">local_fire_department</span>
+<span class="text-primary/80 dark:text-slate-300 text-sm font-medium tracking-tight leading-none">Engine 08</span>
+</div>
+<span class="text-xs text-primary/40 font-bold uppercase">Unit ID: 108-E</span>
+</div>
+<div class="flex gap-3">
+<button class="flex-1 bg-primary text-white text-sm font-bold py-2.5 rounded-lg hover:bg-primary/90 transition-colors">Assign</button>
+<button class="flex-1 bg-white dark:bg-transparent border border-primary/20 text-primary dark:text-white text-sm font-bold py-2.5 rounded-lg hover:bg-primary/5 transition-colors">Contact</button>
+</div>
+</div>
+<!-- Card 5 -->
+<div class="bg-white dark:bg-primary/5 border border-primary/5 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
+<div class="flex justify-between items-start mb-4">
+<div class="flex items-center gap-3">
+<div class="size-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-2xl">groups</span>
+</div>
+<div>
+<h3 class="text-primary dark:text-white font-bold text-lg">Team Zulu</h3>
+<div class="flex items-center gap-1.5">
+<span class="size-2 rounded-full bg-status-green"></span>
+<p class="text-status-green text-xs font-bold uppercase">Idle</p>
+</div>
+</div>
+</div>
+<span class="text-primary/40 material-symbols-outlined cursor-pointer">more_vert</span>
+</div>
+<div class="bg-primary/5 rounded-lg p-3 mb-5 flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary/60 text-sm">local_fire_department</span>
+<span class="text-primary/80 dark:text-slate-300 text-sm font-medium tracking-tight leading-none">Ladder 01</span>
+</div>
+<span class="text-xs text-primary/40 font-bold uppercase">Unit ID: 401-A</span>
+</div>
+<div class="flex gap-3">
+<button class="flex-1 bg-primary text-white text-sm font-bold py-2.5 rounded-lg hover:bg-primary/90 transition-colors">Assign</button>
+<button class="flex-1 bg-white dark:bg-transparent border border-primary/20 text-primary dark:text-white text-sm font-bold py-2.5 rounded-lg hover:bg-primary/5 transition-colors">Contact</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Section 3: Offline -->
+<div>
+<div class="flex items-center gap-3 mb-6 border-t border-primary/10 pt-10">
+<h2 class="text-primary dark:text-white text-2xl font-bold">Offline / Maintenance</h2>
+<span class="px-2.5 py-0.5 rounded-full bg-status-gray/10 text-status-gray text-xs font-bold uppercase tracking-wider">Shift Ended</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+<!-- Card 6 -->
+<div class="bg-primary/5 border border-primary/10 rounded-xl p-5 opacity-70 grayscale-[0.5]">
+<div class="flex justify-between items-start mb-4">
+<div class="flex items-center gap-3">
+<div class="size-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-2xl">groups</span>
+</div>
+<div>
+<h3 class="text-primary dark:text-white font-bold text-lg">Team Kilo</h3>
+<div class="flex items-center gap-1.5">
+<span class="size-2 rounded-full bg-status-gray"></span>
+<p class="text-status-gray text-xs font-bold uppercase">Offline</p>
+</div>
+</div>
+</div>
+</div>
+<div class="bg-primary/5 rounded-lg p-3 mb-5 flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary/40 text-sm">engineering</span>
+<span class="text-primary/40 text-sm font-medium tracking-tight leading-none italic">Unassigned</span>
+</div>
+</div>
+<div class="flex gap-3">
+<button class="flex-1 bg-primary/20 text-primary text-sm font-bold py-2.5 rounded-lg cursor-not-allowed">Activate</button>
+<button class="flex-1 border border-primary/10 text-primary/40 text-sm font-bold py-2.5 rounded-lg">View Logs</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Sidebar Floating Action (Optional Mobile Navigation Shortcut) -->
+<div class="fixed bottom-10 right-10 flex flex-col gap-4">
+<button class="size-14 rounded-full bg-primary text-white shadow-xl shadow-primary/30 flex items-center justify-center hover:scale-105 transition-transform">
+<span class="material-symbols-outlined text-3xl">add</span>
+</button>
+</div>
+</div>
+</body></html>

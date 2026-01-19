@@ -7,37 +7,34 @@ const config: Config = {
     './src/app/**/*.{js,ts,jsx,tsx,mdx}',
     './context/**/*.{js,ts,jsx,tsx,mdx}',
   ],
+  darkMode: 'class',
   theme: {
-    extend: {
       colors: {
-        cream: {
-          50: '#fefdf9',
-          100: '#fdf8f0',
-          200: '#faf0e0',
-          300: '#f5e6c8',
-          400: '#efd6a3',
-          500: '#e6c078',
-        },
-        'dark-green': {
-          50: '#f0f9f0',
-          100: '#dcf2dc',
-          200: '#a8d8a8',
-          300: '#6bb76b',
-          400: '#4a9c4a',
-          500: '#2d6b2d',
-          600: '#1e4a1e',
-          700: '#153a15',
-          800: '#0d2b0d',
-          900: '#051c05',
-        },
+        "primary": "#1a3d35",
+        "accent": "#FDFBF7",
+        "background-light": "#FDFBF7",
+        "background-dark": "#151d1b",
+        "forest": "#1a3d35",
+        "cream": "#FDFBF7",
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        "display": ["Inter", "sans-serif"],
+        "sans": ["Inter", "sans-serif"],
+      },
+      borderRadius: {
+        "DEFAULT": "0.25rem",
+        "lg": "0.5rem",
+        "xl": "0.75rem",
+        "full": "9999px",
+        "2xl": "1rem", // Kept from original, might be useful
+        "3xl": "1.5rem", // Kept from original
       },
       animation: {
         'pulse': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
       },
-    },
+      backdropBlur: {
+        xs: '2px',
+      },
   },
   plugins: [],
   future: {

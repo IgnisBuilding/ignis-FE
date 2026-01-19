@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html class="light" dir="rtl" lang="ur"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Ignis Command - ٹیم کا انتظام</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@300;400;500;600;700&amp;family=Inter:wght@400;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#1a3d35",
+                        "accent": "#FDFBF7",
+                        "background-light": "#FDFBF7",
+                        "forest": "#1a3d35",
+                        "cream": "#FDFBF7",
+                    },
+                    fontFamily: {
+                        "display": ["Noto Sans Arabic", "Inter", "sans-serif"]
+                    },
+                },
+            },
+        }
+    </script>
+<style type="text/tailwindcss">
+        @layer base {
+            body {
+                @apply bg-background-light font-display text-slate-900;
+            }
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(26, 61, 53, 0.08);
+            box-shadow: 0 4px 20px -4px rgba(26, 61, 53, 0.05);
+        }
+        .status-badge {
+            @apply px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex">
+<aside class="w-72 border-l border-primary/10 flex flex-col justify-between bg-white h-screen sticky top-0 z-20">
+<div class="p-8">
+<div class="flex items-center gap-4 mb-12">
+<div class="bg-primary size-12 rounded-xl flex items-center justify-center text-white shadow-lg shadow-primary/20">
+<span class="material-symbols-outlined text-3xl">local_fire_department</span>
+</div>
+<div>
+<h1 class="text-primary text-xl font-bold leading-tight">اگنس کمانڈ</h1>
+<p class="text-primary/60 text-[10px] font-bold uppercase tracking-[0.2em]">اعلیٰ سطحی ریسپانس</p>
+</div>
+</div>
+<nav class="space-y-3">
+<a class="flex items-center gap-4 px-5 py-4 rounded-2xl text-primary/70 hover:bg-primary/5 transition-all" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-bold text-sm">ڈیش بورڈ</span>
+</a>
+<a class="flex items-center gap-4 px-5 py-4 rounded-2xl text-primary/70 hover:bg-primary/5 transition-all" href="#">
+<span class="material-symbols-outlined">map</span>
+<span class="font-bold text-sm">لائیو میپ</span>
+</a>
+<a class="flex items-center gap-4 px-5 py-4 rounded-2xl bg-primary text-white shadow-xl shadow-primary/20 transition-all" href="#">
+<span class="material-symbols-outlined">group</span>
+<span class="font-bold text-sm">ٹیم کا انتظام</span>
+</a>
+<a class="flex items-center gap-4 px-5 py-4 rounded-2xl text-primary/70 hover:bg-primary/5 transition-all" href="#">
+<span class="material-symbols-outlined">local_shipping</span>
+<span class="font-bold text-sm">لاجسٹکس</span>
+</a>
+<a class="flex items-center gap-4 px-5 py-4 rounded-2xl text-primary/70 hover:bg-primary/5 transition-all" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-bold text-sm">رپورٹس</span>
+</a>
+</nav>
+</div>
+<div class="p-8">
+<button class="w-full bg-red-600 hover:bg-red-700 text-white rounded-2xl py-4 flex items-center justify-center gap-3 font-bold transition-all shadow-xl shadow-red-600/20">
+<span class="material-symbols-outlined">emergency_share</span>
+<span>فوری روانگی</span>
+</button>
+</div>
+</aside>
+<main class="flex-1 flex flex-col h-screen overflow-y-auto">
+<header class="flex items-center justify-between border-b border-primary/5 bg-white/80 backdrop-blur-md px-10 py-5 sticky top-0 z-10">
+<div class="flex items-center gap-10">
+<div class="flex items-center gap-3">
+<div class="size-2.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
+<span class="text-primary font-bold text-sm">سسٹم: فعال ہے</span>
+</div>
+<div class="flex items-center gap-3 text-primary/50">
+<span class="material-symbols-outlined text-xl">location_on</span>
+<span class="text-sm font-bold">مقام: ٹریک کیا جا رہا ہے</span>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-4">
+<button class="size-11 flex items-center justify-center bg-primary/5 rounded-full text-primary hover:bg-primary/10 transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<div class="h-8 w-px bg-primary/10 mx-2"></div>
+<div class="flex items-center gap-4">
+<div class="text-left">
+<p class="text-sm font-bold text-primary">کمانڈر اسٹرلنگ</p>
+<p class="text-[10px] uppercase tracking-wider font-bold text-primary/40">سینیئر ڈائریکٹر</p>
+</div>
+<div class="size-11 rounded-full bg-primary/10 overflow-hidden bg-cover bg-center border-2 border-primary/10 shadow-sm" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBTbTosSu5r1_wqmdmjxmxMqktoiRNihNJwtsZ73WHA7E7bZZorsMg83uiUpVxgpOVtWaYKdy82qGw0demtSG8dP8S48YcAt31xtXrkn8VISHB8ZWo3dbBggaqzu-2PsdxKO-snCaotprK_csWeFfFHbUxB8PLK--zpAYEU0kdrTka_nwwTAis1eIvt9gcRJPuS6XBLiPY3a8YI0oXuylxmu4bbO-WarE7OGLtVG7W2g_OkZ9lDAdBmjhy-DhZqRAuyVcy6L4BZh_s')"></div>
+</div>
+</div>
+</div>
+</header>
+<div class="p-10 space-y-10 max-w-[1600px] mx-auto w-full">
+<section class="flex flex-col md:flex-row md:items-end justify-between gap-6">
+<div>
+<h2 class="text-4xl font-bold text-primary mb-2">ٹیم مینیجمنٹ</h2>
+<p class="text-primary/60 font-medium">موجودہ شفٹ میں دستیاب اہلکار اور ان کی حالت</p>
+</div>
+<div class="flex gap-4">
+<div class="glass-card px-6 py-3 rounded-2xl flex items-center gap-4">
+<div class="size-2 rounded-full bg-green-500"></div>
+<div>
+<p class="text-[10px] text-primary/50 font-bold uppercase">دستیاب</p>
+<p class="text-lg font-bold text-primary">84</p>
+</div>
+</div>
+<div class="glass-card px-6 py-3 rounded-2xl flex items-center gap-4">
+<div class="size-2 rounded-full bg-orange-500"></div>
+<div>
+<p class="text-[10px] text-primary/50 font-bold uppercase">مصروف</p>
+<p class="text-lg font-bold text-primary">22</p>
+</div>
+</div>
+</div>
+</section>
+<section class="flex flex-wrap items-center justify-between gap-4">
+<div class="flex gap-2">
+<button class="px-6 py-2.5 bg-primary text-white rounded-full text-sm font-bold shadow-lg shadow-primary/20 transition-all">تمام اہلکار</button>
+<button class="px-6 py-2.5 bg-white text-primary/60 border border-primary/10 rounded-full text-sm font-bold hover:bg-primary/5 transition-all">فائر فائٹرز</button>
+<button class="px-6 py-2.5 bg-white text-primary/60 border border-primary/10 rounded-full text-sm font-bold hover:bg-primary/5 transition-all">میڈیکل ٹیم</button>
+<button class="px-6 py-2.5 bg-white text-primary/60 border border-primary/10 rounded-full text-sm font-bold hover:bg-primary/5 transition-all">تکنیکی ماہرین</button>
+</div>
+<div class="relative min-w-[320px]">
+<span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-primary/40">search</span>
+<input class="w-full pr-12 pl-4 py-3 bg-white border border-primary/10 rounded-2xl text-sm focus:ring-2 focus:ring-primary/20 placeholder:text-primary/30 outline-none" placeholder="اہلکار کا نام یا ID تلاش کریں..." type="text"/>
+</div>
+</section>
+<section class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
+<div class="glass-card p-6 rounded-[2rem] hover:shadow-2xl transition-all border border-primary/5 group">
+<div class="flex items-start justify-between mb-6">
+<div class="flex gap-4">
+<div class="size-16 rounded-2xl bg-primary/5 overflow-hidden border border-primary/10">
+<img alt="Personnel" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDEr6PvY90idiVHzWLl_wjYT89MqOkKosMSMknZIdmoXbaF1Kv_2UvyGSilT8qlN0w8ou84IK5FMOdT19bZp3CtgEBmIDYk2hZGd9ouc7hmpOvvXIvpcHpq4yJsyk51QbIrbmLgOC_wRvnjktUhb_leotyZwGhOCyRzqpyCOzCWED28tAhXT5NLpn7deBZT0xeiC9xB-Fj74E4_VAyHZSrafkwiMtqGNszAp25030Ke7uWVEhUkLatiUEtSzeQxkOWEoI260j6Um1k"/>
+</div>
+<div>
+<h4 class="font-bold text-primary text-lg">احمد فاروق</h4>
+<p class="text-xs font-bold text-primary/40">ID: #FF-8821</p>
+<p class="text-xs font-bold text-primary/70 mt-1">سینیئر فائر فائٹر</p>
+</div>
+</div>
+<span class="bg-green-100 text-green-700 status-badge">دستیاب</span>
+</div>
+<div class="grid grid-cols-2 gap-4 mb-6">
+<div class="bg-primary/5 p-3 rounded-xl">
+<p class="text-[10px] text-primary/40 font-bold uppercase mb-1">تجربہ</p>
+<p class="text-sm font-bold text-primary">8 سال</p>
+</div>
+<div class="bg-primary/5 p-3 rounded-xl">
+<p class="text-[10px] text-primary/40 font-bold uppercase mb-1">یونٹ</p>
+<p class="text-sm font-bold text-primary">انجن 42</p>
+</div>
+</div>
+<div class="flex gap-3">
+<button class="flex-1 bg-primary text-white font-bold py-3 rounded-xl text-sm hover:opacity-90 transition-all">مقرر کریں</button>
+<button class="px-4 py-3 bg-primary/5 text-primary rounded-xl hover:bg-primary/10 transition-all">
+<span class="material-symbols-outlined text-lg">chat</span>
+</button>
+</div>
+</div>
+<div class="glass-card p-6 rounded-[2rem] hover:shadow-2xl transition-all border border-primary/5 group">
+<div class="flex items-start justify-between mb-6">
+<div class="flex gap-4">
+<div class="size-16 rounded-2xl bg-primary/5 overflow-hidden border border-primary/10">
+<img alt="Personnel" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCDYvipaUo27c7QEKHNkUySt6qUzoS3YqdrCji2uG-zhL53P8brooipqQVTyVmRWVL3GhbcuXtYX-A4063zgMQSClEzp1o8MznXqqHQr-pVa4t60_Bxgp0GPG1QTkQUymaXP3HTgPtP9rgqpOnsUMDDiiKPiZJHR35DeuDXv1BrxRX6-wGzjKSx2dLUT_m_yfNcAAw1pf04pXZNDoBKQbLN9TjIAm1vILePlxdBeEpUKE-5it1CijYjNXq0Z2FQhzuRBUYH_N8K5hU"/>
+</div>
+<div>
+<h4 class="font-bold text-primary text-lg">سارہ خان</h4>
+<p class="text-xs font-bold text-primary/40">ID: #MD-3302</p>
+<p class="text-xs font-bold text-primary/70 mt-1">پیرامیڈک لیڈ</p>
+</div>
+</div>
+<span class="bg-orange-100 text-orange-700 status-badge">مصروف عمل</span>
+</div>
+<div class="grid grid-cols-2 gap-4 mb-6">
+<div class="bg-primary/5 p-3 rounded-xl">
+<p class="text-[10px] text-primary/40 font-bold uppercase mb-1">مقام</p>
+<p class="text-sm font-bold text-primary">سیکٹر 4</p>
+</div>
+<div class="bg-primary/5 p-3 rounded-xl">
+<p class="text-[10px] text-primary/40 font-bold uppercase mb-1">یونٹ</p>
+<p class="text-sm font-bold text-primary">ایمبولینس 09</p>
+</div>
+</div>
+<div class="flex gap-3">
+<button class="flex-1 bg-primary/10 text-primary/40 font-bold py-3 rounded-xl text-sm cursor-not-allowed">مصروف ہے</button>
+<button class="px-4 py-3 bg-primary/5 text-primary rounded-xl hover:bg-primary/10 transition-all">
+<span class="material-symbols-outlined text-lg">call</span>
+</button>
+</div>
+</div>
+<div class="glass-card p-6 rounded-[2rem] hover:shadow-2xl transition-all border border-primary/5 group">
+<div class="flex items-start justify-between mb-6">
+<div class="flex gap-4">
+<div class="size-16 rounded-2xl bg-primary/5 overflow-hidden border border-primary/10">
+<img alt="Personnel" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCivzJeLFvX9MYwBzaMTevKF7sr3gUhODhwp5bziEbtvH5Fga6iloOQajRMYaMO1mlA0Ske59d6pHcXEqduv22UAUMTPb8t1NFKxEjGITanEHNrqJWLlh8kvFsXfQzOqX1d4qJVQzlylbV6v1QJKzM1q3s1rJiYISG_vdBGIqAENQySO2Q5s50F0dvMXQmNOdK_7VC0Nv6VaSgC8RyFZKvZGQSCTIG11VTMI26juy5BmFJchxaMwwhka5F9YWQcvEXPILTjF9WH8bU"/>
+</div>
+<div>
+<h4 class="font-bold text-primary text-lg">عثمان علی</h4>
+<p class="text-xs font-bold text-primary/40">ID: #FF-9942</p>
+<p class="text-xs font-bold text-primary/70 mt-1">فائر فائٹر</p>
+</div>
+</div>
+<span class="bg-green-100 text-green-700 status-badge">دستیاب</span>
+</div>
+<div class="grid grid-cols-2 gap-4 mb-6">
+<div class="bg-primary/5 p-3 rounded-xl">
+<p class="text-[10px] text-primary/40 font-bold uppercase mb-1">تجربہ</p>
+<p class="text-sm font-bold text-primary">5 سال</p>
+</div>
+<div class="bg-primary/5 p-3 rounded-xl">
+<p class="text-[10px] text-primary/40 font-bold uppercase mb-1">یونٹ</p>
+<p class="text-sm font-bold text-primary">ٹرک 18</p>
+</div>
+</div>
+<div class="flex gap-3">
+<button class="flex-1 bg-primary text-white font-bold py-3 rounded-xl text-sm hover:opacity-90 transition-all">مقرر کریں</button>
+<button class="px-4 py-3 bg-primary/5 text-primary rounded-xl hover:bg-primary/10 transition-all">
+<span class="material-symbols-outlined text-lg">chat</span>
+</button>
+</div>
+</div>
+<div class="glass-card p-6 rounded-[2rem] hover:shadow-2xl transition-all border border-primary/5 group">
+<div class="flex items-start justify-between mb-6">
+<div class="flex gap-4">
+<div class="size-16 rounded-2xl bg-primary/5 overflow-hidden border border-primary/10">
+<img alt="Personnel" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBI82IQxShoepL52rPMyAF2oYdDHjbSkZT68qeN-jyvj-ywSQ8chIt-BXigtmjCeT3DX17qRtaEuK48TjLRgeS5CdiwyUtUH_s8xgY4Sf8HYZO7czGNOwfmR8PBzOKnJsmKkVWGyftWKUPzxnRQ-ozx_f3TmtfFGgLpB5it4Zr6sHHyenGBuVfBmdZDq3JLnq49zqz7cTZUp37EtyeAuuGZT-L0UWal2bwsS2Otg9uiHE9Dt7_Dd3JRhdv3fUDTUE3R2ATQyjnDbwE"/>
+</div>
+<div>
+<h4 class="font-bold text-primary text-lg">فاطمہ زہرا</h4>
+<p class="text-xs font-bold text-primary/40">ID: #HZ-1104</p>
+<p class="text-xs font-bold text-primary/70 mt-1">ہزارڈ ایکسپرٹ</p>
+</div>
+</div>
+<span class="bg-slate-100 text-slate-500 status-badge">آف ڈیوٹی</span>
+</div>
+<div class="grid grid-cols-2 gap-4 mb-6">
+<div class="bg-primary/5 p-3 rounded-xl">
+<p class="text-[10px] text-primary/40 font-bold uppercase mb-1">واپسی</p>
+<p class="text-sm font-bold text-primary">08:00 AM</p>
+</div>
+<div class="bg-primary/5 p-3 rounded-xl">
+<p class="text-[10px] text-primary/40 font-bold uppercase mb-1">بیج</p>
+<p class="text-sm font-bold text-primary">گولڈ 1</p>
+</div>
+</div>
+<div class="flex gap-3">
+<button class="flex-1 bg-primary/10 text-primary/40 font-bold py-3 rounded-xl text-sm cursor-not-allowed">غیر دستیاب</button>
+<button class="px-4 py-3 bg-primary/5 text-primary rounded-xl hover:bg-primary/10 transition-all">
+<span class="material-symbols-outlined text-lg">history</span>
+</button>
+</div>
+</div>
+</section>
+<section class="pb-12">
+<div class="bg-white rounded-[2.5rem] p-8 border border-primary/5 shadow-2xl shadow-primary/5 flex flex-col lg:flex-row items-center gap-10">
+<div class="flex-1 space-y-6">
+<h3 class="text-2xl font-bold text-primary">آپریشنل زونز کی تقسیم</h3>
+<p class="text-primary/60 leading-relaxed">
+                        اہلکاروں کو ان کی مہارت اور موجودہ مقام کی بنیاد پر مختلف زونز میں تقسیم کیا گیا ہے۔ 
+                        فوری رسپانس کے لیے قریبی دستیاب ٹیم کا انتخاب کریں۔
+                    </p>
+<div class="space-y-4">
+<div class="flex items-center justify-between p-4 bg-primary/5 rounded-2xl">
+<span class="font-bold text-primary">سینٹرل پلازہ (زون اے)</span>
+<span class="text-sm font-bold text-primary">12 اہلکار تعینات</span>
+</div>
+<div class="flex items-center justify-between p-4 bg-primary/5 rounded-2xl">
+<span class="font-bold text-primary">انڈسٹریل پارک (زون بی)</span>
+<span class="text-sm font-bold text-primary">08 اہلکار تعینات</span>
+</div>
+</div>
+</div>
+<div class="w-full lg:w-1/2 h-64 bg-primary/5 rounded-[2rem] border border-primary/10 relative overflow-hidden">
+<img alt="Live Map" class="w-full h-full object-cover opacity-50" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCtpC2boFBv_U2aBJB4CP5j57nFeUoF1SFngNUw4Jk1gAIgDjeHFkYCkJISQxd-tT6-vpC-EPGXBOw_WRYVSK6IiVbCz6Ky66jf63TOFBTYyoK5Z2UmOehIcfB41gtSnOUoGFwx2u9ubAinFBx9MCwECocR2-L7EoevzMhVBelV0owPSTtWeDQhDGm4LGFtTS6KA9mcmdNqqjeG_qdeGDbDHEm4IndVc5Hy6yirtM9l-OzxGGAxQtixT-5vHvAWCWu6ia2fbhB052A"/>
+<div class="absolute inset-0 flex items-center justify-center">
+<button class="bg-primary text-white px-8 py-3 rounded-xl font-bold flex items-center gap-3 shadow-xl shadow-primary/30">
+<span class="material-symbols-outlined">map</span>
+                            پورے نقشے پر دیکھیں
+                        </button>
+</div>
+</div>
+</div>
+</section>
+</div>
+</main>
+
+</body></html>

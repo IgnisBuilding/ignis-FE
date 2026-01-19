@@ -2,9 +2,9 @@
 import { useState, useMemo, memo, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, Home, Users, Building, Flame, Activity, Bell, AlertTriangle, LogOut, Pencil } from 'lucide-react';
-import { useAuth } from '../../../context/AuthContext';
-import { UserRole } from '../../../types';
+import { Menu, X, Home, Users, Building, Flame, Activity, Bell, AlertTriangle, LogOut } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { UserRole } from '@/types';
 
 const Header = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -18,14 +18,13 @@ const Header = () => {
   const getRedirectPath = () => {
     if (role === "building_authority") return "/authority/dashboard";
     if (role === "firefighter") return "/firefighter";
-    if (role === "admin") return "/admin";
+    if (role === "management") return "/admin";
     if (role === "resident") return "/resident";
-    if (role === "manager") return "/resident";
     return "/login";
   };
 
   const getNavItems = useMemo(() => (userRole: UserRole | null) => {
-    if (userRole === 'building_authority' || userRole === 'admin') {
+    if (userRole === 'building_authority' || userRole === 'management') {
       return [
         { href: '/admin', label: 'Dashboard', icon: Home },
         { href: '/admin/residents', label: 'Residents', icon: Users },
@@ -35,7 +34,7 @@ const Header = () => {
         { href: '/emergency', label: 'Emergency', icon: AlertTriangle }
       ];
     }
-    if (userRole === 'resident' || userRole === 'manager') {
+    if (userRole === 'resident') {
       return [
         { href: '/resident', label: 'Dashboard', icon: Home },
         { href: '/resident/apartment', label: 'My Apartment', icon: Building },

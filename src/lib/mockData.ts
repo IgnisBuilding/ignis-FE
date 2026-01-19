@@ -1,4 +1,4 @@
-import { User, Resident, Sensor, Building, FireLocation, OccupantLocation, FireIncident, Alert, ApartmentInfo } from '../../types';
+import { User, Resident, Sensor, Building, FireLocation, OccupantLocation, FireIncident, Alert, ApartmentInfo } from '@/types';
 
 // Mock Users for Authentication
 export const mockUsers: User[] = [

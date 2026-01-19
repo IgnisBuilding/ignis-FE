@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Ignis - Advanced Incident Map View</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#1a3d35",
+                        "background-light": "#f6f7f7",
+                        "background-dark": "#151d1b",
+                        "cream-base": "#FDFBF7",
+                        "hazard-red": "#dc2626",
+                    },
+                    fontFamily: {
+                        "display": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        .map-mesh {
+            background-color: #f1f3f0;
+            background-image: 
+                radial-gradient(#d1d5db 1px, transparent 1px),
+                linear-gradient(to right, #e5e7eb 1px, transparent 1px),
+                linear-gradient(to bottom, #e5e7eb 1px, transparent 1px);
+            background-size: 40px 40px, 160px 160px, 160px 160px;
+        }
+        .pulse-red {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: .7; transform: scale(1.1); }
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-primary overflow-hidden h-screen flex flex-col">
+<!-- TopNavBar -->
+<header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-primary/10 bg-cream-base dark:bg-background-dark px-6 py-3 z-30 shadow-sm">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-3 text-primary dark:text-white">
+<div class="size-8 bg-primary rounded-lg flex items-center justify-center text-white">
+<span class="material-symbols-outlined !text-xl">local_fire_department</span>
+</div>
+<h2 class="text-primary dark:text-white text-xl font-bold leading-tight tracking-tight">Ignis Command</h2>
+</div>
+<label class="flex flex-col min-w-64 !h-10">
+<div class="flex w-full flex-1 items-stretch rounded-lg h-full">
+<div class="text-primary/60 flex border-none bg-primary/5 dark:bg-white/5 items-center justify-center pl-4 rounded-l-lg border-r-0">
+<span class="material-symbols-outlined">search</span>
+</div>
+<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-primary dark:text-white focus:outline-0 focus:ring-0 border-none bg-primary/5 dark:bg-white/5 focus:border-none h-full placeholder:text-primary/50 px-4 rounded-l-none border-l-0 pl-2 text-sm" placeholder="Search coordinates, units, or incidents..." value=""/>
+</div>
+</label>
+</div>
+<div class="flex flex-1 justify-end gap-4 items-center">
+<div class="flex gap-2">
+<button class="flex size-10 items-center justify-center rounded-lg bg-primary/5 dark:bg-white/10 text-primary dark:text-white">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="flex size-10 items-center justify-center rounded-lg bg-primary/5 dark:bg-white/10 text-primary dark:text-white">
+<span class="material-symbols-outlined">settings</span>
+</button>
+</div>
+<div class="h-8 w-px bg-primary/10 mx-2"></div>
+<div class="flex items-center gap-3">
+<div class="text-right">
+<p class="text-xs font-bold text-primary dark:text-white">Capt. Miller</p>
+<p class="text-[10px] text-primary/60 dark:text-white/60">Station 42 Chief</p>
+</div>
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 border-2 border-primary/20" data-alt="Portrait of a fire captain in uniform" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDYhqBpA3alpDV8wQFq_VM7ykpQwSNJlzI3CJvw47WYtls6w4ZHn8v3BrxudSQBlTJvBhRjV0IAnHBYWKkfQs9Uz2EN8UcRw0yCFMkasGC9GrKa-NzMdLAvq4_sQ5sNnVgiDn_Wq7d08OxSQl1AfyafLc-hbS3XjTjf7LQ57L9CQO65LWGxbf9j0buQiGRS0l-Ussd2m5ACNzV392NIFPmvUB88DEUF6-LZvvVXeLeqjukbi3lrzRrEBJtInDZ7y-0YteiqaNjk9uM");'></div>
+</div>
+</div>
+</header>
+<main class="relative flex-1 flex overflow-hidden">
+<!-- Floating Left Sidebar (Incident List) -->
+<aside class="absolute left-4 top-4 bottom-4 w-72 z-20 flex flex-col gap-3 pointer-events-none">
+<div class="bg-cream-base/90 dark:bg-background-dark/95 backdrop-blur-md rounded-xl border border-primary/10 shadow-xl pointer-events-auto overflow-hidden flex flex-col flex-1">
+<div class="p-4 border-b border-primary/10 flex justify-between items-center bg-primary text-white">
+<h3 class="font-bold text-sm tracking-wide uppercase">Active Incidents</h3>
+<span class="bg-hazard-red text-[10px] px-2 py-0.5 rounded-full font-bold">4 ALERT</span>
+</div>
+<div class="flex-1 overflow-y-auto p-2 space-y-2">
+<!-- Incident Card 1 -->
+<div class="p-3 rounded-lg border border-hazard-red/20 bg-hazard-red/5 hover:bg-hazard-red/10 cursor-pointer transition-colors group">
+<div class="flex justify-between items-start mb-1">
+<span class="text-[10px] font-bold text-hazard-red uppercase tracking-widest">Priority 1</span>
+<span class="text-[10px] text-primary/40 font-mono">#402-A</span>
+</div>
+<h4 class="font-bold text-sm text-primary dark:text-white leading-tight">Warehouse Fire - Pier 15</h4>
+<p class="text-xs text-primary/60 dark:text-white/60 mt-1">4 Units Assigned • 12m elapsed</p>
+</div>
+<!-- Incident Card 2 -->
+<div class="p-3 rounded-lg border border-primary/10 bg-white dark:bg-white/5 hover:bg-primary/5 cursor-pointer transition-colors">
+<div class="flex justify-between items-start mb-1">
+<span class="text-[10px] font-bold text-amber-600 uppercase tracking-widest">Priority 2</span>
+<span class="text-[10px] text-primary/40 font-mono">#388-C</span>
+</div>
+<h4 class="font-bold text-sm text-primary dark:text-white leading-tight">Brush Fire - North Trail</h4>
+<p class="text-xs text-primary/60 dark:text-white/60 mt-1">2 Units Assigned • 45m elapsed</p>
+</div>
+<!-- Incident Card 3 -->
+<div class="p-3 rounded-lg border border-primary/10 bg-white dark:bg-white/5 hover:bg-primary/5 cursor-pointer transition-colors">
+<div class="flex justify-between items-start mb-1">
+<span class="text-[10px] font-bold text-primary/60 uppercase tracking-widest">Priority 3</span>
+<span class="text-[10px] text-primary/40 font-mono">#415-F</span>
+</div>
+<h4 class="font-bold text-sm text-primary dark:text-white leading-tight">Structure Check - 5th Ave</h4>
+<p class="text-xs text-primary/60 dark:text-white/60 mt-1">1 Unit En Route • 3m elapsed</p>
+</div>
+</div>
+<div class="p-3 bg-primary/5 border-t border-primary/10">
+<button class="w-full flex items-center justify-center gap-2 py-2 bg-primary text-white rounded-lg text-xs font-bold">
+<span class="material-symbols-outlined !text-sm">add</span>
+                        New Dispatch
+                    </button>
+</div>
+</div>
+<!-- Sensor Summary Stats -->
+<div class="bg-cream-base/90 dark:bg-background-dark/95 backdrop-blur-md rounded-xl border border-primary/10 shadow-lg pointer-events-auto p-3">
+<div class="flex items-center gap-3">
+<div class="size-8 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-700">
+<span class="material-symbols-outlined !text-lg">sensors</span>
+</div>
+<div>
+<p class="text-[10px] uppercase font-bold text-primary/40">Sensor Network</p>
+<p class="text-xs font-bold text-primary dark:text-white">124 Nodes Online <span class="text-green-600 ml-1">●</span></p>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Map Area -->
+<div class="relative flex-1 w-full h-full bg-[#f1f3f0] map-mesh overflow-hidden">
+<!-- Simulated Map Elements -->
+<div class="absolute inset-0 z-0">
+<div class="absolute inset-0 opacity-20" data-location="San Francisco Bay Area" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuChGSvi0cZ-v_57IuG1a-qXM6he60oH1I9eJDolR4U07ERs93MMWdcvHXxVPcB17DuJHVMjxYx31iQgDffIHrG44hxdsinZxMm384MRv9v-Za1tKhbLroK4KhsjXrIJuGhxOtl4NIYh7EYJWKjL6Spk9A97JBEuwbGUMNCe-JAtfLg3DGbTvLLSetYyLIVjKE41T_rvAGlgY__1FxOT50NVzht4Vpx4dGYApRnjSiB9LkstxFCh4_IFpoX5tByLaIAKNIiwVpoweWQ"); background-size: cover;'></div>
+<!-- Map Marker: Active Fire (Pulsing) -->
+<div class="absolute top-[35%] left-[55%] z-10">
+<div class="relative flex items-center justify-center">
+<div class="absolute size-16 bg-hazard-red/20 rounded-full pulse-red"></div>
+<div class="absolute size-8 bg-hazard-red/40 rounded-full pulse-red" style="animation-delay: 0.5s"></div>
+<div class="size-6 bg-hazard-red text-white rounded-full flex items-center justify-center shadow-lg cursor-pointer">
+<span class="material-symbols-outlined !text-sm">local_fire_department</span>
+</div>
+<!-- Marker Tooltip -->
+<div class="absolute bottom-full mb-3 bg-white dark:bg-background-dark p-3 rounded-lg shadow-xl border border-primary/10 w-48 pointer-events-none">
+<p class="text-[10px] font-bold text-hazard-red uppercase">Extreme Hazard</p>
+<h5 class="text-sm font-bold text-primary dark:text-white">Warehouse 15</h5>
+<div class="flex justify-between mt-2 text-[10px] text-primary/60 dark:text-white/60">
+<span>Temp: 450°C</span>
+<span>Wind: 12km/h</span>
+</div>
+<div class="w-full bg-primary/10 h-1 mt-2 rounded-full overflow-hidden">
+<div class="bg-hazard-red h-full w-[85%]"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Map Marker: Sensor Nodes -->
+<div class="absolute top-[20%] left-[40%]">
+<div class="size-3 bg-green-500 rounded-full border-2 border-white shadow-sm cursor-pointer hover:scale-125 transition-transform"></div>
+</div>
+<div class="absolute top-[50%] left-[30%]">
+<div class="size-3 bg-green-500 rounded-full border-2 border-white shadow-sm cursor-pointer hover:scale-125 transition-transform"></div>
+</div>
+<div class="absolute top-[70%] left-[65%]">
+<div class="size-3 bg-green-500 rounded-full border-2 border-white shadow-sm cursor-pointer hover:scale-125 transition-transform"></div>
+</div>
+<div class="absolute top-[45%] left-[48%]">
+<div class="size-3 bg-amber-500 rounded-full border-2 border-white shadow-sm cursor-pointer hover:scale-125 transition-transform"></div>
+</div>
+</div>
+<!-- Bottom Right Controls -->
+<div class="absolute bottom-6 right-6 flex flex-col items-end gap-3 z-20">
+<!-- Layers Toggle -->
+<div class="bg-cream-base/90 dark:bg-background-dark/95 backdrop-blur-md rounded-xl border border-primary/10 shadow-xl overflow-hidden flex flex-col p-1">
+<button class="flex items-center gap-3 px-4 py-2.5 hover:bg-primary hover:text-white rounded-lg transition-colors group">
+<span class="material-symbols-outlined text-primary group-hover:text-white">layers</span>
+<span class="text-sm font-semibold pr-2">Map Layers</span>
+</button>
+<div class="h-px bg-primary/10 mx-2"></div>
+<div class="p-2 space-y-1">
+<label class="flex items-center gap-2 px-2 py-1.5 hover:bg-primary/5 rounded cursor-pointer">
+<input checked="" class="form-checkbox size-4 rounded text-primary border-primary/20 bg-transparent focus:ring-0" type="checkbox"/>
+<span class="text-xs font-medium">Thermal Heatmap</span>
+</label>
+<label class="flex items-center gap-2 px-2 py-1.5 hover:bg-primary/5 rounded cursor-pointer">
+<input class="form-checkbox size-4 rounded text-primary border-primary/20 bg-transparent focus:ring-0" type="checkbox"/>
+<span class="text-xs font-medium">Hydrant Network</span>
+</label>
+<label class="flex items-center gap-2 px-2 py-1.5 hover:bg-primary/5 rounded cursor-pointer">
+<input class="form-checkbox size-4 rounded text-primary border-primary/20 bg-transparent focus:ring-0" type="checkbox"/>
+<span class="text-xs font-medium">Floor Plans</span>
+</label>
+</div>
+</div>
+<!-- Navigation Controls -->
+<div class="flex flex-col gap-1 bg-cream-base dark:bg-background-dark rounded-lg border border-primary/10 shadow-lg overflow-hidden">
+<button class="p-2.5 hover:bg-primary/5 text-primary dark:text-white border-b border-primary/10">
+<span class="material-symbols-outlined !text-xl">add</span>
+</button>
+<button class="p-2.5 hover:bg-primary/5 text-primary dark:text-white border-b border-primary/10">
+<span class="material-symbols-outlined !text-xl">remove</span>
+</button>
+<button class="p-2.5 hover:bg-primary/5 text-primary dark:text-white">
+<span class="material-symbols-outlined !text-xl">near_me</span>
+</button>
+</div>
+<button class="flex size-11 items-center justify-center rounded-xl bg-primary text-white shadow-xl hover:scale-105 transition-transform">
+<span class="material-symbols-outlined">explore</span>
+</button>
+</div>
+<!-- Bottom Center ToolBar (Context Icons) -->
+<div class="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center bg-cream-base/90 dark:bg-background-dark/95 backdrop-blur-md rounded-2xl border border-primary/10 shadow-2xl px-2 py-1.5 gap-1 z-20">
+<button class="p-2 text-primary dark:text-white hover:bg-primary/10 rounded-xl transition-colors">
+<span class="material-symbols-outlined">home_repair_service</span>
+</button>
+<button class="p-2 text-primary dark:text-white hover:bg-primary/10 rounded-xl transition-colors">
+<span class="material-symbols-outlined">local_shipping</span>
+</button>
+<div class="h-6 w-px bg-primary/10 mx-1"></div>
+<button class="p-2 text-primary dark:text-white hover:bg-primary/10 rounded-xl transition-colors">
+<span class="material-symbols-outlined">history</span>
+</button>
+<button class="p-2 text-primary dark:text-white hover:bg-primary/10 rounded-xl transition-colors">
+<span class="material-symbols-outlined">assessment</span>
+</button>
+</div>
+</div>
+</main>
+</body></html>

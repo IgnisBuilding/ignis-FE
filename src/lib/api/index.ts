@@ -1,5 +1,5 @@
 // Central API configuration for NestJS backend (ignis-be)
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7000';
 
 // Type definitions
 export interface LoginResponse {
@@ -27,6 +27,10 @@ export interface Sensor {
   unit?: string;
   status: string;
   roomId?: number;
+  room?: {
+    id: number;
+    name: string;
+  };
   latitude?: number;
   longitude?: number;
   lastReading?: string;
@@ -47,6 +51,10 @@ export interface Resident {
   email: string;
   phone?: string;
   apartmentId?: number;
+  apartment?: {
+    id: number;
+    unit_number: string;
+  };
   type: string;
   isActive: boolean;
   emergencyContact?: string;

@@ -1,7 +1,7 @@
 'use client';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 
 export default function HomePage() {
   const router = useRouter();
@@ -12,7 +12,7 @@ export default function HomePage() {
       router.replace('/login');
     } else {
       // Redirect to role-specific dashboard
-      if (role === 'building_authority') {
+      if (role === 'building_authority' || role === 'management') {
         router.replace('/admin');
       } else if (role === 'resident') {
         router.replace('/resident');

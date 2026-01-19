@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '../../../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -24,7 +24,7 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
     if (allowedRoles && role && !allowedRoles.includes(role)) {
       // Redirect to appropriate dashboard
       const dashboardRoute = 
-        role === 'admin' ? '/admin' :
+        role === 'management' ? '/admin' :
         role === 'firefighter' ? '/firefighter' :
         '/resident';
       router.push(dashboardRoute);

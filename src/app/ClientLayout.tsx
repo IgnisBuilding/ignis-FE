@@ -1,6 +1,6 @@
 'use client';
-import { AuthProvider } from '../../context/AuthContext';
-import Header from '@/components/shared/Header';
+
+import { AuthProvider } from '@/context/AuthContext';
 
 export default function ClientLayout({
   children,
@@ -9,8 +9,7 @@ export default function ClientLayout({
 }) {
   return (
     <AuthProvider>
-      <Header />
-      <main className="min-h-[calc(100vh-4rem)]">{children}</main>
+      {children}
     </AuthProvider>
   );
 }

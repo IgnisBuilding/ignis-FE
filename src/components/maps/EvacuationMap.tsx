@@ -139,6 +139,8 @@ const EvacuationMap = memo(({
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
 
+    console.log('🗺️  Initializing MapLibre instance...');
+
     const map = new maplibregl.Map({
       container: mapContainerRef.current,
       style: DEFAULT_MAP_CONFIG.style,
@@ -147,9 +149,11 @@ const EvacuationMap = memo(({
       minZoom: DEFAULT_MAP_CONFIG.minZoom,
       maxZoom: DEFAULT_MAP_CONFIG.maxZoom,
       attributionControl: false,
+      preserveDrawingBuffer: true,
     });
 
     mapRef.current = map;
+    console.log('✅ MapLibre instance created');
 
     map.on('load', async () => {
       try {
@@ -340,12 +344,15 @@ const EvacuationMap = memo(({
     });
 
     map.on('error', (e) => {
-      console.error('Map error:', e);
+      console.error('❌ Map error:', e);
     });
 
     return () => {
-      map.remove();
-      mapRef.current = null;
+      console.log('🧹 Cleaning up map instance');
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
     };
   }, [showControls, showNotification]);
 

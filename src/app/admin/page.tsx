@@ -1,6 +1,6 @@
 'use client';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '../../../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import PageTransition from '@/components/shared/pageTransition';
 import { motion } from 'framer-motion';
@@ -23,16 +23,16 @@ function AdminDashboardContent() {
       <div className="min-h-screen cream-gradient py-8 px-4 relative overflow-hidden">
         {/* Animated background elements */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <motion.div 
-            animate={{ 
+          <motion.div
+            animate={{
               scale: [1, 1.2, 1],
               rotate: [0, 90, 0],
             }}
             transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
             className="absolute -top-40 -right-40 w-96 h-96 bg-gradient-to-br from-dark-green-200/10 to-transparent rounded-full blur-3xl"
           />
-          <motion.div 
-            animate={{ 
+          <motion.div
+            animate={{
               scale: [1, 1.3, 1],
               rotate: [0, -90, 0],
             }}
@@ -67,7 +67,7 @@ function AdminDashboardContent() {
                 key={stat.label}
                 initial={{ opacity: 0, y: 20, scale: 0.9 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ 
+                transition={{
                   delay: index * 0.1,
                   type: "spring",
                   stiffness: 200,
@@ -78,14 +78,14 @@ function AdminDashboardContent() {
               >
                 {/* Gradient overlay on hover */}
                 <div className={`absolute inset-0 bg-gradient-to-br ${stat.color} opacity-0 group-hover:opacity-5 transition-opacity duration-500`}></div>
-                
+
                 <div className="flex items-center justify-between relative z-10">
                   <div>
                     <p className="text-dark-green-600 text-sm font-semibold mb-2 uppercase tracking-wide">{stat.label}</p>
-                    <motion.p 
+                    <motion.p
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
-                      transition={{ 
+                      transition={{
                         delay: 0.3 + index * 0.1,
                         type: "spring",
                         stiffness: 500,
@@ -95,14 +95,14 @@ function AdminDashboardContent() {
                     >
                       {stat.value}
                     </motion.p>
-                    <motion.div 
+                    <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: "100%" }}
                       transition={{ delay: 0.5 + index * 0.1, duration: 0.5 }}
                       className={`h-1 bg-gradient-to-r ${stat.color} rounded-full mt-3`}
                     />
                   </div>
-                  <motion.div 
+                  <motion.div
                     whileHover={{ rotate: 360, scale: 1.1 }}
                     transition={{ duration: 0.6 }}
                     className={`w-16 h-16 bg-gradient-to-br ${stat.color} rounded-2xl flex items-center justify-center shadow-xl ${stat.glow} relative`}
@@ -137,13 +137,13 @@ function AdminDashboardContent() {
             className="premium-card rounded-3xl p-8 md:p-10 relative overflow-hidden"
           >
             <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-dark-green-100/30 to-transparent rounded-full blur-3xl"></div>
-            
+
             <div className="relative z-10">
               <div className="flex items-center space-x-3 mb-8">
                 <div className="w-1 h-8 bg-gradient-to-b from-dark-green-500 to-dark-green-600 rounded-full"></div>
                 <h2 className="text-3xl md:text-4xl font-bold gradient-text">Quick Access</h2>
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <motion.button
                   onClick={() => router.push('/admin/residents')}
@@ -153,7 +153,7 @@ function AdminDashboardContent() {
                 >
                   <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                   <div className="relative z-10">
-                    <motion.div 
+                    <motion.div
                       whileHover={{ rotate: [0, -10, 10, -10, 0] }}
                       transition={{ duration: 0.5 }}
                       className="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center mb-5 shadow-lg shadow-blue-500/30"
@@ -162,13 +162,13 @@ function AdminDashboardContent() {
                     </motion.div>
                     <h3 className="font-bold text-dark-green-800 text-xl mb-2 group-hover:text-blue-600 transition-colors">Manage Residents</h3>
                     <p className="text-sm text-dark-green-600 leading-relaxed">Add, edit, or remove residents from the system</p>
-                    <motion.div 
+                    <motion.div
                       className="mt-4 flex items-center text-blue-600 font-semibold text-sm opacity-0 group-hover:opacity-100"
                       initial={{ x: -10 }}
                       whileHover={{ x: 0 }}
                     >
                       <span>Manage</span>
-                      <motion.span 
+                      <motion.span
                         animate={{ x: [0, 5, 0] }}
                         transition={{ repeat: Infinity, duration: 1.5 }}
                         className="ml-2"
@@ -187,7 +187,7 @@ function AdminDashboardContent() {
                 >
                   <div className="absolute inset-0 bg-gradient-to-br from-green-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                   <div className="relative z-10">
-                    <motion.div 
+                    <motion.div
                       whileHover={{ rotate: [0, -10, 10, -10, 0] }}
                       transition={{ duration: 0.5 }}
                       className="w-14 h-14 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center mb-5 shadow-lg shadow-green-500/30"
@@ -196,13 +196,13 @@ function AdminDashboardContent() {
                     </motion.div>
                     <h3 className="font-bold text-dark-green-800 text-xl mb-2 group-hover:text-green-600 transition-colors">Manage Sensors</h3>
                     <p className="text-sm text-dark-green-600 leading-relaxed">Monitor and configure fire safety sensors</p>
-                    <motion.div 
+                    <motion.div
                       className="mt-4 flex items-center text-green-600 font-semibold text-sm opacity-0 group-hover:opacity-100"
                       initial={{ x: -10 }}
                       whileHover={{ x: 0 }}
                     >
                       <span>Configure</span>
-                      <motion.span 
+                      <motion.span
                         animate={{ x: [0, 5, 0] }}
                         transition={{ repeat: Infinity, duration: 1.5 }}
                         className="ml-2"
@@ -221,7 +221,7 @@ function AdminDashboardContent() {
                 >
                   <div className="absolute inset-0 bg-gradient-to-br from-purple-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                   <div className="relative z-10">
-                    <motion.div 
+                    <motion.div
                       whileHover={{ rotate: [0, -10, 10, -10, 0] }}
                       transition={{ duration: 0.5 }}
                       className="w-14 h-14 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center mb-5 shadow-lg shadow-purple-500/30"
@@ -230,13 +230,13 @@ function AdminDashboardContent() {
                     </motion.div>
                     <h3 className="font-bold text-dark-green-800 text-xl mb-2 group-hover:text-purple-600 transition-colors">Manage Buildings</h3>
                     <p className="text-sm text-dark-green-600 leading-relaxed">View and update building information</p>
-                    <motion.div 
+                    <motion.div
                       className="mt-4 flex items-center text-purple-600 font-semibold text-sm opacity-0 group-hover:opacity-100"
                       initial={{ x: -10 }}
                       whileHover={{ x: 0 }}
                     >
                       <span>View All</span>
-                      <motion.span 
+                      <motion.span
                         animate={{ x: [0, 5, 0] }}
                         transition={{ repeat: Infinity, duration: 1.5 }}
                         className="ml-2"
@@ -257,7 +257,7 @@ function AdminDashboardContent() {
 
 export default function AdminDashboard() {
   return (
-    <ProtectedRoute allowedRoles={['admin']}>
+    <ProtectedRoute allowedRoles={['management', 'building_authority']}>
       <AdminDashboardContent />
     </ProtectedRoute>
   );
