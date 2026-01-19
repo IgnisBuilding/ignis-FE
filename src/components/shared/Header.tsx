@@ -53,23 +53,9 @@ const Header = () => {
 
   const navItems = useMemo(() => getNavItems(role), [role, getNavItems]);
 
-  // Show loading state while authentication is being determined
-  if (loading) {
-    return (
-      <header className="bg-white/90 backdrop-blur-lg border-b border-dark-green-100 sticky top-0 z-50 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <Link href="/" className="flex items-center space-x-2 group">
-              <div className="w-8 h-8 green-gradient rounded-lg flex items-center justify-center shadow-md">
-                <span className="text-white font-bold text-lg">I</span>
-              </div>
-              <span className="text-2xl font-bold text-dark-green-700">Ignis</span>
-            </Link>
-            <div className="text-gray-600 text-sm">Loading...</div>
-          </div>
-        </div>
-      </header>
-    );
+  // Don't render header during SSR/initial load - prevents hydration mismatch
+  if (!isMounted) {
+    return null;
   }
 
   // Don't show nav items if we don't have a valid user and nav items

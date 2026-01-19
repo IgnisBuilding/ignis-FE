@@ -3,10 +3,11 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Plus, Edit2, Trash2, Search, Mail, Phone, Home, AlertCircle } from 'lucide-react';
-import PageTransition from '@/components/shared/pageTransition';
+import DashboardLayout from '@/components/layout/DashboardLayout';
 import { fadeIn } from '@/lib/animations';
 import { useAuth } from '@/context/AuthContext';
 import { api, Resident as ApiResident } from '@/lib/api';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
 
 export default function ResidentsManagementPage() {
   const router = useRouter();
@@ -110,9 +111,9 @@ export default function ResidentsManagementPage() {
   if (!user || (role !== 'building_authority' && role !== 'management')) return null;
 
   return (
-    <PageTransition>
-      <div className="min-h-screen cream-gradient py-8 px-4">
-        <div className="max-w-7xl mx-auto">
+    <ProtectedRoute allowedRoles={['management', 'building_authority']}>
+      <DashboardLayout role="admin" userName={user?.name || 'Admin'} userTitle="ADMINISTRATOR">
+        <div className="p-8 max-w-[1600px] mx-auto w-full">
           <motion.div variants={fadeIn} initial="initial" animate="animate">
             <div className="flex justify-between items-center mb-8">
               <div>
@@ -269,8 +270,7 @@ export default function ResidentsManagementPage() {
             )}
           </motion.div>
         </div>
-      </div>
-    </PageTransition>
+      </DashboardLayout>
+    </ProtectedRoute>
   );
 }
-

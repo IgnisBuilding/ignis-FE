@@ -14,7 +14,7 @@ interface NavItem {
 
 interface DashboardLayoutProps {
   children: ReactNode;
-  role: "firefighter" | "resident" | "manager";
+  role: "firefighter" | "resident" | "manager" | "admin";
   userName: string;
   userTitle: string;
   disablePadding?: boolean;
@@ -30,7 +30,7 @@ const roleConfig = {
       { label: "Personnel", href: "/firefighter/team", icon: "group" },
       { label: "Logistics", href: "/firefighter/logistics", icon: "local_shipping" },
       { label: "Reports", href: "/firefighter/reports", icon: "bar_chart" },
-      { label: "Directory", href: "/firefighter/directory", icon: "menu_book" }, // Added Directory
+      { label: "Directory", href: "/firefighter/directory", icon: "menu_book" },
     ],
     dispatchButton: true,
   },
@@ -39,9 +39,9 @@ const roleConfig = {
     subtitle: "Resident Portal",
     navItems: [
       { label: "Dashboard", href: "/resident", icon: "dashboard" },
-      { label: "My Reports", href: "/resident/reports", icon: "report" },
-      { label: "Building Info", href: "/resident/building", icon: "apartment" },
-      { label: "Safety Tips", href: "/resident/safety", icon: "shield" },
+      { label: "My Apartment", href: "/resident/apartment", icon: "apartment" },
+      { label: "Alerts", href: "/resident/alerts", icon: "notifications" },
+      { label: "Emergency", href: "/emergency", icon: "emergency" },
     ],
     dispatchButton: false,
   },
@@ -52,7 +52,20 @@ const roleConfig = {
       { label: "Dashboard", href: "/admin", icon: "dashboard" },
       { label: "Buildings", href: "/admin/buildings", icon: "domain" },
       { label: "Residents", href: "/admin/residents", icon: "people" },
-      { label: "Analytics", href: "/admin/analytics", icon: "analytics" },
+      { label: "Sensors", href: "/admin/sensors", icon: "sensors" },
+      { label: "Emergency", href: "/emergency", icon: "emergency" },
+    ],
+    dispatchButton: false,
+  },
+  admin: {
+    title: "Ignis Admin",
+    subtitle: "Management Portal",
+    navItems: [
+      { label: "Dashboard", href: "/admin", icon: "dashboard" },
+      { label: "Residents", href: "/admin/residents", icon: "people" },
+      { label: "Sensors", href: "/admin/sensors", icon: "sensors" },
+      { label: "Buildings", href: "/admin/buildings", icon: "domain" },
+      { label: "Emergency", href: "/emergency", icon: "emergency" },
     ],
     dispatchButton: false,
   },

@@ -2,14 +2,14 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { 
-  Building2, 
-  MapPin, 
-  Users, 
-  Layers, 
-  Plus, 
-  Edit, 
-  Trash2, 
+import {
+  Building2,
+  MapPin,
+  Users,
+  Layers,
+  Plus,
+  Edit,
+  Trash2,
   Search,
   X,
   Save,
@@ -18,7 +18,7 @@ import {
 import { useAuth } from '@/context/AuthContext'
 import { useRouter } from 'next/navigation'
 import { buildingApi } from '../../../lib/api'
-import PageTransition from '@/components/shared/pageTransition'
+import DashboardLayout from '@/components/layout/DashboardLayout'
 import ProtectedRoute from '@/components/auth/ProtectedRoute'
 
 interface Building {
@@ -162,9 +162,8 @@ function BuildingsManagementContent() {
   }
 
   return (
-    <PageTransition>
-      <div className="min-h-screen cream-gradient p-6">
-        <div className="max-w-7xl mx-auto">
+    <DashboardLayout role="admin" userName={user?.name || 'Admin'} userTitle="ADMINISTRATOR">
+      <div className="p-8 max-w-[1600px] mx-auto w-full">
           {/* Header */}
           <motion.div
             initial={{ opacity: 0, y: -20 }}
@@ -469,9 +468,8 @@ function BuildingsManagementContent() {
               </motion.div>
             </div>
           )}
-        </div>
       </div>
-    </PageTransition>
+    </DashboardLayout>
   )
 }
 

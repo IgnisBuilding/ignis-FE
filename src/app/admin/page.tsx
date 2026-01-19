@@ -2,7 +2,7 @@
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
-import PageTransition from '@/components/shared/pageTransition';
+import DashboardLayout from '@/components/layout/DashboardLayout';
 import { motion } from 'framer-motion';
 import { Users, Activity, Building, AlertTriangle } from 'lucide-react';
 import { mockResidents, mockSensors, mockBuildings } from '@/lib/mockData';
@@ -19,29 +19,9 @@ function AdminDashboardContent() {
   ];
 
   return (
-    <PageTransition>
-      <div className="min-h-screen cream-gradient py-8 px-4 relative overflow-hidden">
-        {/* Animated background elements */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <motion.div
-            animate={{
-              scale: [1, 1.2, 1],
-              rotate: [0, 90, 0],
-            }}
-            transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-            className="absolute -top-40 -right-40 w-96 h-96 bg-gradient-to-br from-dark-green-200/10 to-transparent rounded-full blur-3xl"
-          />
-          <motion.div
-            animate={{
-              scale: [1, 1.3, 1],
-              rotate: [0, -90, 0],
-            }}
-            transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-            className="absolute -bottom-40 -left-40 w-96 h-96 bg-gradient-to-tr from-dark-green-300/10 to-transparent rounded-full blur-3xl"
-          />
-        </div>
-
-        <div className="max-w-7xl mx-auto relative z-10">
+    <DashboardLayout role="admin" userName={user?.name || 'Admin'} userTitle="ADMINISTRATOR">
+      <div className="p-8 space-y-8 max-w-[1600px] mx-auto w-full">
+        <div className="relative z-10">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -251,7 +231,7 @@ function AdminDashboardContent() {
           </motion.div>
         </div>
       </div>
-    </PageTransition>
+    </DashboardLayout>
   );
 }
 

@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Home, MapPin, Users, Activity, Calendar, Shield, AlertTriangle } from 'lucide-react';
-import PageTransition from '@/components/shared/pageTransition';
+import DashboardLayout from '@/components/layout/DashboardLayout';
 import { fadeIn, scaleIn } from '@/lib/animations';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
@@ -38,56 +38,33 @@ export default function ApartmentDetailsPage() {
 
   if (loading) {
     return (
-      <PageTransition>
-        <div className="min-h-screen cream-gradient flex items-center justify-center">
+      <DashboardLayout role="resident" userName={user?.name || 'Resident'} userTitle="RESIDENT">
+        <div className="flex items-center justify-center h-[calc(100vh-100px)]">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
             <p className="text-dark-green-600">Loading apartment details...</p>
           </div>
         </div>
-      </PageTransition>
+      </DashboardLayout>
     );
   }
 
   if (!apartment) {
     return (
-      <PageTransition>
-        <div className="min-h-screen cream-gradient flex items-center justify-center">
+      <DashboardLayout role="resident" userName={user?.name || 'Resident'} userTitle="RESIDENT">
+        <div className="flex items-center justify-center h-[calc(100vh-100px)]">
           <div className="text-center">
             <Home className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <p className="text-dark-green-600">No apartment information available.</p>
           </div>
         </div>
-      </PageTransition>
+      </DashboardLayout>
     );
   }
 
   return (
-    <PageTransition>
-      <div className="min-h-screen cream-gradient py-8 px-4 relative overflow-hidden">
-        {/* Floating background elements */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <motion.div 
-            animate={{ 
-              scale: [1, 1.2, 1],
-              x: [0, 30, 0],
-              y: [0, -20, 0],
-            }}
-            transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-            className="absolute top-10 right-20 w-80 h-80 bg-gradient-to-br from-blue-200/10 to-purple-200/10 rounded-full blur-3xl"
-          />
-          <motion.div 
-            animate={{ 
-              scale: [1, 1.3, 1],
-              x: [0, -20, 0],
-              y: [0, 30, 0],
-            }}
-            transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-            className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-tr from-green-200/10 to-blue-200/10 rounded-full blur-3xl"
-          />
-        </div>
-
-        <div className="max-w-6xl mx-auto relative z-10">
+    <DashboardLayout role="resident" userName={user?.name || 'Resident'} userTitle="RESIDENT">
+      <div className="p-8 max-w-[1600px] mx-auto w-full relative">
           <motion.div variants={fadeIn} initial="initial" animate="animate">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
@@ -309,9 +286,7 @@ export default function ApartmentDetailsPage() {
               </motion.div>
             </div>
           </motion.div>
-        </div>
       </div>
-    </PageTransition>
+    </DashboardLayout>
   );
 }
-
