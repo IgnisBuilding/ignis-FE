@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html class="light" dir="rtl" lang="ur"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Ignis Command - سسٹم کی ترتیبات</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;700&amp;family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#1a3d35",
+                        "accent": "#FDFBF7",
+                        "background-light": "#FDFBF7",
+                        "background-dark": "#151d1b",
+                        "forest": "#1a3d35",
+                        "cream": "#FDFBF7",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "Noto Nastaliq Urdu", "sans-serif"],
+                        "urdu": ["Noto Nastaliq Urdu", "serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style type="text/tailwindcss">
+        @layer base {
+            body {
+                @apply bg-background-light text-slate-900;
+                font-family: 'Inter', 'Noto Nastaliq Urdu', sans-serif;
+            }
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(26, 61, 53, 0.05);
+            box-shadow: 0 4px 6px -1px rgba(26, 61, 53, 0.05);
+        }
+        .urdu-text {
+            font-family: 'Noto Nastaliq Urdu', serif;
+            line-height: 2.2;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark min-h-screen flex overflow-hidden">
+<aside class="w-72 border-l border-primary/10 flex flex-col justify-between bg-white dark:bg-background-dark h-screen sticky top-0">
+<div class="p-6">
+<div class="flex items-center gap-3 mb-10">
+<div class="bg-primary size-10 rounded-lg flex items-center justify-center text-white shrink-0">
+<span class="material-symbols-outlined">local_fire_department</span>
+</div>
+<div>
+<h1 class="text-primary dark:text-cream text-lg font-bold leading-tight">اگنس کمانڈ</h1>
+<p class="text-primary/60 dark:text-cream/60 text-[10px] font-medium uppercase tracking-widest">ایلیٹ رسپانس</p>
+</div>
+</div>
+<nav class="space-y-2">
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-primary/70 hover:bg-primary/5 transition-all" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-medium text-sm">ڈیش بورڈ</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-primary/70 hover:bg-primary/5 transition-all" href="#">
+<span class="material-symbols-outlined">map</span>
+<span class="font-medium text-sm">لائیو میپ</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-primary/70 hover:bg-primary/5 transition-all" href="#">
+<span class="material-symbols-outlined">group</span>
+<span class="font-medium text-sm">اہلکار</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl bg-primary text-white shadow-lg shadow-primary/20 transition-all" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-medium text-sm">سسٹم سیٹنگز</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-primary/70 hover:bg-primary/5 transition-all" href="#">
+<span class="material-symbols-outlined">bar_chart</span>
+<span class="font-medium text-sm">رپورٹس</span>
+</a>
+</nav>
+</div>
+<div class="p-6">
+<button class="w-full bg-red-600 hover:bg-red-700 text-white rounded-xl py-3 flex items-center justify-center gap-2 font-bold transition-colors shadow-lg shadow-red-600/20">
+<span class="material-symbols-outlined">emergency_share</span>
+<span>ایمرجنسی ڈسپیچ</span>
+</button>
+</div>
+</aside>
+<main class="flex-1 flex flex-col h-screen overflow-y-auto">
+<header class="flex items-center justify-between border-b border-primary/5 bg-white/50 dark:bg-background-dark/50 backdrop-blur-md px-8 py-4 sticky top-0 z-10">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-3">
+<div class="w-2.5 h-2.5 rounded-full bg-green-500"></div>
+<span class="text-primary font-semibold text-sm">سسٹم: بہترین حالت</span>
+</div>
+<div class="flex items-center gap-3 text-primary/50">
+<span class="material-symbols-outlined text-lg">location_on</span>
+<span class="text-sm font-medium">GPS: منسلک</span>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute right-3 text-primary/40">search</span>
+<input class="pr-10 pl-4 py-2 bg-primary/5 border-none rounded-full w-64 text-sm focus:ring-2 focus:ring-primary/20 placeholder:text-primary/30" placeholder="تلاش کریں..." type="text"/>
+</div>
+<div class="flex items-center gap-4">
+<button class="size-10 flex items-center justify-center bg-primary/5 rounded-full text-primary hover:bg-primary/10 relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-2 left-2 size-2 bg-red-500 rounded-full border-2 border-white"></span>
+</button>
+<div class="h-8 w-[1px] bg-primary/10 mx-2"></div>
+<div class="flex items-center gap-3">
+<div class="text-left text-right">
+<p class="text-sm font-bold text-primary">کمانڈر سٹرلنگ</p>
+<p class="text-[10px] uppercase tracking-wider font-bold text-primary/50">سینئر ڈائریکٹر</p>
+</div>
+<div class="size-10 rounded-full bg-primary/10 overflow-hidden bg-cover bg-center border-2 border-primary/10" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBTbTosSu5r1_wqmdmjxmxMqktoiRNihNJwtsZ73WHA7E7bZZorsMg83uiUpVxgpOVtWaYKdy82qGw0demtSG8dP8S48YcAt31xtXrkn8VISHB8ZWo3dbBggaqzu-2PsdxKO-snCaotprK_csWeFfFHbUxB8PLK--zpAYEU0kdrTka_nwwTAis1eIvt9gcRJPuS6XBLiPY3a8YI0oXuylxmu4bbO-WarE7OGLtVG7W2g_OkZ9lDAdBmjhy-DhZqRAuyVcy6L4BZh_s')"></div>
+</div>
+</div>
+</div>
+</header>
+<div class="p-8 max-w-[1200px] w-full mx-auto">
+<div class="mb-8">
+<h2 class="text-3xl font-bold text-primary mb-2 urdu-text">سسٹم کی ترتیبات</h2>
+<p class="text-primary/60 text-sm">اپنے کمانڈ ڈیش بورڈ اور سسٹم کی ترجیحات کو ترتیب دیں</p>
+</div>
+<div class="flex flex-col lg:flex-row gap-8">
+<div class="w-full lg:w-64 flex-shrink-0">
+<div class="glass-card rounded-2xl p-2 space-y-1">
+<button class="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-primary text-white text-sm font-bold">
+<span class="material-symbols-outlined text-xl">settings_applications</span>
+                        عمومی ترتیبات
+                    </button>
+<button class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-primary/70 hover:bg-primary/5 text-sm font-medium transition-all">
+<span class="material-symbols-outlined text-xl">notifications_active</span>
+                        اطلاعات (نونیفکیشن)
+                    </button>
+<button class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-primary/70 hover:bg-primary/5 text-sm font-medium transition-all">
+<span class="material-symbols-outlined text-xl">security</span>
+                        سیکورٹی اور رسائی
+                    </button>
+<button class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-primary/70 hover:bg-primary/5 text-sm font-medium transition-all">
+<span class="material-symbols-outlined text-xl">cloud_sync</span>
+                        ڈیٹا اور سنکرونائزیشن
+                    </button>
+<button class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-primary/70 hover:bg-primary/5 text-sm font-medium transition-all">
+<span class="material-symbols-outlined text-xl">history</span>
+                        آڈٹ لاگز
+                    </button>
+</div>
+</div>
+<div class="flex-1 space-y-6">
+<section class="glass-card rounded-3xl p-8 border border-primary/5">
+<h3 class="text-xl font-bold text-primary mb-6 border-b border-primary/5 pb-4 urdu-text">پروفائل اور یونٹ کی معلومات</h3>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="space-y-2">
+<label class="block text-sm font-bold text-primary/70 urdu-text">یونٹ کا نام</label>
+<input class="w-full bg-white border border-primary/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" type="text" value="سینٹرل پلازہ ریسکیو"/>
+</div>
+<div class="space-y-2">
+<label class="block text-sm font-bold text-primary/70 urdu-text">کمانڈ سینٹر کا پتہ</label>
+<input class="w-full bg-white border border-primary/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" type="text" value="سیکٹر 4، انڈسٹریل ایریا"/>
+</div>
+<div class="space-y-2">
+<label class="block text-sm font-bold text-primary/70 urdu-text">ایمرجنسی ہاٹ لائن</label>
+<input class="w-full bg-white border border-primary/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-left" dir="ltr" type="text" value="+92 51 111-911"/>
+</div>
+<div class="space-y-2">
+<label class="block text-sm font-bold text-primary/70 urdu-text">زبان کا انتخاب</label>
+<select class="w-full bg-white border border-primary/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all">
+<option>اردو (Urdu)</option>
+<option>English</option>
+<option>العربية</option>
+</select>
+</div>
+</div>
+</section>
+<section class="glass-card rounded-3xl p-8 border border-primary/5">
+<h3 class="text-xl font-bold text-primary mb-6 border-b border-primary/5 pb-4 urdu-text">آپریشنل ترتیبات</h3>
+<div class="space-y-6">
+<div class="flex items-center justify-between p-4 bg-primary/5 rounded-2xl">
+<div class="space-y-1">
+<p class="font-bold text-primary urdu-text">خودکار ڈسپیچ سسٹم</p>
+<p class="text-xs text-primary/60">ہائی پریارٹی کیسز کے لیے خودکار یونٹ ایلوکیشن فعال کریں</p>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:-translate-x-full rtl:peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+<div class="flex items-center justify-between p-4 bg-primary/5 rounded-2xl">
+<div class="space-y-1">
+<p class="font-bold text-primary urdu-text">سیٹلائٹ ٹریکنگ</p>
+<p class="text-xs text-primary/60">تمام فعال گاڑیوں کی ریئل ٹائم لوکیشن شیئرنگ</p>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:-translate-x-full rtl:peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+</div>
+</section>
+<div class="flex items-center justify-end gap-4 pt-4">
+<button class="px-8 py-3 rounded-xl border border-primary/20 text-primary font-bold hover:bg-primary/5 transition-all urdu-text">منسوخ کریں</button>
+<button class="px-8 py-3 rounded-xl bg-primary text-white font-bold shadow-lg shadow-primary/20 hover:opacity-90 transition-all urdu-text">تبدیلیاں محفوظ کریں</button>
+</div>
+</div>
+</div>
+</div>
+</main>
+
+</body></html>

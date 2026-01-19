@@ -5,9 +5,9 @@ import { motion } from 'framer-motion';
 import { Home, MapPin, Users, Activity, Calendar, Shield, AlertTriangle } from 'lucide-react';
 import PageTransition from '@/components/shared/pageTransition';
 import { fadeIn, scaleIn } from '@/lib/animations';
-import { useAuth } from '../../../../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
-import { Apartment } from '../../../../types';
+import { Apartment } from '@/types';
 
 export default function ApartmentDetailsPage() {
   const router = useRouter();

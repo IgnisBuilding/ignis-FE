@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { Plus, Edit2, Trash2, Search, Mail, Phone, Home, AlertCircle } from 'lucide-react';
 import PageTransition from '@/components/shared/pageTransition';
 import { fadeIn } from '@/lib/animations';
-import { useAuth } from '../../../../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { api, Resident as ApiResident } from '@/lib/api';
 
 export default function ResidentsManagementPage() {

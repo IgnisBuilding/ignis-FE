@@ -1,6 +1,6 @@
 // Map Configuration Constants
 
-import type { MapConfig, FloorLayer } from './types';
+import type { MapConfig, FloorLayer } from '@/types';
 
 // Default map configuration
 export const DEFAULT_MAP_CONFIG: MapConfig = {

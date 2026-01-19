@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html class="light" dir="rtl" lang="ur"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Ignis Command - Urdu Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;700&amp;family=Noto+Sans+Arabic:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#1a3c34",
+                        "accent": "#FDFBF7",
+                        "background-light": "#FDFBF7",
+                        "background-dark": "#0f1a18",
+                        "forest": "#1a3c34",
+                        "cream": "#FDFBF7",
+                    },
+                    fontFamily: {
+                        "nastaliq": ["'Noto Nastaliq Urdu'", "serif"],
+                        "arabic": ["'Noto Sans Arabic'", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1rem",
+                        "3xl": "1.5rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style type="text/tailwindcss">
+        body {
+            font-family: 'Noto Sans Arabic', sans-serif;
+            background-color: #FDFBF7;
+        }
+        .urdu-header {
+            font-family: 'Noto Nastaliq Urdu', serif;
+            line-height: 2.5;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(26, 60, 52, 0.05);
+            box-shadow: 0 4px 20px -5px rgba(26, 60, 52, 0.08);
+        }
+        .pulse-red {
+            box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7);
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(220, 38, 38, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+        }.nastaliq-fix {
+            display: inline-block;
+            margin-top: -0.5rem;
+            margin-bottom: 0.25rem;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-arabic text-slate-900 dark:text-slate-100 min-h-screen flex overflow-hidden">
+<aside class="w-72 border-l border-primary/10 flex flex-col justify-between bg-white dark:bg-background-dark h-screen sticky top-0">
+<div class="p-6">
+<div class="flex items-center gap-3 mb-10">
+<div class="bg-primary size-12 rounded-xl flex items-center justify-center text-white shadow-lg shadow-primary/20">
+<span class="material-symbols-outlined text-3xl">local_fire_department</span>
+</div>
+<div>
+<h1 class="text-primary dark:text-cream text-xl font-bold urdu-header nastaliq-fix">اگنس کمانڈ</h1>
+<p class="text-primary/60 dark:text-cream/60 text-[10px] font-bold uppercase tracking-[0.2em]">ELITE RESPONSE</p>
+</div>
+</div>
+<nav class="space-y-2">
+<a class="flex items-center gap-4 px-4 py-3 rounded-xl bg-primary text-white shadow-lg shadow-primary/20 transition-all" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-medium text-sm">ڈیش بورڈ</span>
+</a>
+<a class="flex items-center gap-4 px-4 py-3 rounded-xl text-primary/70 hover:bg-primary/5 transition-all" href="#">
+<span class="material-symbols-outlined">map</span>
+<span class="font-medium text-sm">لائیو نقشہ</span>
+</a>
+<a class="flex items-center gap-4 px-4 py-3 rounded-xl text-primary/70 hover:bg-primary/5 transition-all" href="#">
+<span class="material-symbols-outlined">group</span>
+<span class="font-medium text-sm">اہلکار</span>
+</a>
+<a class="flex items-center gap-4 px-4 py-3 rounded-xl text-primary/70 hover:bg-primary/5 transition-all" href="#">
+<span class="material-symbols-outlined">local_shipping</span>
+<span class="font-medium text-sm">لوجسٹکس</span>
+</a>
+<a class="flex items-center gap-4 px-4 py-3 rounded-xl text-primary/70 hover:bg-primary/5 transition-all" href="#">
+<span class="material-symbols-outlined">bar_chart</span>
+<span class="font-medium text-sm">رپورٹس</span>
+</a>
+</nav>
+</div>
+<div class="p-6">
+<button class="w-full bg-red-600 hover:bg-red-700 text-white rounded-xl py-4 flex items-center justify-center gap-3 font-bold transition-all shadow-lg shadow-red-600/20 active:scale-95">
+<span class="material-symbols-outlined">emergency_share</span>
+<span class="text-base urdu-header nastaliq-fix">فوری روانگی</span>
+</button>
+</div>
+</aside>
+<main class="flex-1 flex flex-col h-screen overflow-y-auto bg-cream">
+<header class="flex items-center justify-between border-b border-primary/5 bg-white/60 dark:bg-background-dark/50 backdrop-blur-md px-8 py-4 sticky top-0 z-20">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-3 bg-green-50 px-3 py-1.5 rounded-full">
+<div class="w-2.5 h-2.5 rounded-full bg-green-500"></div>
+<span class="text-green-800 font-bold text-xs">سسٹم: بہترین حالت</span>
+</div>
+<div class="flex items-center gap-3 text-primary/50">
+<span class="material-symbols-outlined text-lg">location_on</span>
+<span class="text-xs font-bold">GPS: لاکڈ</span>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute right-4 text-primary/40">search</span>
+<input class="pr-12 pl-4 py-2.5 bg-primary/5 border-none rounded-full w-80 text-sm focus:ring-2 focus:ring-primary/20 placeholder:text-primary/30" placeholder="واقعات، یونٹس تلاش کریں..." type="text"/>
+</div>
+<div class="flex items-center gap-4">
+<button class="size-11 flex items-center justify-center bg-white border border-primary/10 rounded-full text-primary hover:bg-primary/5 relative transition-all">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-2.5 right-2.5 size-2.5 bg-red-500 rounded-full border-2 border-white"></span>
+</button>
+<div class="h-8 w-[1px] bg-primary/10 mx-2"></div>
+<div class="flex items-center gap-3">
+<div class="text-left text-right">
+<p class="text-sm font-bold text-primary urdu-header nastaliq-fix">کمانڈر اسٹرلنگ</p>
+<p class="text-[9px] uppercase tracking-wider font-black text-primary/40 block -mt-1">SENIOR DIRECTOR</p>
+</div>
+<div class="size-11 rounded-full bg-primary/10 overflow-hidden bg-cover bg-center border-2 border-white shadow-sm" data-alt="Professional user profile avatar" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBTbTosSu5r1_wqmdmjxmxMqktoiRNihNJwtsZ73WHA7E7bZZorsMg83uiUpVxgpOVtWaYKdy82qGw0demtSG8dP8S48YcAt31xtXrkn8VISHB8ZWo3dbBggaqzu-2PsdxKO-snCaotprK_csWeFfFHbUxB8PLK--zpAYEU0kdrTka_nwwTAis1eIvt9gcRJPuS6XBLiPY3a8YI0oXuylxmu4bbO-WarE7OGLtVG7W2g_OkZ9lDAdBmjhy-DhZqRAuyVcy6L4BZh_s')"></div>
+</div>
+</div>
+</div>
+</header>
+<div class="p-8 space-y-10 max-w-[1400px] mx-auto w-full">
+<section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+<div class="glass-card p-6 rounded-2xl flex flex-col gap-3">
+<div class="flex items-center justify-between">
+<p class="text-primary/60 text-xs font-bold urdu-header nastaliq-fix">فعال الارم</p>
+<span class="material-symbols-outlined text-primary bg-primary/5 p-2 rounded-xl">campaign</span>
+</div>
+<p class="text-4xl font-bold text-primary">۱۲</p>
+<div class="flex items-center gap-2 text-green-600 text-xs font-bold">
+<span class="material-symbols-outlined text-sm">trending_up</span>
+<span>گزشتہ روز سے ۲٪ زائد</span>
+</div>
+</div>
+<div class="glass-card p-6 rounded-2xl flex flex-col gap-3">
+<div class="flex items-center justify-between">
+<p class="text-primary/60 text-xs font-bold urdu-header nastaliq-fix">موقع پر موجود عملہ</p>
+<span class="material-symbols-outlined text-primary bg-primary/5 p-2 rounded-xl">groups</span>
+</div>
+<p class="text-4xl font-bold text-primary">۱۴۸</p>
+<div class="flex items-center gap-2 text-red-600 text-xs font-bold">
+<span class="material-symbols-outlined text-sm">trending_down</span>
+<span>موجودہ شفٹ ۵٪ کم</span>
+</div>
+</div>
+<div class="glass-card p-6 rounded-2xl flex flex-col gap-3">
+<div class="flex items-center justify-between">
+<p class="text-primary/60 text-xs font-bold urdu-header nastaliq-fix">وسائل کی دستیابی</p>
+<span class="material-symbols-outlined text-primary bg-primary/5 p-2 rounded-xl">inventory_2</span>
+</div>
+<p class="text-4xl font-bold text-primary">۹۴٪</p>
+<div class="flex items-center gap-2 text-green-600 text-xs font-bold">
+<span class="material-symbols-outlined text-sm">trending_up</span>
+<span>۱٪ بہتری</span>
+</div>
+</div>
+<div class="glass-card p-6 rounded-2xl flex flex-col gap-3">
+<div class="flex items-center justify-between">
+<p class="text-primary/60 text-xs font-bold urdu-header nastaliq-fix">اوسط جوابی وقت</p>
+<span class="material-symbols-outlined text-primary bg-primary/5 p-2 rounded-xl">timer</span>
+</div>
+<p class="text-4xl font-bold text-primary">۴ منٹ ۱۲ سیکنڈ</p>
+<div class="flex items-center gap-2 text-red-600 text-xs font-bold">
+<span class="material-symbols-outlined text-sm">trending_down</span>
+<span>۱۲٪ ہدف سے دوری</span>
+</div>
+</div>
+</section>
+<section>
+<div class="flex items-center justify-between mb-5">
+<h2 class="text-primary text-xl font-bold flex items-center gap-3">
+<span class="size-3 rounded-full bg-red-600 pulse-red"></span>
+<span class="urdu-header nastaliq-fix">انتہائی اہم واقعہ</span>
+</h2>
+<a class="text-primary text-xs font-bold border-b-2 border-primary/20 hover:border-primary transition-all pb-0.5" href="#">تمام واقعات دیکھیں</a>
+</div>
+<div class="bg-white rounded-[2rem] p-8 flex flex-col lg:flex-row gap-10 shadow-2xl shadow-primary/5 border border-primary/5">
+<div class="lg:w-2/5 h-72 lg:h-auto bg-cover bg-center rounded-2xl relative overflow-hidden group" data-alt="Satellite map view of the emergency zone" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAOHztG50D8Q07G7ph11Q9Vm5NBOH5Tfif3cntmt0DGQA1dSiAbwMUtx5bOl6LN4ztBZMt5BSBj3iqOxB_gJrCHu2p-6S8ZOIqR06vtLw0MRkNKzLawuSdgQwO43j4-1_BblnOcRh1vNvobMpUPeb4iznx1lOmKZn99Gqkn3j6XMxs3BFx5pOk9ldd5rN8ZrJ3_HkgFBz9rHyxXcTxCIsluCXToERFC8vMfgFzUElQC6IgnmqOsIKcmUQ-rPWjyBSfud9PltlpV47U')">
+<div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
+<div class="absolute bottom-5 right-5 left-5 bg-white/95 backdrop-blur rounded-xl px-4 py-3 flex items-center justify-between shadow-xl">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-red-600">location_on</span>
+<span class="text-sm font-bold text-slate-800 urdu-header nastaliq-fix">سیکٹر ۴ (تجارتی علاقہ)</span>
+</div>
+<span class="text-[10px] font-bold text-primary/40 uppercase tracking-widest">Live Feed</span>
+</div>
+</div>
+<div class="flex-1 flex flex-col justify-between py-2">
+<div>
+<div class="flex items-center gap-3 mb-4">
+<span class="px-4 py-1.5 bg-red-50 text-red-700 text-[10px] font-black uppercase tracking-[0.15em] rounded-full border border-red-100">سنگینی: شدید</span>
+<span class="px-4 py-1.5 bg-orange-50 text-orange-700 text-[10px] font-black uppercase tracking-[0.15em] rounded-full border border-orange-100">درجہ الف جوابی کارروائی</span>
+</div>
+<h3 class="text-4xl font-bold text-primary mb-5 urdu-header leading-normal">عمارت میں آگ - سینٹرل پلازہ کمپلیکس</h3>
+<p class="text-slate-500 leading-loose text-lg mb-8">
+                            نارتھ ونگ میں متعدد الارم فعال ہو گئے۔ بی-بلاک میں ساختی نقصان کا خدشہ ہے۔ 
+                            ۴ سے ۷ ویں منزل پر شدید دھویں کی اطلاع ہے۔ انخلا کا عمل جاری ہے۔
+                            <br/>
+<span class="font-bold text-primary bg-primary/5 px-2 py-1 rounded inline-block mt-2">مختص کردہ یونٹس: انجن ۴۲، ٹرک ۱۸، ریسکیو ۰۹</span>
+</p>
+</div>
+<div class="flex flex-col md:flex-row items-center gap-10 border-t border-slate-100 pt-8">
+<div class="flex items-center gap-6">
+<div class="text-center px-6 border-l border-slate-100">
+<p class="text-[10px] text-slate-400 font-black uppercase mb-1">وقت گزرا</p>
+<p class="text-2xl font-bold text-primary tracking-tighter">۰۸:۴۲</p>
+</div>
+<div class="text-center px-6">
+<p class="text-[10px] text-slate-400 font-black uppercase mb-1">بیک اپ کی آمد</p>
+<p class="text-2xl font-bold text-primary tracking-tighter">۰۳ منٹ ۱۵ سیکنڈ</p>
+</div>
+</div>
+<div class="flex-1 w-full flex gap-4">
+<button class="flex-1 bg-primary text-white font-bold py-5 rounded-2xl flex items-center justify-center gap-3 hover:bg-forest/90 transition-all shadow-xl shadow-primary/20 active:scale-[0.98]">
+<span class="material-symbols-outlined text-2xl">radiology</span>
+<span class="text-xl urdu-header nastaliq-fix">جوابی کارروائی شروع کریں</span>
+</button>
+<button class="size-16 flex items-center justify-center bg-primary/5 text-primary rounded-2xl hover:bg-primary/10 transition-all">
+<span class="material-symbols-outlined text-2xl">share</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section class="pb-16">
+<div class="flex items-center justify-between mb-6">
+<h2 class="text-primary text-xl font-bold urdu-header nastaliq-fix">فعال واقعات کی فیڈ</h2>
+<div class="flex gap-3">
+<button class="px-6 py-2 bg-primary text-white rounded-full text-xs font-bold shadow-md">تمام یونٹس</button>
+<button class="px-6 py-2 bg-white rounded-full text-xs font-bold text-slate-400 border border-slate-200 hover:bg-slate-50 transition-colors">صرف اہم</button>
+</div>
+</div>
+<div class="overflow-hidden rounded-3xl border border-primary/5 bg-white shadow-xl shadow-primary/5">
+<table class="w-full text-right border-collapse">
+<thead class="bg-primary/[0.03] border-b border-primary/5">
+<tr>
+<th class="px-8 py-5 text-[11px] font-black text-primary uppercase tracking-[0.2em]">شناخت / صورتحال</th>
+<th class="px-8 py-5 text-[11px] font-black text-primary uppercase tracking-[0.2em]">واقعہ کی تفصیلات</th>
+<th class="px-8 py-5 text-[11px] font-black text-primary uppercase tracking-[0.2em]">وسائل</th>
+<th class="px-8 py-5 text-[11px] font-black text-primary uppercase tracking-[0.2em]">دورانیہ</th>
+<th class="px-8 py-5 text-[11px] font-black text-primary uppercase tracking-[0.2em] text-left">اقدامات</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-50">
+<tr class="hover:bg-primary/[0.01] transition-colors group">
+<td class="px-8 py-6">
+<div class="flex flex-col gap-1">
+<span class="text-xs font-bold text-slate-400 tracking-wider">#4922-A</span>
+<span class="flex items-center gap-2 text-xs font-black text-orange-600">
+<span class="size-2 rounded-full bg-orange-600"></span>
+<span class="urdu-header text-[10px] nastaliq-fix">راستے میں</span>
+</span>
+</div>
+</td>
+<td class="px-8 py-6">
+<p class="font-bold text-primary text-base urdu-header nastaliq-fix">جھاڑیوں میں آگ - اوک کینین</p>
+<p class="text-xs text-slate-500 font-medium">۲.۵ ایکڑ لپیٹ میں، تاحال کوئی قابو نہیں</p>
+</td>
+<td class="px-8 py-6">
+<div class="flex -space-x-3 space-x-reverse">
+<div class="size-9 rounded-full bg-slate-100 border-2 border-white flex items-center justify-center text-[10px] font-black text-slate-600 shadow-sm">B2</div>
+<div class="size-9 rounded-full bg-slate-100 border-2 border-white flex items-center justify-center text-[10px] font-black text-slate-600 shadow-sm">T4</div>
+<div class="size-9 rounded-full bg-primary/10 border-2 border-white flex items-center justify-center text-[10px] font-black text-primary shadow-sm">+2</div>
+</div>
+</td>
+<td class="px-8 py-6">
+<span class="text-sm font-bold text-slate-600">۴۲ منٹ ۱۲ سیکنڈ</span>
+</td>
+<td class="px-8 py-6 text-left">
+<button class="text-primary/40 hover:text-primary material-symbols-outlined transition-colors">more_horiz</button>
+</td>
+</tr>
+<tr class="hover:bg-primary/[0.01] transition-colors group">
+<td class="px-8 py-6">
+<div class="flex flex-col gap-1">
+<span class="text-xs font-bold text-slate-400 tracking-wider">#4921-X</span>
+<span class="flex items-center gap-2 text-xs font-black text-green-600">
+<span class="size-2 rounded-full bg-green-600"></span>
+<span class="urdu-header text-[10px] nastaliq-fix">تعینات</span>
+</span>
+</div>
+</td>
+<td class="px-8 py-6">
+<p class="font-bold text-primary text-base urdu-header nastaliq-fix">گیس لیکیج - انڈسٹریل پارک</p>
+<p class="text-xs text-slate-500 font-medium">ہیزمیٹ یونٹ موقع پر، صورتحال قابو میں</p>
+</td>
+<td class="px-8 py-6">
+<div class="flex">
+<div class="size-9 rounded-full bg-slate-100 border-2 border-white flex items-center justify-center text-[10px] font-black text-slate-600 shadow-sm">H2</div>
+</div>
+</td>
+<td class="px-8 py-6">
+<span class="text-sm font-bold text-slate-600">۰۱ گھنٹہ ۱۲ منٹ</span>
+</td>
+<td class="px-8 py-6 text-left">
+<button class="text-primary/40 hover:text-primary material-symbols-outlined transition-colors">more_horiz</button>
+</td>
+</tr>
+<tr class="hover:bg-primary/[0.01] transition-colors group">
+<td class="px-8 py-6">
+<div class="flex flex-col gap-1">
+<span class="text-xs font-bold text-slate-400 tracking-wider">#4920-R</span>
+<span class="flex items-center gap-2 text-xs font-black text-blue-600">
+<span class="size-2 rounded-full bg-blue-600"></span>
+<span class="urdu-header text-[10px] nastaliq-fix">واپسی</span>
+</span>
+</div>
+</td>
+<td class="px-8 py-6">
+<p class="font-bold text-primary text-base urdu-header nastaliq-fix">طبی امداد - رہائشی علاقہ</p>
+<p class="text-xs text-slate-500 font-medium">مریض کی حالت مستحکم، ہسپتال منتقلی</p>
+</td>
+<td class="px-8 py-6">
+<div class="flex -space-x-3 space-x-reverse">
+<div class="size-9 rounded-full bg-slate-100 border-2 border-white flex items-center justify-center text-[10px] font-black text-slate-600 shadow-sm">M1</div>
+<div class="size-9 rounded-full bg-slate-100 border-2 border-white flex items-center justify-center text-[10px] font-black text-slate-600 shadow-sm">R2</div>
+</div>
+</td>
+<td class="px-8 py-6">
+<span class="text-sm font-bold text-slate-600">۲۲ منٹ ۰۴ سیکنڈ</span>
+</td>
+<td class="px-8 py-6 text-left">
+<button class="text-primary/40 hover:text-primary material-symbols-outlined transition-colors">more_horiz</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</div>
+</main>
+
+</body></html>

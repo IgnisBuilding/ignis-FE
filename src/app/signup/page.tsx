@@ -8,8 +8,8 @@ import PageTransition from '@/components/shared/pageTransition';
 import Button from '@/components/shared/Button';
 import Input from '@/components/ui/Input';
 import { scaleIn } from '@/lib/animations';
-import { useAuth } from '../../../context/AuthContext';
-import { UserRole } from '../../../types';
+import { useAuth } from '@/context/AuthContext';
+import { UserRole } from '@/types';
 
 export default function SignupPage() {
   const router = useRouter();

@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { Flame, MapPin, Users, Clock, AlertTriangle, CheckCircle, Building2, Filter } from 'lucide-react';
 import PageTransition from '@/components/shared/pageTransition';
 import { fadeIn } from '@/lib/animations';
-import { useAuth } from '../../../../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 
 interface Hazard {

@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Ignis Command - Onboarding</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#1a3d35",
+                        "accent": "#FDFBF7",
+                        "background-light": "#FDFBF7",
+                        "background-dark": "#151d1b",
+                        "forest": "#1a3d35",
+                        "cream": "#FDFBF7",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1rem",
+                        "3xl": "1.5rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style type="text/tailwindcss">
+        @layer utilities {
+            .glass-card {
+                background: rgba(255, 255, 255, 0.7);
+                backdrop-filter: blur(10px);
+                border: 1px solid rgba(26, 61, 53, 0.05);
+                box-shadow: 0 4px 6px -1px rgba(26, 61, 53, 0.05);
+            }
+            .glass-modal {
+                background: rgba(253, 251, 247, 0.85);
+                backdrop-filter: blur(24px) saturate(120%);
+                border: 1px solid rgba(26, 61, 53, 0.1);
+            }
+            .pulse-red {
+                box-shadow: 0 0 0 0 rgba(231, 46, 8, 0.7);
+                animation: pulse 2s infinite;
+            }
+        }
+        @keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(231, 46, 8, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(231, 46, 8, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(231, 46, 8, 0); }
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #FDFBF7;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen flex overflow-hidden relative">
+<aside class="w-64 border-r border-primary/10 flex flex-col justify-between bg-white dark:bg-background-dark h-screen sticky top-0 opacity-40 grayscale-[20%] pointer-events-none">
+<div class="p-6">
+<div class="flex items-center gap-3 mb-10">
+<div class="bg-primary size-10 rounded-lg flex items-center justify-center text-white">
+<span class="material-symbols-outlined">local_fire_department</span>
+</div>
+<div>
+<h1 class="text-primary dark:text-cream text-lg font-bold leading-tight">Ignis Command</h1>
+<p class="text-primary/60 dark:text-cream/60 text-xs font-medium uppercase tracking-widest">Elite Response</p>
+</div>
+</div>
+<nav class="space-y-2">
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl bg-primary text-white" href="#"><span class="material-symbols-outlined">dashboard</span><span class="font-medium text-sm">Dashboard</span></a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-primary/70" href="#"><span class="material-symbols-outlined">map</span><span class="font-medium text-sm">Live Map</span></a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-primary/70" href="#"><span class="material-symbols-outlined">group</span><span class="font-medium text-sm">Personnel</span></a>
+</nav>
+</div>
+</aside>
+<main class="flex-1 flex flex-col h-screen overflow-hidden opacity-40 grayscale-[20%] pointer-events-none">
+<header class="flex items-center justify-between border-b border-primary/5 bg-white/50 px-8 py-4">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-3"><div class="w-2.5 h-2.5 rounded-full bg-green-500"></div><span class="text-primary font-semibold text-sm">System: Optimal</span></div>
+</div>
+<div class="flex items-center gap-4">
+<div class="size-10 rounded-full bg-primary/10 border-2 border-primary/10" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBTbTosSu5r1_wqmdmjxmxMqktoiRNihNJwtsZ73WHA7E7bZZorsMg83uiUpVxgpOVtWaYKdy82qGw0demtSG8dP8S48YcAt31xtXrkn8VISHB8ZWo3dbBggaqzu-2PsdxKO-snCaotprK_csWeFfFHbUxB8PLK--zpAYEU0kdrTka_nwwTAis1eIvt9gcRJPuS6XBLiPY3a8YI0oXuylxmu4bbO-WarE7OGLtVG7W2g_OkZ9lDAdBmjhy-DhZqRAuyVcy6L4BZh_s'); background-size: cover;"></div>
+</div>
+</header>
+<div class="p-8 space-y-8 max-w-[1400px] mx-auto w-full">
+<section class="grid grid-cols-4 gap-6">
+<div class="glass-card p-6 rounded-2xl h-32"></div>
+<div class="glass-card p-6 rounded-2xl h-32"></div>
+<div class="glass-card p-6 rounded-2xl h-32"></div>
+<div class="glass-card p-6 rounded-2xl h-32"></div>
+</section>
+<section class="bg-white rounded-3xl p-8 h-64 border border-primary/5 shadow-xl"></section>
+</div>
+</main>
+<div class="absolute inset-0 z-50 flex items-center justify-center bg-primary/20 backdrop-blur-sm">
+<div class="glass-modal w-full max-w-2xl rounded-[2rem] shadow-2xl overflow-hidden flex flex-col">
+<div class="p-12 text-center flex flex-col items-center">
+<div class="relative w-full h-48 mb-10 flex items-center justify-center">
+<div class="absolute inset-0 bg-primary/5 rounded-3xl overflow-hidden">
+<div class="absolute inset-0 flex items-center justify-center opacity-20">
+<span class="material-symbols-outlined text-[160px] text-primary">hub</span>
+</div>
+<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center gap-12">
+<div class="flex flex-col items-center gap-2">
+<div class="size-12 rounded-full bg-primary text-white flex items-center justify-center shadow-lg"><span class="material-symbols-outlined">sensors</span></div>
+<span class="text-[10px] font-bold text-primary/60 uppercase tracking-tighter">Satellite</span>
+</div>
+<div class="flex flex-col items-center gap-2">
+<div class="size-14 rounded-full bg-white border-2 border-primary text-primary flex items-center justify-center shadow-xl"><span class="material-symbols-outlined">shield</span></div>
+<span class="text-[10px] font-bold text-primary uppercase tracking-tighter">Neural Link</span>
+</div>
+<div class="flex flex-col items-center gap-2">
+<div class="size-12 rounded-full bg-primary text-white flex items-center justify-center shadow-lg"><span class="material-symbols-outlined">router</span></div>
+<span class="text-[10px] font-bold text-primary/60 uppercase tracking-tighter">Ground Cell</span>
+</div>
+</div>
+<svg class="absolute inset-0 w-full h-full pointer-events-none opacity-20" preserveAspectRatio="none">
+<line stroke="#1a3d35" stroke-dasharray="4 4" stroke-width="2" x1="30%" x2="50%" y1="50%" y2="50%"></line>
+<line stroke="#1a3d35" stroke-dasharray="4 4" stroke-width="2" x1="50%" x2="70%" y1="50%" y2="50%"></line>
+</svg>
+</div>
+</div>
+<div class="max-w-md">
+<h2 class="text-3xl font-bold text-primary mb-4 tracking-tight">Welcome to Ignis Command</h2>
+<p class="text-slate-600 leading-relaxed">
+                        Experience the next generation of incident management. Our integrated sensor network provides real-time situational awareness for elite response teams.
+                    </p>
+</div>
+</div>
+<div class="px-12 pb-12">
+<div class="flex items-center justify-center gap-12 mb-10">
+<div class="flex flex-col items-center gap-2">
+<div class="size-2 rounded-full bg-primary"></div>
+<span class="text-[10px] font-bold text-primary uppercase tracking-widest">Identify</span>
+</div>
+<div class="w-16 h-px bg-primary/10 mb-5"></div>
+<div class="flex flex-col items-center gap-2">
+<div class="size-2 rounded-full bg-primary/20"></div>
+<span class="text-[10px] font-bold text-primary/40 uppercase tracking-widest">Prioritize</span>
+</div>
+<div class="w-16 h-px bg-primary/10 mb-5"></div>
+<div class="flex flex-col items-center gap-2">
+<div class="size-2 rounded-full bg-primary/20"></div>
+<span class="text-[10px] font-bold text-primary/40 uppercase tracking-widest">Respond</span>
+</div>
+</div>
+<div class="flex items-center justify-between">
+<button class="px-8 py-3.5 text-primary font-semibold text-sm hover:bg-primary/5 rounded-xl transition-all">
+                        Skip Tour
+                    </button>
+<div class="flex gap-3">
+<button class="px-8 py-3.5 border border-primary/20 text-primary font-bold text-sm rounded-xl hover:bg-primary/5 transition-all">
+                            Learn More
+                        </button>
+<button class="px-10 py-3.5 bg-primary text-white font-bold text-sm rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center gap-2">
+                            Get Started
+                            <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+</body></html>

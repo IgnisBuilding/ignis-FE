@@ -5,9 +5,9 @@ import { motion } from 'framer-motion';
 import { Bell, AlertTriangle, Info, CheckCircle, Filter, Search } from 'lucide-react';
 import PageTransition from '@/components/shared/pageTransition';
 import { fadeIn } from '@/lib/animations';
-import { useAuth } from '../../../../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
-import { Alert } from '../../../../types';
+import { Alert } from '@/types';
 
 export default function AlertsPage() {
   const router = useRouter();

@@ -3,8 +3,8 @@ import { useState, useMemo, memo, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, Home, Users, Building, Flame, Activity, Bell, AlertTriangle, LogOut } from 'lucide-react';
-import { useAuth } from '../../../context/AuthContext';
-import { UserRole } from '../../../types';
+import { useAuth } from '@/context/AuthContext';
+import { UserRole } from '@/types';
 
 const Header = () => {
   const [isOpen, setIsOpen] = useState(false);

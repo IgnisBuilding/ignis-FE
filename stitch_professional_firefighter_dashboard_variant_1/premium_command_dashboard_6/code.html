@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html class="light" dir="rtl" lang="ur"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>اگنس کمانڈ - انسیڈینٹ میپ</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;700&amp;family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#1a3d35",
+                        "accent": "#FDFBF7",
+                        "background-light": "#FDFBF7",
+                        "background-dark": "#151d1b",
+                        "forest": "#1a3d35",
+                        "cream": "#FDFBF7",
+                        "map-silver": "#E5E7EB",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "Noto Nastaliq Urdu", "serif"],
+                        "urdu": ["Noto Nastaliq Urdu", "serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style type="text/tailwindcss">
+        @layer base {
+            body {
+                @apply bg-background-light font-display;
+            }
+        }
+        .map-container {
+            background-color: #f1f1f1;
+            background-image: 
+                radial-gradient(#d1d5db 1px, transparent 1px),
+                linear-gradient(to right, #e5e7eb 1px, transparent 1px),
+                linear-gradient(to bottom, #e5e7eb 1px, transparent 1px);
+            background-size: 40px 40px, 100px 100px, 100px 100px;
+        }
+        .urdu-text {
+            font-family: 'Noto Nastaliq Urdu', serif;
+            line-height: 2;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(26, 61, 53, 0.1);
+        }
+        .pulse-marker {
+            box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.5);
+            animation: pulse-ring 1.5s cubic-bezier(0.455, 0.03, 0.515, 0.955) infinite;
+        }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.7); opacity: 1; }
+            100% { transform: scale(2.5); opacity: 0; }
+        }
+    </style>
+</head>
+<body class="bg-background-light text-slate-900 min-h-screen flex overflow-hidden">
+<aside class="w-64 border-l border-primary/10 flex flex-col justify-between bg-white h-screen sticky top-0 z-30">
+<div class="p-6">
+<div class="flex items-center gap-3 mb-10">
+<div class="bg-primary size-10 rounded-lg flex items-center justify-center text-white">
+<span class="material-symbols-outlined">local_fire_department</span>
+</div>
+<div>
+<h1 class="text-primary text-lg font-bold leading-tight urdu-text">اگنس کمانڈ</h1>
+<p class="text-primary/60 text-[10px] font-medium uppercase tracking-widest">Elite Response</p>
+</div>
+</div>
+<nav class="space-y-2">
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-primary/70 hover:bg-primary/5 transition-all" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-bold text-sm urdu-text">ڈیش بورڈ</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl bg-primary text-white shadow-lg shadow-primary/20 transition-all" href="#">
+<span class="material-symbols-outlined">map</span>
+<span class="font-bold text-sm urdu-text">لائیو میپ</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-primary/70 hover:bg-primary/5 transition-all" href="#">
+<span class="material-symbols-outlined">group</span>
+<span class="font-bold text-sm urdu-text">اہلکار</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-primary/70 hover:bg-primary/5 transition-all" href="#">
+<span class="material-symbols-outlined">local_shipping</span>
+<span class="font-bold text-sm urdu-text">لاجسٹکس</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-primary/70 hover:bg-primary/5 transition-all" href="#">
+<span class="material-symbols-outlined">bar_chart</span>
+<span class="font-bold text-sm urdu-text">رپورٹس</span>
+</a>
+</nav>
+</div>
+<div class="p-6">
+<button class="w-full bg-red-600 hover:bg-red-700 text-white rounded-xl py-3 flex items-center justify-center gap-2 font-bold transition-colors shadow-lg shadow-red-600/20">
+<span class="material-symbols-outlined">emergency_share</span>
+<span class="urdu-text">فوری روانگی</span>
+</button>
+</div>
+</aside>
+<main class="flex-1 relative h-screen overflow-hidden">
+<div class="absolute inset-0 map-container z-0 flex items-center justify-center overflow-hidden">
+<div class="w-full h-full opacity-40 bg-[url('https://www.transparenttextures.com/patterns/pinstriped-suit.png')]"></div>
+<div class="absolute top-[30%] left-[40%] group cursor-pointer">
+<div class="relative">
+<div class="absolute inset-0 bg-red-500 rounded-full pulse-marker"></div>
+<div class="relative bg-red-600 text-white p-2 rounded-full border-2 border-white shadow-xl z-10">
+<span class="material-symbols-outlined text-base">local_fire_department</span>
+</div>
+<div class="absolute top-full mt-2 right-1/2 translate-x-1/2 glass-panel px-3 py-1.5 rounded-lg shadow-lg border border-primary/10 whitespace-nowrap">
+<p class="text-[11px] font-bold text-primary urdu-text">سینٹرل پلازہ - آگ کا واقعہ</p>
+</div>
+</div>
+</div>
+<div class="absolute top-[60%] left-[65%] group cursor-pointer">
+<div class="relative">
+<div class="bg-orange-500 text-white p-2 rounded-full border-2 border-white shadow-xl z-10">
+<span class="material-symbols-outlined text-base">warning</span>
+</div>
+<div class="absolute top-full mt-2 right-1/2 translate-x-1/2 glass-panel px-3 py-1.5 rounded-lg shadow-lg border border-primary/10 whitespace-nowrap">
+<p class="text-[11px] font-bold text-primary urdu-text">انڈسٹریل پارک - گیس لیکیج</p>
+</div>
+</div>
+</div>
+<div class="absolute top-[20%] left-[75%] group cursor-pointer">
+<div class="relative">
+<div class="bg-blue-500 text-white p-2 rounded-full border-2 border-white shadow-xl z-10">
+<span class="material-symbols-outlined text-base">medical_services</span>
+</div>
+<div class="absolute top-full mt-2 right-1/2 translate-x-1/2 glass-panel px-3 py-1.5 rounded-lg shadow-lg border border-primary/10 whitespace-nowrap">
+<p class="text-[11px] font-bold text-primary urdu-text">میڈیکل ایمرجنسی - سیکٹر 4</p>
+</div>
+</div>
+</div>
+</div>
+<header class="absolute top-6 right-6 left-6 z-20 flex items-center justify-between gap-6">
+<div class="flex items-center gap-4">
+<div class="glass-panel px-5 py-3 rounded-2xl flex items-center gap-6 shadow-xl shadow-primary/5">
+<div class="flex items-center gap-2">
+<div class="w-2.5 h-2.5 rounded-full bg-green-500"></div>
+<span class="text-primary font-bold text-sm urdu-text">سسٹم: فعال</span>
+</div>
+<div class="h-4 w-px bg-primary/20"></div>
+<div class="flex items-center gap-2 text-primary/70">
+<span class="material-symbols-outlined text-lg">gps_fixed</span>
+<span class="text-sm font-bold urdu-text">لوکیشن لاکڈ</span>
+</div>
+</div>
+<div class="relative">
+<span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-primary/40">search</span>
+<input class="pr-12 pl-6 py-3 glass-panel border-none rounded-2xl w-80 text-sm focus:ring-2 focus:ring-primary/20 placeholder:text-primary/40 urdu-text" placeholder="واقعہ یا یونٹ تلاش کریں..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="glass-panel p-2 rounded-2xl flex gap-2">
+<button class="size-10 flex items-center justify-center bg-primary/5 rounded-xl text-primary hover:bg-primary/10 transition-colors">
+<span class="material-symbols-outlined">layers</span>
+</button>
+<button class="size-10 flex items-center justify-center bg-primary/5 rounded-xl text-primary hover:bg-primary/10 transition-colors">
+<span class="material-symbols-outlined">my_location</span>
+</button>
+</div>
+<div class="glass-panel px-4 py-2 rounded-2xl flex items-center gap-4">
+<div class="text-left">
+<p class="text-sm font-bold text-primary">کمانڈر سٹرلنگ</p>
+<p class="text-[10px] uppercase tracking-tighter font-bold text-primary/50 text-right">سینئر ڈائریکٹر</p>
+</div>
+<div class="size-10 rounded-full border-2 border-primary/10 overflow-hidden bg-cover bg-center" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBTbTosSu5r1_wqmdmjxmxMqktoiRNihNJwtsZ73WHA7E7bZZorsMg83uiUpVxgpOVtWaYKdy82qGw0demtSG8dP8S48YcAt31xtXrkn8VISHB8ZWo3dbBggaqzu-2PsdxKO-snCaotprK_csWeFfFHbUxB8PLK--zpAYEU0kdrTka_nwwTAis1eIvt9gcRJPuS6XBLiPY3a8YI0oXuylxmu4bbO-WarE7OGLtVG7W2g_OkZ9lDAdBmjhy-DhZqRAuyVcy6L4BZh_s')"></div>
+</div>
+</div>
+</header>
+<div class="absolute right-6 top-32 bottom-6 w-80 z-20 flex flex-col gap-4 pointer-events-none">
+<div class="pointer-events-auto glass-panel rounded-3xl flex flex-col h-full shadow-2xl overflow-hidden border-primary/5">
+<div class="p-6 border-b border-primary/5 flex items-center justify-between">
+<h2 class="text-primary font-bold urdu-text">فعال الرٹس</h2>
+<span class="px-2.5 py-1 bg-red-100 text-red-700 text-[10px] font-bold rounded-full">3 لائیو</span>
+</div>
+<div class="flex-1 overflow-y-auto p-4 space-y-4">
+<div class="bg-red-50/50 p-4 rounded-2xl border border-red-100 flex flex-col gap-2 relative overflow-hidden group hover:bg-red-50 transition-colors cursor-pointer">
+<div class="absolute top-0 right-0 w-1 h-full bg-red-500"></div>
+<div class="flex justify-between items-start">
+<span class="px-2 py-0.5 bg-red-600 text-white text-[9px] font-bold rounded-full urdu-text">شدید خطرہ</span>
+<span class="text-[10px] text-slate-400 font-bold">08:42</span>
+</div>
+<h3 class="text-sm font-bold text-primary urdu-text">سینٹرل پلازہ فائر</h3>
+<p class="text-[11px] text-slate-500 leading-relaxed urdu-text">شمالی ونگ میں آگ لگی ہے۔ انخلاء جاری ہے۔</p>
+<div class="flex items-center gap-2 mt-2">
+<div class="size-6 rounded-full bg-white border border-red-100 flex items-center justify-center text-[9px] font-bold text-red-600">E42</div>
+<div class="size-6 rounded-full bg-white border border-red-100 flex items-center justify-center text-[9px] font-bold text-red-600">T18</div>
+<span class="text-[10px] text-red-600 font-bold urdu-text">راستے میں</span>
+</div>
+</div>
+<div class="bg-white p-4 rounded-2xl border border-primary/5 flex flex-col gap-2 relative group hover:bg-primary/5 transition-colors cursor-pointer">
+<div class="flex justify-between items-start">
+<span class="px-2 py-0.5 bg-orange-100 text-orange-700 text-[9px] font-bold rounded-full urdu-text">میڈیم</span>
+<span class="text-[10px] text-slate-400 font-bold">12:15</span>
+</div>
+<h3 class="text-sm font-bold text-primary urdu-text">گیس لیکیج الرٹ</h3>
+<p class="text-[11px] text-slate-500 leading-relaxed urdu-text">انڈسٹریل پارک بلاک-B، ہزمت یونٹ طلب۔</p>
+<div class="flex items-center gap-2 mt-2">
+<div class="size-6 rounded-full bg-primary/5 flex items-center justify-center text-[9px] font-bold text-primary">H22</div>
+<span class="text-[10px] text-primary/60 font-bold urdu-text">موقع پر موجود</span>
+</div>
+</div>
+<div class="bg-white p-4 rounded-2xl border border-primary/5 flex flex-col gap-2 relative group hover:bg-primary/5 transition-colors cursor-pointer">
+<div class="flex justify-between items-start">
+<span class="px-2 py-0.5 bg-blue-100 text-blue-700 text-[9px] font-bold rounded-full urdu-text">معمولی</span>
+<span class="text-[10px] text-slate-400 font-bold">14:05</span>
+</div>
+<h3 class="text-sm font-bold text-primary urdu-text">طبی امداد</h3>
+<p class="text-[11px] text-slate-500 leading-relaxed urdu-text">سیکٹر 4 رہائشی علاقہ، مریض مستحکم ہے۔</p>
+<div class="flex items-center gap-2 mt-2">
+<div class="size-6 rounded-full bg-primary/5 flex items-center justify-center text-[9px] font-bold text-primary">M09</div>
+<span class="text-[10px] text-primary/60 font-bold urdu-text">واپسی جاری</span>
+</div>
+</div>
+</div>
+<div class="p-4 border-t border-primary/5">
+<button class="w-full py-2.5 text-xs font-bold text-primary hover:bg-primary/5 rounded-xl transition-colors urdu-text">تمام واقعات دیکھیں</button>
+</div>
+</div>
+</div>
+<div class="absolute left-6 bottom-6 z-20 flex flex-col gap-3">
+<div class="glass-panel p-2 rounded-2xl flex flex-col gap-2 shadow-xl">
+<button class="size-10 flex items-center justify-center bg-white rounded-xl text-primary shadow-sm hover:bg-slate-50">
+<span class="material-symbols-outlined">add</span>
+</button>
+<div class="h-px bg-primary/10 w-full"></div>
+<button class="size-10 flex items-center justify-center bg-white rounded-xl text-primary shadow-sm hover:bg-slate-50">
+<span class="material-symbols-outlined">remove</span>
+</button>
+</div>
+<button class="glass-panel size-10 flex items-center justify-center rounded-2xl text-primary shadow-xl hover:bg-white transition-colors">
+<span class="material-symbols-outlined">explore</span>
+</button>
+</div>
+<div class="absolute bottom-6 right-96 left-24 z-20 flex items-center justify-between">
+<div class="glass-panel px-6 py-3 rounded-2xl flex items-center gap-8 shadow-xl">
+<div class="flex flex-col">
+<span class="text-[10px] text-primary/50 font-bold uppercase urdu-text">کل یونٹس</span>
+<span class="text-lg font-bold text-primary">24 / 32</span>
+</div>
+<div class="h-8 w-px bg-primary/10"></div>
+<div class="flex flex-col text-right">
+<span class="text-[10px] text-primary/50 font-bold uppercase urdu-text">جوابی وقت</span>
+<span class="text-lg font-bold text-green-600">4m 12s</span>
+</div>
+<div class="h-8 w-px bg-primary/10"></div>
+<div class="flex flex-col text-right">
+<span class="text-[10px] text-primary/50 font-bold uppercase urdu-text">ضلعی کوریج</span>
+<span class="text-lg font-bold text-primary">94%</span>
+</div>
+</div>
+</div>
+</main>
+
+</body></html>

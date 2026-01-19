@@ -15,7 +15,7 @@ import {
   Save,
   AlertTriangle
 } from 'lucide-react'
-import { useAuth } from '../../../../context/AuthContext'
+import { useAuth } from '@/context/AuthContext'
 import { useRouter } from 'next/navigation'
 import { buildingApi } from '../../../lib/api'
 import PageTransition from '@/components/shared/pageTransition'

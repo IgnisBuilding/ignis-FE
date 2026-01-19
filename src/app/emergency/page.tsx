@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '../../../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import PageTransition from '@/components/shared/pageTransition';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Flame, User as UserIcon, MessageCircle, X, AlertTriangle, Shield, Users } from 'lucide-react';

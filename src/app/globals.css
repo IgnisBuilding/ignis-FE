@@ -1,184 +1,97 @@
-﻿@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 :root {
-  --color-cream-50: #fefdf9;
-  --color-cream-100: #fdf8f0;
-  --color-cream-200: #faf0e0;
-  --color-cream-300: #f5e6c8;
-  --color-cream-400: #efd6a3;
-  --color-cream-500: #e6c378;
-  
-  --color-dark-green-50: #f0f9f0;
-  --color-dark-green-100: #dcf2dc;
-  --color-dark-green-200: #a8d8a8;
-  --color-dark-green-300: #6bb76b;
-  --color-dark-green-400: #4a9c4a;
-  --color-dark-green-500: #2d6b2d;
-  --color-dark-green-600: #1e4a1e;
-  --color-dark-green-700: #153a15;
-  --color-dark-green-800: #0d2b0d;
-  --color-dark-green-900: #051c05;
-}
-
-/* Premium Background Gradient - Optimized */
-.cream-gradient {
-  background: linear-gradient(135deg, 
-    var(--color-cream-50) 0%, 
-    var(--color-cream-100) 50%,
-    var(--color-cream-50) 100%);
-}
-
-/* Enhanced Green Gradient - Performance optimized */
-.green-gradient {
-  background: linear-gradient(135deg, var(--color-dark-green-500) 0%, var(--color-dark-green-600) 100%);
-  box-shadow: 0 8px 24px -4px rgba(45, 107, 45, 0.3);
-  will-change: transform;
-}
-
-/* Premium Card Design - Optimized */
-.premium-card {
-  background: linear-gradient(145deg, #ffffff 0%, #fafafa 100%);
-  border: 1px solid rgba(0, 0, 0, 0.04);
-  box-shadow: 
-    0 2px 8px rgba(0, 0, 0, 0.04),
-    0 8px 16px rgba(0, 0, 0, 0.06);
-  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-  will-change: transform;
-}
-
-.premium-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 
-    0 4px 12px rgba(0, 0, 0, 0.06),
-    0 12px 24px rgba(0, 0, 0, 0.08),
-    0 24px 48px rgba(45, 107, 45, 0.12);
-}
-
-/* Glass Morphism Effect */
-.glass-effect {
-  background: rgba(255, 255, 255, 0.75);
-  backdrop-filter: blur(16px) saturate(180%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
-}
-
-/* Gradient Text - Optimized */
-.gradient-text {
-  background: linear-gradient(135deg, 
-    var(--color-dark-green-700) 0%, 
-    var(--color-dark-green-500) 50%,
-    var(--color-dark-green-600) 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
-/* Pulse Animation for Important Elements */
-@keyframes pulse-glow {
-  0%, 100% {
-    box-shadow: 0 0 20px rgba(45, 107, 45, 0.4);
-  }
-  50% {
-    box-shadow: 0 0 40px rgba(45, 107, 45, 0.6);
-  }
-}
-
-.pulse-glow {
-  animation: pulse-glow 2s ease-in-out infinite;
-}
-
-/* Button Styles - Optimized */
-.btn-primary {
-  background: linear-gradient(135deg, var(--color-dark-green-500), var(--color-dark-green-600));
-  color: white;
-  font-weight: 600;
-  padding: 0.875rem 1.5rem;
-  border-radius: 0.75rem;
-  border: none;
-  cursor: pointer;
-  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 12px rgba(45, 107, 45, 0.3);
-  will-change: transform;
-}
-
-.btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(45, 107, 45, 0.4);
-}
-
-.btn-primary:active {
-  transform: translateY(0);
-}
-
-/* Status Badge */
-.status-badge {
-  padding: 0.375rem 0.875rem;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.025em;
-  text-transform: uppercase;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transition: transform 0.15s;
-}
-
-.status-badge:hover {
-  transform: scale(1.05);
-}
-
-/* Input Field */
-.input-premium {
-  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-  border: 2px solid rgba(45, 107, 45, 0.1);
-  background: white;
-}
-
-.input-premium:focus {
-  border-color: var(--color-dark-green-400);
-  box-shadow: 0 0 0 3px rgba(45, 107, 45, 0.1);
-  outline: none;
-}
-
-/* Skeleton Loading */
-@keyframes skeleton-loading {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
-}
-
-.skeleton {
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-  background-size: 200% 100%;
-  animation: skeleton-loading 1.5s ease-in-out infinite;
-}
-
-/* Performance optimizations */
-* {
-  -webkit-tap-highlight-color: transparent;
+  --color-primary: #1a3d35;
+  --color-accent: #FDFBF7;
+  --color-background-light: #FDFBF7;
+  --color-background-dark: #151d1b;
+  --color-forest: #1a3d35;
+  --color-cream: #FDFBF7;
 }
 
 body {
   margin: 0;
   padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: var(--color-cream-50);
-  color: var(--color-dark-green-900);
+  background-color: var(--color-background-light);
+  color: #1e293b;
 }
 
-/* Optimize animations */
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+/* Stitch Design System - Glass Card Effect */
+.glass-card {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(26, 61, 53, 0.05);
+  box-shadow: 0 4px 6px -1px rgba(26, 61, 53, 0.05);
+  transition: all 0.3s ease;
+}
+
+.glass-card:hover {
+  box-shadow: 0 10px 15px -3px rgba(26, 61, 53, 0.1);
+}
+
+.glass-card-static {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(26, 61, 53, 0.05);
+  box-shadow: 0 4px 6px -1px rgba(26, 61, 53, 0.05);
+}
+
+/* Stitch Design System - Pulse Red Animation for Critical Alerts */
+.pulse-red {
+  box-shadow: 0 0 0 0 rgba(231, 46, 8, 0.7);
+  animation: pulse-red 2s infinite;
+}
+
+@keyframes pulse-red {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(231, 46, 8, 0.7);
   }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 10px rgba(231, 46, 8, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(231, 46, 8, 0);
+  }
+}
+
+/* Stitch Design System - Hero Card Shadow */
+.hero-card {
+  background: white;
+  border-radius: 1.5rem;
+  box-shadow: 0 25px 50px -12px rgba(26, 61, 53, 0.1);
+  border: 1px solid rgba(26, 61, 53, 0.05);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(26, 61, 53, 0.05);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(26, 61, 53, 0.2);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(26, 61, 53, 0.3);
 }

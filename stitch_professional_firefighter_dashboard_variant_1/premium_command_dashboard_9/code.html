@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Ignis Command - Tactical Interior Map</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#1a3d35",
+                        "accent": "#FDFBF7",
+                        "background-light": "#FDFBF7",
+                        "background-dark": "#151d1b",
+                        "forest": "#1a3d35",
+                        "cream": "#FDFBF7",
+                        "destructive": "#E11D48",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style type="text/tailwindcss">
+        @layer base {
+            body {
+                font-family: 'Inter', sans-serif;
+                background-color: #FDFBF7;
+            }
+        }
+        .blueprint-grid {
+            background-image: radial-gradient(rgba(26, 61, 53, 0.1) 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+        .floor-plan-line {
+            stroke: #1a3d35;
+            stroke-width: 2;
+            fill: none;
+        }
+        .unit-fill {
+            fill: rgba(26, 61, 53, 0.03);
+            transition: all 0.2s;
+        }
+        .unit-fill:hover {
+            fill: rgba(26, 61, 53, 0.08);
+        }
+        .sensor-pulse {
+            fill: #E11D48;
+            filter: drop-shadow(0 0 4px rgba(225, 29, 72, 0.4));
+        }
+        .floor-node {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen flex overflow-hidden">
+<aside class="w-64 border-r border-primary/10 flex flex-col justify-between bg-white dark:bg-background-dark h-screen sticky top-0 z-20">
+<div class="p-6">
+<div class="flex items-center gap-3 mb-10">
+<div class="bg-primary size-10 rounded-lg flex items-center justify-center text-white shadow-lg shadow-primary/20">
+<span class="material-symbols-outlined">local_fire_department</span>
+</div>
+<div>
+<h1 class="text-primary dark:text-cream text-lg font-bold leading-tight uppercase tracking-tight">Ignis Command</h1>
+<p class="text-primary/60 dark:text-cream/60 text-xs font-medium uppercase tracking-widest">Tactical Hub</p>
+</div>
+</div>
+<nav class="space-y-2">
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-primary/70 hover:bg-primary/5 transition-all" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-medium text-sm">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl bg-primary text-white shadow-lg shadow-primary/20 transition-all" href="#">
+<span class="material-symbols-outlined">layers</span>
+<span class="font-medium text-sm">Interior Map</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-primary/70 hover:bg-primary/5 transition-all" href="#">
+<span class="material-symbols-outlined">map</span>
+<span class="font-medium text-sm">External Grid</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-primary/70 hover:bg-primary/5 transition-all" href="#">
+<span class="material-symbols-outlined">group</span>
+<span class="font-medium text-sm">Personnel</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-primary/70 hover:bg-primary/5 transition-all" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-medium text-sm">System Config</span>
+</a>
+</nav>
+</div>
+<div class="p-6">
+<button class="w-full bg-destructive hover:bg-red-700 text-white rounded-xl py-3 flex items-center justify-center gap-2 font-bold transition-colors shadow-lg shadow-destructive/20">
+<span class="material-symbols-outlined">emergency</span>
+<span>Evacuation Alert</span>
+</button>
+</div>
+</aside>
+<main class="flex-1 flex flex-col h-screen overflow-hidden">
+<header class="flex items-center justify-between border-b border-primary/5 bg-white/50 dark:bg-background-dark/50 backdrop-blur-md px-8 py-4 z-10">
+<div class="flex items-center gap-8">
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<span class="text-primary font-bold text-lg uppercase">Central Plaza Complex</span>
+<span class="px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-bold rounded uppercase tracking-wide">High Rise</span>
+</div>
+<p class="text-xs text-primary/50 font-medium">1248 North Ave, Metropolis Sector 4</p>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-4 bg-primary/5 px-4 py-2 rounded-full border border-primary/10">
+<div class="flex items-center gap-2">
+<span class="size-2 rounded-full bg-destructive"></span>
+<span class="text-xs font-bold text-primary">Active Alarm: Floor 07</span>
+</div>
+<div class="h-4 w-px bg-primary/10"></div>
+<div class="flex items-center gap-2 text-xs font-bold text-primary/60 uppercase tracking-widest">
+<span class="material-symbols-outlined text-sm">wind_power</span>
+<span>Pressure: Stable</span>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="text-right">
+<p class="text-sm font-bold text-primary tracking-tight">Cmdr. Sterling</p>
+<p class="text-[10px] uppercase tracking-wider font-bold text-primary/50">Senior Director</p>
+</div>
+<div class="size-10 rounded-full bg-primary/10 overflow-hidden bg-cover bg-center border-2 border-primary/10" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBTbTosSu5r1_wqmdmjxmxMqktoiRNihNJwtsZ73WHA7E7bZZorsMg83uiUpVxgpOVtWaYKdy82qGw0demtSG8dP8S48YcAt31xtXrkn8VISHB8ZWo3dbBggaqzu-2PsdxKO-snCaotprK_csWeFfFHbUxB8PLK--zpAYEU0kdrTka_nwwTAis1eIvt9gcRJPuS6XBLiPY3a8YI0oXuylxmu4bbO-WarE7OGLtVG7W2g_OkZ9lDAdBmjhy-DhZqRAuyVcy6L4BZh_s')"></div>
+</div>
+</div>
+</header>
+<div class="flex-1 relative flex overflow-hidden">
+<div class="w-20 border-r border-primary/5 flex flex-col items-center py-6 gap-3 bg-white/30 backdrop-blur-sm z-10">
+<button class="floor-node size-12 rounded-xl flex items-center justify-center text-xs font-bold text-primary/30 hover:bg-primary/5 border border-transparent">F09</button>
+<button class="floor-node size-12 rounded-xl flex items-center justify-center text-xs font-bold text-primary/30 hover:bg-primary/5 border border-transparent">F08</button>
+<button class="floor-node size-12 rounded-xl flex items-center justify-center text-xs font-bold bg-primary text-white shadow-xl shadow-primary/20 border border-primary">F07</button>
+<button class="floor-node size-12 rounded-xl flex items-center justify-center text-xs font-bold text-primary/30 hover:bg-primary/5 border border-transparent">F06</button>
+<button class="floor-node size-12 rounded-xl flex items-center justify-center text-xs font-bold text-primary/30 hover:bg-primary/5 border border-transparent">F05</button>
+<div class="w-8 h-px bg-primary/10 my-2"></div>
+<button class="floor-node size-12 rounded-xl flex items-center justify-center text-xs font-bold text-primary/30 hover:bg-primary/5 border border-transparent">G</button>
+<button class="floor-node size-12 rounded-xl flex items-center justify-center text-xs font-bold text-primary/30 hover:bg-primary/5 border border-transparent">B1</button>
+</div>
+<div class="flex-1 blueprint-grid bg-cream relative flex items-center justify-center overflow-auto p-12">
+<div class="relative w-full max-w-5xl aspect-[1.5/1]">
+<svg class="w-full h-full drop-shadow-2xl" viewBox="0 0 1000 600">
+<rect class="floor-plan-line" height="500" rx="4" stroke-width="4" width="900" x="50" y="50"></rect>
+<rect class="floor-plan-line" height="300" width="700" x="150" y="150"></rect>
+<rect class="unit-fill floor-plan-line" height="150" width="225" x="50" y="50"></rect>
+<text class="fill-primary/40 font-bold text-[10px]" text-anchor="middle" x="162" y="125">UNIT 701</text>
+<rect class="unit-fill floor-plan-line" height="150" width="225" x="275" y="50"></rect>
+<text class="fill-primary/40 font-bold text-[10px]" text-anchor="middle" x="387" y="125">UNIT 702</text>
+<rect class="unit-fill floor-plan-line" height="150" width="225" x="500" y="50"></rect>
+<text class="fill-primary/40 font-bold text-[10px]" text-anchor="middle" x="612" y="125">UNIT 703</text>
+<rect class="unit-fill floor-plan-line" height="150" width="225" x="725" y="50"></rect>
+<text class="fill-primary/40 font-bold text-[10px]" text-anchor="middle" x="837" y="125">UNIT 704</text>
+<rect class="unit-fill floor-plan-line" height="150" width="225" x="50" y="400"></rect>
+<text class="fill-primary/40 font-bold text-[10px]" text-anchor="middle" x="162" y="475">UNIT 705</text>
+<rect class="unit-fill floor-plan-line" height="150" width="225" x="275" y="400"></rect>
+<text class="fill-primary/40 font-bold text-[10px]" text-anchor="middle" x="387" y="475">UNIT 706</text>
+<rect class="unit-fill floor-plan-line" height="150" width="225" x="500" y="400"></rect>
+<text class="fill-primary/40 font-bold text-[10px]" text-anchor="middle" x="612" y="475">UNIT 707</text>
+<rect class="unit-fill floor-plan-line" height="150" width="225" x="725" y="400"></rect>
+<text class="fill-primary/40 font-bold text-[10px]" text-anchor="middle" x="837" y="475">UNIT 708</text>
+<rect class="floor-plan-line" fill="rgba(26, 61, 53, 0.05)" height="100" width="150" x="425" y="250"></rect>
+<text class="fill-primary/60 font-bold text-[10px]" text-anchor="middle" x="500" y="305">ELEVATOR CORE</text>
+<circle class="sensor-pulse" cx="210" cy="110" r="10"></circle>
+<circle cx="210" cy="110" fill="none" r="18" stroke="#E11D48" stroke-dasharray="4 2" stroke-width="1.5"></circle>
+<circle class="sensor-pulse" cx="160" cy="460" r="10"></circle>
+<circle cx="160" cy="460" fill="none" r="18" stroke="#E11D48" stroke-dasharray="4 2" stroke-width="1.5"></circle>
+<circle class="sensor-pulse opacity-60" cx="387" cy="460" r="10"></circle>
+<g transform="translate(80, 275)">
+<rect fill="white" height="50" stroke="#1a3d35" stroke-width="1" width="40" x="0" y="0"></rect>
+<path d="M5 45 L35 45 L35 40 L25 40 L25 30 L15 30 L15 20 L5 20 Z" fill="#1a3d35" opacity="0.6"></path>
+</g>
+<g transform="translate(880, 275)">
+<rect fill="white" height="50" stroke="#1a3d35" stroke-width="1" width="40" x="0" y="0"></rect>
+<path d="M5 45 L35 45 L35 40 L25 40 L25 30 L15 30 L15 20 L5 20 Z" fill="#1a3d35" opacity="0.6"></path>
+</g>
+<g transform="translate(485, 175)">
+<circle cx="15" cy="15" fill="#1a3d35" r="15"></circle>
+<text fill="white" font-family="Material Symbols Outlined" font-size="20" text-anchor="middle" x="15" y="20">water_drop</text>
+</g>
+</svg>
+<div class="absolute bottom-8 right-8 bg-white/90 backdrop-blur border border-primary/10 p-5 rounded-2xl shadow-xl flex flex-col gap-3 min-w-[200px]">
+<h4 class="text-[10px] font-bold text-primary/40 uppercase tracking-[0.2em] border-b border-primary/5 pb-2">Legend</h4>
+<div class="flex items-center gap-3">
+<span class="size-3 rounded-full bg-destructive shadow-[0_0_8px_rgba(225,29,72,0.5)]"></span>
+<span class="text-xs font-semibold text-primary">Active Thermal Alarm</span>
+</div>
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary text-lg">water_drop</span>
+<span class="text-xs font-semibold text-primary">Standpipe / Hydrant</span>
+</div>
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary text-lg">stairs</span>
+<span class="text-xs font-semibold text-primary">Emergency Exit Stairs</span>
+</div>
+<div class="flex items-center gap-3">
+<span class="size-3 border border-primary bg-primary/5 rounded-sm"></span>
+<span class="text-xs font-semibold text-primary">Apartment Unit</span>
+</div>
+</div>
+<div class="absolute top-8 left-8 flex flex-col gap-4">
+<div class="bg-destructive text-white p-4 rounded-2xl shadow-2xl shadow-destructive/20 max-w-xs border border-white/20">
+<div class="flex items-center justify-between mb-2">
+<span class="text-[10px] font-black uppercase tracking-widest">Alert: Unit 701</span>
+<span class="material-symbols-outlined text-sm">warning</span>
+</div>
+<p class="text-lg font-bold leading-tight mb-1">Heavy Smoke Detected</p>
+<p class="text-xs opacity-90 mb-3">Thermostat reading: 342°F. Suppression system inactive.</p>
+<div class="bg-black/20 rounded-lg p-2 flex justify-between items-center">
+<span class="text-[10px] font-bold uppercase">Estimated Occupants: 2</span>
+<button class="bg-white text-destructive text-[10px] font-black px-2 py-1 rounded">NOTIFY</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<aside class="w-80 border-l border-primary/5 bg-white/30 backdrop-blur-md flex flex-col p-6 gap-6 z-10 overflow-y-auto">
+<div>
+<h3 class="text-primary text-sm font-bold uppercase tracking-widest mb-4">Tactical Status</h3>
+<div class="space-y-3">
+<div class="bg-white p-4 rounded-xl border border-primary/5 shadow-sm">
+<div class="flex justify-between items-center mb-1">
+<span class="text-[10px] font-bold text-primary/40 uppercase">Evacuation Progress</span>
+<span class="text-xs font-bold text-primary">64%</span>
+</div>
+<div class="w-full h-1.5 bg-primary/5 rounded-full overflow-hidden">
+<div class="w-[64%] h-full bg-primary rounded-full"></div>
+</div>
+</div>
+<div class="bg-white p-4 rounded-xl border border-primary/5 shadow-sm">
+<div class="flex justify-between items-center mb-1">
+<span class="text-[10px] font-bold text-primary/40 uppercase">Structural Integrity</span>
+<span class="text-xs font-bold text-green-600">Stable</span>
+</div>
+<div class="w-full h-1.5 bg-primary/5 rounded-full overflow-hidden">
+<div class="w-[92%] h-full bg-green-500 rounded-full"></div>
+</div>
+</div>
+</div>
+</div>
+<div>
+<h3 class="text-primary text-sm font-bold uppercase tracking-widest mb-4">Deployed Assets</h3>
+<div class="space-y-2">
+<div class="flex items-center gap-3 p-3 rounded-xl bg-primary/5 border border-primary/10">
+<div class="size-8 rounded-lg bg-primary text-white flex items-center justify-center font-bold text-xs">E42</div>
+<div>
+<p class="text-xs font-bold text-primary leading-none">Engine 42</p>
+<p class="text-[10px] text-primary/60 font-medium">Floor 07 Lobby</p>
+</div>
+<span class="ml-auto material-symbols-outlined text-primary/30 text-lg">radio</span>
+</div>
+<div class="flex items-center gap-3 p-3 rounded-xl bg-primary/5 border border-primary/10">
+<div class="size-8 rounded-lg bg-primary text-white flex items-center justify-center font-bold text-xs">T18</div>
+<div>
+<p class="text-xs font-bold text-primary leading-none">Truck 18</p>
+<p class="text-[10px] text-primary/60 font-medium">Roof Operations</p>
+</div>
+<span class="ml-auto material-symbols-outlined text-primary/30 text-lg">radio</span>
+</div>
+</div>
+</div>
+<div class="mt-auto">
+<div class="p-4 bg-primary text-cream rounded-2xl">
+<div class="flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-sm">shield</span>
+<span class="text-[10px] font-bold uppercase tracking-widest">Command Note</span>
+</div>
+<p class="text-xs italic leading-relaxed opacity-80">"Focus suppression on North-West quadrant. Contain spread to Unit 702 before breach."</p>
+</div>
+</div>
+</aside>
+</div>
+</main>
+
+</body></html>
