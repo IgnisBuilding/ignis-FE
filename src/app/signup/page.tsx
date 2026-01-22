@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import { Mail, Lock, User, Eye, EyeOff, Phone, Shield, Flame, Building } from 'lucide-react';
 import PageTransition from '@/components/shared/pageTransition';
 import Button from '@/components/shared/Button';
-import Input from '@/components/ui/Input';
+import { Input } from '@/components/ui/input';
 import { scaleIn } from '@/lib/animations';
 import { useAuth } from '@/context/AuthContext';
 import { UserRole } from '@/types';
