@@ -1,282 +1,306 @@
 'use client';
+
+import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import DashboardLayout from '@/components/layout/DashboardLayout';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { useToast } from '@/hooks/use-toast';
+import {
+  Search,
+  Filter,
+  MoreVertical,
+  Phone,
+  MessageSquare,
+  CheckCircle,
+  AlertCircle,
+  Clock,
+} from 'lucide-react';
 
-function TeamManagementContent() {
-    const { user } = useAuth();
+const personnelData = [
+  {
+    id: 1,
+    name: 'Chief Marcus',
+    role: 'Incident Commander',
+    unit: 'IC-01',
+    status: 'On Duty',
+    certifications: ['Haz-Mat', 'Swift Water'],
+    availability: 'Available',
+    hours: '12h',
+  },
+  {
+    id: 2,
+    name: 'Lt. Sarah Chen',
+    role: 'Squad Leader',
+    unit: 'SQ-42',
+    status: 'On Duty',
+    certifications: ['Rope Rescue', 'Confined Space'],
+    availability: 'Deployed',
+    hours: '8h',
+  },
+  {
+    id: 3,
+    name: 'FF Jackson',
+    role: 'Firefighter',
+    unit: 'EN-12',
+    status: 'On Duty',
+    certifications: ['Basic Life Support'],
+    availability: 'Available',
+    hours: '10h',
+  },
+  {
+    id: 4,
+    name: 'Paramedic Davis',
+    role: 'Rescue Specialist',
+    unit: 'RE-02',
+    status: 'Standby',
+    certifications: ['Advanced Life Support', 'Tactical Combat Casualty Care'],
+    availability: 'Available',
+    hours: '0h',
+  },
+  {
+    id: 5,
+    name: 'FF Thompson',
+    role: 'Firefighter',
+    unit: 'EN-15',
+    status: 'Off Duty',
+    certifications: ['Basic Life Support'],
+    availability: 'Off Duty',
+    hours: '0h',
+  },
+];
 
-    return (
-        <DashboardLayout role="firefighter" userName={user?.name || 'Cmdr. Sterling'} userTitle="SENIOR DIRECTOR">
-            <div className="max-w-[1280px] mx-auto w-full">
-                {/* Breadcrumbs */}
-                <div className="flex flex-wrap gap-2 mb-4">
-                    <a className="text-primary/60 text-sm font-medium hover:text-primary transition-colors" href="#">Ignis</a>
-                    <span className="text-primary/40 text-sm font-medium">/</span>
-                    <span className="text-primary dark:text-white text-sm font-semibold">Teams Management</span>
+function PersonnelPageContent() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showCallDialog, setShowCallDialog] = useState(false);
+  const [selectedPersonnel, setSelectedPersonnel] = useState<{
+    id: number;
+    name: string;
+  } | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const handleCall = (person: { id: number; name: string }) => {
+    setSelectedPersonnel(person);
+    setShowCallDialog(true);
+  };
+
+  const handleConfirmCall = async () => {
+    setLoading(true);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    toast({
+      title: 'Call Initiated',
+      description: `Calling ${selectedPersonnel?.name}...`,
+      duration: 3000,
+    });
+    setLoading(false);
+    setShowCallDialog(false);
+  };
+
+  const handleMessage = (person: { id: number; name: string }) => {
+    toast({
+      title: 'Message',
+      description: `Message box opened for ${person.name}`,
+      duration: 3000,
+    });
+  };
+
+  const filteredPersonnel = personnelData.filter(
+    (p) =>
+      p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.role.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'On Duty':
+        return <Badge className="bg-green-500 text-white">On Duty</Badge>;
+      case 'Standby':
+        return <Badge className="bg-amber-500 text-white">Standby</Badge>;
+      default:
+        return <Badge className="bg-gray-500 text-white">Off Duty</Badge>;
+    }
+  };
+
+  return (
+    <DashboardLayout
+      role="firefighter"
+      userName={user?.name || 'Cmdr. Sterling'}
+      userTitle="SENIOR DIRECTOR"
+    >
+      <main className="flex-1 space-y-4 overflow-auto p-4 sm:space-y-6 sm:p-6 md:p-8">
+        {/* Header */}
+        <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
+              Personnel Management
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Active personnel: {filteredPersonnel.length} /{' '}
+              {personnelData.length}
+            </p>
+          </div>
+        </div>
+
+        {/* Search and Filter */}
+        <div className="flex flex-col gap-2 sm:flex-row sm:gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by name or role..."
+              className="pl-10 w-full"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <Button
+            variant="outline"
+            className="gap-2 bg-transparent w-full sm:w-auto"
+          >
+            <Filter className="h-4 w-4" />
+            Filter
+          </Button>
+        </div>
+
+        {/* Personnel Table */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base font-bold">
+              Active Personnel
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {filteredPersonnel.map((person) => (
+                <div
+                  key={person.id}
+                  className="flex flex-col items-start gap-4 sm:items-center sm:flex-row sm:justify-between lg:gap-3 p-3 rounded-lg border border-border hover:bg-secondary/30 transition-colors"
+                >
+                  <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+                    <Avatar className="flex-shrink-0">
+                      <AvatarImage
+                        src={`https://avatar.vercel.sh/${person.name}`}
+                      />
+                      <AvatarFallback>
+                        {person.name
+                          .split(' ')
+                          .map((n) => n[0])
+                          .join('')}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-foreground">
+                          {person.name}
+                        </span>
+                        {person.status === 'On Duty' && (
+                          <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                        )}
+                        {person.status === 'Standby' && (
+                          <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0" />
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground truncate">
+                        {person.role} • {person.unit}
+                      </p>
+                      <div className="mt-1 flex gap-1 flex-wrap">
+                        {person.certifications.map((cert) => (
+                          <Badge key={cert} variant="outline" className="text-xs">
+                            {cert}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <div className="text-right flex-1 sm:flex-none">
+                      {getStatusBadge(person.status)}
+                      {person.hours && (
+                        <p className="mt-1 text-xs text-muted-foreground flex items-center gap-1 justify-end">
+                          <Clock className="h-3 w-3" />
+                          {person.hours}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-muted-foreground hover:text-foreground h-8 w-8"
+                        onClick={() => handleCall(person)}
+                      >
+                        <Phone className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-muted-foreground hover:text-foreground h-8 w-8"
+                        onClick={() => handleMessage(person)}
+                      >
+                        <MessageSquare className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-muted-foreground hover:text-foreground h-8 w-8"
+                      >
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
                 </div>
-
-                {/* Page Heading */}
-                <div className="flex flex-wrap justify-between items-end gap-3 mb-8">
-                    <div className="flex min-w-72 flex-col gap-2">
-                        <h1 className="text-primary dark:text-white text-4xl font-black leading-tight tracking-[-0.033em]">Responder Team Management</h1>
-                        <p className="text-primary/60 dark:text-slate-400 text-base font-normal leading-normal">Manage and allocate elite fire response units across sectors.</p>
-                    </div>
-                    <div className="flex gap-3">
-                        <button className="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-11 px-6 bg-primary/5 text-primary text-sm font-bold border border-primary/10 hover:bg-primary/10 transition-all">
-                            <span className="truncate">Export Report</span>
-                        </button>
-                        <button className="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-11 px-6 bg-primary text-white text-sm font-bold shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all">
-                            <span className="truncate">Schedule Shift</span>
-                        </button>
-                    </div>
-                </div>
-
-                {/* Stats Overview */}
-                <div className="flex flex-wrap gap-4 mb-10">
-                    <div className="flex min-w-[200px] flex-1 flex-col gap-2 rounded-xl p-6 bg-white dark:bg-primary/10 border border-primary/5 shadow-sm">
-                        <p className="text-primary/60 dark:text-slate-400 text-sm font-medium uppercase tracking-wider">Active Teams</p>
-                        <div className="flex items-baseline gap-2">
-                            <p className="text-primary dark:text-white text-3xl font-bold leading-tight">12</p>
-                            <span className="text-[#07882e] text-sm font-semibold flex items-center"><span className="material-symbols-outlined text-sm">arrow_upward</span>5%</span>
-                        </div>
-                    </div>
-                    <div className="flex min-w-[200px] flex-1 flex-col gap-2 rounded-xl p-6 bg-white dark:bg-primary/10 border border-primary/5 shadow-sm">
-                        <p className="text-primary/60 dark:text-slate-400 text-sm font-medium uppercase tracking-wider">On-Duty Personnel</p>
-                        <div className="flex items-baseline gap-2">
-                            <p className="text-primary dark:text-white text-3xl font-bold leading-tight">42</p>
-                            <span className="text-[#07882e] text-sm font-semibold flex items-center"><span className="material-symbols-outlined text-sm">arrow_upward</span>12%</span>
-                        </div>
-                    </div>
-                    <div className="flex min-w-[200px] flex-1 flex-col gap-2 rounded-xl p-6 bg-white dark:bg-primary/10 border border-primary/5 shadow-sm">
-                        <p className="text-primary/60 dark:text-slate-400 text-sm font-medium uppercase tracking-wider">Vehicles Active</p>
-                        <div className="flex items-baseline gap-2">
-                            <p className="text-primary dark:text-white text-3xl font-bold leading-tight">18</p>
-                            <span className="text-[#e72e08] text-sm font-semibold flex items-center"><span className="material-symbols-outlined text-sm">arrow_downward</span>2%</span>
-                        </div>
-                    </div>
-                    <div className="flex min-w-[200px] flex-1 flex-col gap-2 rounded-xl p-6 bg-white dark:bg-primary/10 border border-primary/5 shadow-sm">
-                        <p className="text-primary/60 dark:text-slate-400 text-sm font-medium uppercase tracking-wider">Available Capacity</p>
-                        <div className="flex items-baseline gap-2">
-                            <p className="text-primary dark:text-white text-3xl font-bold leading-tight">15%</p>
-                            <span className="text-primary/40 text-sm font-semibold">Steady</span>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Team Grid Sections */}
-                <div className="space-y-12 pb-12">
-                    {/* Section 1: On-Duty (Responding) */}
-                    <div>
-                        <div className="flex items-center gap-3 mb-6">
-                            <h2 className="text-primary dark:text-white text-2xl font-bold">On-Duty: Responding</h2>
-                            <span className="px-2.5 py-0.5 rounded-full bg-[#e72e08]/10 text-[#e72e08] text-xs font-bold uppercase tracking-wider">Priority Alpha</span>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {/* Card 1 */}
-                            <div className="bg-white dark:bg-primary/5 border border-primary/5 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow group">
-                                <div className="flex justify-between items-start mb-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="size-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                                            <span className="material-symbols-outlined text-2xl">groups</span>
-                                        </div>
-                                        <div>
-                                            <h3 className="text-primary dark:text-white font-bold text-lg">Team Alpha</h3>
-                                            <div className="flex items-center gap-1.5">
-                                                <span className="size-2 rounded-full bg-[#e72e08] animate-pulse"></span>
-                                                <p className="text-[#e72e08] text-xs font-bold uppercase">Responding</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <span className="text-primary/40 material-symbols-outlined cursor-pointer hover:text-primary transition-colors">more_vert</span>
-                                </div>
-                                <div className="bg-primary/5 rounded-lg p-3 mb-5 flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <span className="material-symbols-outlined text-primary/60 text-sm">local_fire_department</span>
-                                        <span className="text-primary/80 dark:text-slate-300 text-sm font-medium tracking-tight leading-none">Ladder 12</span>
-                                    </div>
-                                    <span className="text-xs text-primary/40 font-bold uppercase">Unit ID: 402-A</span>
-                                </div>
-                                <div className="flex gap-3">
-                                    <button className="flex-1 bg-primary text-white text-sm font-bold py-2.5 rounded-lg hover:bg-primary/90 transition-colors">Assign</button>
-                                    <button className="flex-1 bg-white dark:bg-transparent border border-primary/20 text-primary dark:text-white text-sm font-bold py-2.5 rounded-lg hover:bg-primary/5 transition-colors">Contact</button>
-                                </div>
-                            </div>
-                            {/* Card 2 */}
-                            <div className="bg-white dark:bg-primary/5 border border-primary/5 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
-                                <div className="flex justify-between items-start mb-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="size-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                                            <span className="material-symbols-outlined text-2xl">groups</span>
-                                        </div>
-                                        <div>
-                                            <h3 className="text-primary dark:text-white font-bold text-lg">Team Sigma</h3>
-                                            <div className="flex items-center gap-1.5">
-                                                <span className="size-2 rounded-full bg-[#e72e08] animate-pulse"></span>
-                                                <p className="text-[#e72e08] text-xs font-bold uppercase">Responding</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <span className="text-primary/40 material-symbols-outlined cursor-pointer">more_vert</span>
-                                </div>
-                                <div className="bg-primary/5 rounded-lg p-3 mb-5 flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <span className="material-symbols-outlined text-primary/60 text-sm">earth_engine</span>
-                                        <span className="text-primary/80 dark:text-slate-300 text-sm font-medium tracking-tight leading-none">Engine 42</span>
-                                    </div>
-                                    <span className="text-xs text-primary/40 font-bold uppercase">Unit ID: 101-C</span>
-                                </div>
-                                <div className="flex gap-3">
-                                    <button className="flex-1 bg-primary text-white text-sm font-bold py-2.5 rounded-lg hover:bg-primary/90 transition-colors">Assign</button>
-                                    <button className="flex-1 bg-white dark:bg-transparent border border-primary/20 text-primary dark:text-white text-sm font-bold py-2.5 rounded-lg hover:bg-primary/5 transition-colors">Contact</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Section 2: On-Duty (Idle/Available) */}
-                    <div>
-                        <div className="flex items-center gap-3 mb-6 border-t border-primary/10 pt-10">
-                            <h2 className="text-primary dark:text-white text-2xl font-bold">On-Duty: Idle</h2>
-                            <span className="px-2.5 py-0.5 rounded-full bg-[#07882e]/10 text-[#07882e] text-xs font-bold uppercase tracking-wider">Ready for Deployment</span>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {/* Card 3 */}
-                            <div className="bg-white dark:bg-primary/5 border border-primary/5 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
-                                <div className="flex justify-between items-start mb-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="size-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                                            <span className="material-symbols-outlined text-2xl">groups</span>
-                                        </div>
-                                        <div>
-                                            <h3 className="text-primary dark:text-white font-bold text-lg">Team Delta</h3>
-                                            <div className="flex items-center gap-1.5">
-                                                <span className="size-2 rounded-full bg-[#07882e]"></span>
-                                                <p className="text-[#07882e] text-xs font-bold uppercase">Idle</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <span className="text-primary/40 material-symbols-outlined cursor-pointer">more_vert</span>
-                                </div>
-                                <div className="bg-primary/5 rounded-lg p-3 mb-5 flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <span className="material-symbols-outlined text-primary/60 text-sm">airport_shuttle</span>
-                                        <span className="text-primary/80 dark:text-slate-300 text-sm font-medium tracking-tight leading-none">Rescue 5</span>
-                                    </div>
-                                    <span className="text-xs text-primary/40 font-bold uppercase">Unit ID: 305-R</span>
-                                </div>
-                                <div className="flex gap-3">
-                                    <button className="flex-1 bg-primary text-white text-sm font-bold py-2.5 rounded-lg hover:bg-primary/90 transition-colors">Assign</button>
-                                    <button className="flex-1 bg-white dark:bg-transparent border border-primary/20 text-primary dark:text-white text-sm font-bold py-2.5 rounded-lg hover:bg-primary/5 transition-colors">Contact</button>
-                                </div>
-                            </div>
-                            {/* Card 4 */}
-                            <div className="bg-white dark:bg-primary/5 border border-primary/5 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
-                                <div className="flex justify-between items-start mb-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="size-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                                            <span className="material-symbols-outlined text-2xl">groups</span>
-                                        </div>
-                                        <div>
-                                            <h3 className="text-primary dark:text-white font-bold text-lg">Team Bravo</h3>
-                                            <div className="flex items-center gap-1.5">
-                                                <span className="size-2 rounded-full bg-[#07882e]"></span>
-                                                <p className="text-[#07882e] text-xs font-bold uppercase">Idle</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <span className="text-primary/40 material-symbols-outlined cursor-pointer">more_vert</span>
-                                </div>
-                                <div className="bg-primary/5 rounded-lg p-3 mb-5 flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <span className="material-symbols-outlined text-primary/60 text-sm">local_fire_department</span>
-                                        <span className="text-primary/80 dark:text-slate-300 text-sm font-medium tracking-tight leading-none">Engine 08</span>
-                                    </div>
-                                    <span className="text-xs text-primary/40 font-bold uppercase">Unit ID: 108-E</span>
-                                </div>
-                                <div className="flex gap-3">
-                                    <button className="flex-1 bg-primary text-white text-sm font-bold py-2.5 rounded-lg hover:bg-primary/90 transition-colors">Assign</button>
-                                    <button className="flex-1 bg-white dark:bg-transparent border border-primary/20 text-primary dark:text-white text-sm font-bold py-2.5 rounded-lg hover:bg-primary/5 transition-colors">Contact</button>
-                                </div>
-                            </div>
-                            {/* Card 5 */}
-                            <div className="bg-white dark:bg-primary/5 border border-primary/5 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
-                                <div className="flex justify-between items-start mb-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="size-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                                            <span className="material-symbols-outlined text-2xl">groups</span>
-                                        </div>
-                                        <div>
-                                            <h3 className="text-primary dark:text-white font-bold text-lg">Team Zulu</h3>
-                                            <div className="flex items-center gap-1.5">
-                                                <span className="size-2 rounded-full bg-[#07882e]"></span>
-                                                <p className="text-[#07882e] text-xs font-bold uppercase">Idle</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <span className="text-primary/40 material-symbols-outlined cursor-pointer">more_vert</span>
-                                </div>
-                                <div className="bg-primary/5 rounded-lg p-3 mb-5 flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <span className="material-symbols-outlined text-primary/60 text-sm">local_fire_department</span>
-                                        <span className="text-primary/80 dark:text-slate-300 text-sm font-medium tracking-tight leading-none">Ladder 01</span>
-                                    </div>
-                                    <span className="text-xs text-primary/40 font-bold uppercase">Unit ID: 401-A</span>
-                                </div>
-                                <div className="flex gap-3">
-                                    <button className="flex-1 bg-primary text-white text-sm font-bold py-2.5 rounded-lg hover:bg-primary/90 transition-colors">Assign</button>
-                                    <button className="flex-1 bg-white dark:bg-transparent border border-primary/20 text-primary dark:text-white text-sm font-bold py-2.5 rounded-lg hover:bg-primary/5 transition-colors">Contact</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Section 3: Offline */}
-                    <div>
-                        <div className="flex items-center gap-3 mb-6 border-t border-primary/10 pt-10">
-                            <h2 className="text-primary dark:text-white text-2xl font-bold">Offline / Maintenance</h2>
-                            <span className="px-2.5 py-0.5 rounded-full bg-[#60857d]/10 text-[#60857d] text-xs font-bold uppercase tracking-wider">Shift Ended</span>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {/* Card 6 */}
-                            <div className="bg-primary/5 border border-primary/10 rounded-xl p-5 opacity-70 grayscale-[0.5]">
-                                <div className="flex justify-between items-start mb-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="size-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                                            <span className="material-symbols-outlined text-2xl">groups</span>
-                                        </div>
-                                        <div>
-                                            <h3 className="text-primary dark:text-white font-bold text-lg">Team Kilo</h3>
-                                            <div className="flex items-center gap-1.5">
-                                                <span className="size-2 rounded-full bg-[#60857d]"></span>
-                                                <p className="text-[#60857d] text-xs font-bold uppercase">Offline</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="bg-primary/5 rounded-lg p-3 mb-5 flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <span className="material-symbols-outlined text-primary/40 text-sm">engineering</span>
-                                        <span className="text-primary/40 text-sm font-medium tracking-tight leading-none italic">Unassigned</span>
-                                    </div>
-                                </div>
-                                <div className="flex gap-3">
-                                    <button className="flex-1 bg-primary/20 text-primary text-sm font-bold py-2.5 rounded-lg cursor-not-allowed">Activate</button>
-                                    <button className="flex-1 border border-primary/10 text-primary/40 text-sm font-bold py-2.5 rounded-lg">View Logs</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+              ))}
             </div>
-        </DashboardLayout>
-    );
+          </CardContent>
+        </Card>
+
+        {/* Call Dialog */}
+        <Dialog open={showCallDialog} onOpenChange={setShowCallDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Initiate Call</DialogTitle>
+              <DialogDescription>
+                {selectedPersonnel
+                  ? `Call ${selectedPersonnel.name}`
+                  : ''}
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setShowCallDialog(false)}
+                disabled={loading}
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleConfirmCall} disabled={loading}>
+                {loading ? 'Processing...' : 'Call'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </main>
+    </DashboardLayout>
+  );
 }
 
-export default function TeamManagement() {
-    return (
-        <ProtectedRoute allowedRoles={['firefighter']}>
-            <TeamManagementContent />
-        </ProtectedRoute>
-    );
+export default function PersonnelPage() {
+  return (
+    <ProtectedRoute allowedRoles={['firefighter']}>
+      <PersonnelPageContent />
+    </ProtectedRoute>
+  );
 }
