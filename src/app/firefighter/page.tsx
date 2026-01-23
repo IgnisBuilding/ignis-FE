@@ -4,7 +4,24 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import { CheckCircle } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
+import {
+  MapPin,
+  Volume2,
+  Users,
+  HardDrive,
+  Timer,
+  TrendingUp,
+  TrendingDown,
+  Share2,
+  Siren,
+  MoreVertical,
+  CheckCircle,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface Hazard {
   id: number;
@@ -34,12 +51,29 @@ interface Hazard {
   resolved_at?: string;
 }
 
+function getStatusColor(status: string) {
+  const statusLower = status?.toLowerCase();
+  switch (statusLower) {
+    case 'active':
+    case 'reported':
+      return { dot: 'bg-amber-500', text: 'text-amber-600' };
+    case 'responding':
+    case 'responded':
+      return { dot: 'bg-blue-500', text: 'text-blue-600' };
+    case 'resolved':
+      return { dot: 'bg-green-500', text: 'text-green-600' };
+    default:
+      return { dot: 'bg-gray-500', text: 'text-gray-600' };
+  }
+}
+
 function FirefighterDashboardContent() {
   const { user } = useAuth();
   const router = useRouter();
+  const { toast } = useToast();
   const [hazards, setHazards] = useState<Hazard[]>([]);
   const [loading, setLoading] = useState(true);
-  const [feedFilter, setFeedFilter] = useState<'all' | 'priority'>('all');
+  const [filter, setFilter] = useState<'all' | 'priority'>('all');
 
   useEffect(() => {
     fetchHazards();
@@ -48,42 +82,102 @@ function FirefighterDashboardContent() {
   const fetchHazards = async () => {
     try {
       const token = localStorage.getItem('ignis_token');
-      // In a real app, this URL should be configurable
       const response = await fetch('http://localhost:7000/hazards/active', {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       });
       const data = await response.json();
       console.log('Fetched active hazards:', JSON.stringify(data, null, 2));
       setHazards(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Failed to fetch hazards:', error);
-      // Fallback for demo/dev if API fails
       setHazards([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const activeIncidents = hazards.filter(e => {
+  const activeIncidents = hazards.filter((e) => {
     const status = e.status?.toLowerCase();
-    return status === 'active' || status === 'reported' || status === 'responding' || status === 'responded';
+    return (
+      status === 'active' ||
+      status === 'reported' ||
+      status === 'responding' ||
+      status === 'responded'
+    );
   });
 
-  const criticalIncident = activeIncidents.find(h => h.severity?.toLowerCase() === 'critical') || activeIncidents[0];
-  const feedIncidents = activeIncidents.filter(h => h.id !== criticalIncident?.id);
+  const criticalIncident =
+    activeIncidents.find((h) => h.severity?.toLowerCase() === 'critical') ||
+    activeIncidents[0];
+  const feedIncidents = activeIncidents.filter(
+    (h) => h.id !== criticalIncident?.id
+  );
 
-  // Metrics (Placeholders with real data connection possibilities)
-  const personnelOnSite = 148;
-  const resourceReady = '94%';
-  const avgResponseTime = '4m 12s';
+  // Stats data
+  const statsData = [
+    {
+      label: 'Active Alarms',
+      value: String(activeIncidents.length),
+      icon: Volume2,
+      trend: '+2%',
+      isUp: true,
+      note: 'vs yesterday',
+    },
+    {
+      label: 'Personnel On-Site',
+      value: '148',
+      icon: Users,
+      trend: '-5%',
+      isUp: false,
+      note: 'current shift',
+    },
+    {
+      label: 'Resource Ready',
+      value: '94%',
+      icon: HardDrive,
+      trend: '+1%',
+      isUp: true,
+      note: 'optimized',
+    },
+    {
+      label: 'Avg Response',
+      value: '4m 12s',
+      icon: Timer,
+      trend: '-12%',
+      isUp: false,
+      note: 'target efficiency',
+    },
+  ];
+
+  const handleRespondClick = () => {
+    if (criticalIncident) {
+      router.push(
+        `/emergency/${criticalIncident.apartment?.floor?.building?.id}`
+      );
+    }
+  };
+
+  const handleShareClick = () => {
+    toast({
+      title: 'Incident Shared',
+      description: 'Incident details copied to clipboard',
+      duration: 3000,
+    });
+  };
 
   if (loading) {
     return (
-      <DashboardLayout role="firefighter" userName={user?.name || 'Commander'} userTitle="FIREFIGHTER">
+      <DashboardLayout
+        role="firefighter"
+        userName={user?.name || 'Commander'}
+        userTitle="FIREFIGHTER"
+      >
         <div className="flex items-center justify-center h-full min-h-[60vh]">
           <div className="text-center">
             <div className="rounded-full h-16 w-16 border-4 border-primary border-t-transparent mx-auto mb-4 animate-spin" />
-            <p className="text-xl font-semibold text-primary">Loading Command Center...</p>
+            <p className="text-xl font-semibold text-primary">
+              Loading Command Center...
+            </p>
           </div>
         </div>
       </DashboardLayout>
@@ -91,205 +185,288 @@ function FirefighterDashboardContent() {
   }
 
   return (
-    <DashboardLayout role="firefighter" userName={user?.name || 'Cmdr. Sterling'} userTitle="SENIOR DIRECTOR">
-      <div className="p-8 space-y-8 max-w-[1600px] mx-auto w-full">
-        {/* Metrics Row */}
-        <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {/* Active Alarms */}
-          <div className="glass-card p-6 rounded-2xl flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <p className="text-primary/60 text-sm font-semibold uppercase tracking-wider">Active Alarms</p>
-              <span className="material-symbols-outlined text-primary bg-primary/5 p-2 rounded-lg">campaign</span>
-            </div>
-            <p className="text-4xl font-bold text-primary">{activeIncidents.length}</p>
-            <div className="flex items-center gap-1 text-green-600 text-xs font-bold">
-              <span className="material-symbols-outlined text-sm">trending_up</span>
-              <span>+2% vs yesterday</span>
-            </div>
-          </div>
+    <DashboardLayout
+      role="firefighter"
+      userName={user?.name || 'Cmdr. Sterling'}
+      userTitle="SENIOR DIRECTOR"
+    >
+      <main className="space-y-4 sm:space-y-6 overflow-auto p-3 sm:p-4 md:p-6 lg:p-8 lg:space-y-8">
+        {/* Stats Cards */}
+        <div className="grid gap-3 grid-cols-1 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {statsData.map((stat) => (
+            <Card key={stat.label} className="border border-border">
+              <CardContent className="p-3 sm:p-4 md:p-5">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground truncate">
+                      {stat.label}
+                    </p>
+                    <p className="mt-2 text-2xl sm:text-3xl font-bold text-[#1f3d2f] break-words">
+                      {stat.value}
+                    </p>
+                    <div className="mt-2 flex items-center gap-1 flex-wrap">
+                      {stat.isUp ? (
+                        <TrendingUp className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-green-600 flex-shrink-0" />
+                      ) : (
+                        <TrendingDown className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-red-600 flex-shrink-0" />
+                      )}
+                      <span
+                        className={cn(
+                          'text-xs font-medium truncate',
+                          stat.isUp ? 'text-green-600' : 'text-red-600'
+                        )}
+                      >
+                        {stat.trend} {stat.note}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="rounded-lg bg-secondary p-2 sm:p-2.5 flex-shrink-0">
+                    <stat.icon className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
 
-          {/* Personnel On-Site */}
-          <div className="glass-card p-6 rounded-2xl flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <p className="text-primary/60 text-sm font-semibold uppercase tracking-wider">Personnel On-Site</p>
-              <span className="material-symbols-outlined text-primary bg-primary/5 p-2 rounded-lg">groups</span>
-            </div>
-            <p className="text-4xl font-bold text-primary">{personnelOnSite}</p>
-            <div className="flex items-center gap-1 text-red-600 text-xs font-bold">
-              <span className="material-symbols-outlined text-sm">trending_down</span>
-              <span>-5% current shift</span>
-            </div>
-          </div>
-
-          {/* Resource Ready */}
-          <div className="glass-card p-6 rounded-2xl flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <p className="text-primary/60 text-sm font-semibold uppercase tracking-wider">Resource Ready</p>
-              <span className="material-symbols-outlined text-primary bg-primary/5 p-2 rounded-lg">inventory_2</span>
-            </div>
-            <p className="text-4xl font-bold text-primary">{resourceReady}</p>
-            <div className="flex items-center gap-1 text-green-600 text-xs font-bold">
-              <span className="material-symbols-outlined text-sm">trending_up</span>
-              <span>+1% optimized</span>
-            </div>
-          </div>
-
-          {/* Avg Response */}
-          <div className="glass-card p-6 rounded-2xl flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <p className="text-primary/60 text-sm font-semibold uppercase tracking-wider">Avg Response</p>
-              <span className="material-symbols-outlined text-primary bg-primary/5 p-2 rounded-lg">timer</span>
-            </div>
-            <p className="text-4xl font-bold text-primary">{avgResponseTime}</p>
-            <div className="flex items-center gap-1 text-red-600 text-xs font-bold">
-              <span className="material-symbols-outlined text-sm">trending_down</span>
-              <span>-12% target efficiency</span>
-            </div>
-          </div>
-        </section>
-
-        {/* Hero Critical Alarm */}
+        {/* Critical Incident */}
         {criticalIncident ? (
           <section>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-primary text-xl font-bold flex items-center gap-2">
-                <span className="size-2 rounded-full bg-red-500 pulse-red"></span>
-                Critical Priority Incident
-              </h2>
-              <button onClick={() => router.push('/emergency')} className="text-primary text-sm font-bold border-b border-primary">
-                View All Incidents
+            <div className="mb-3 sm:mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-2">
+                <span className="h-2.5 w-2.5 sm:h-3 sm:w-3 animate-pulse rounded-full bg-red-500 flex-shrink-0" />
+                <h2 className="text-base sm:text-lg font-bold text-foreground">
+                  Critical Priority Incident
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => router.push('/emergency')}
+                className="text-xs sm:text-sm font-medium text-foreground underline underline-offset-4 hover:text-[#1f3d2f] w-fit"
+              >
+                View Full Incident Queue
               </button>
             </div>
-            <div className="bg-white rounded-3xl p-8 flex flex-col lg:flex-row gap-8 shadow-2xl shadow-primary/10 border border-primary/5">
-              <div className="lg:w-1/3 h-64 lg:h-auto bg-slate-200 rounded-2xl relative overflow-hidden bg-cover bg-center" style={{ backgroundImage: "url('https://placeholder.pics/svg/300')" }}>
-                <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
-                <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur rounded-lg px-3 py-1.5 flex items-center gap-2">
-                  <span className="material-symbols-outlined text-red-600 text-sm">location_on</span>
-                  <span className="text-xs font-bold text-slate-800">{criticalIncident.apartment?.floor?.building?.name || 'Unknown Location'}</span>
-                </div>
-              </div>
-              <div className="flex-1 flex flex-col justify-between py-2">
-                <div>
-                  <div className="flex items-center gap-3 mb-2">
-                    <span className="px-3 py-1 bg-red-100 text-red-700 text-[10px] font-bold uppercase tracking-widest rounded-full">Severity: Critical</span>
-                    <span className="px-3 py-1 bg-orange-100 text-orange-700 text-[10px] font-bold uppercase tracking-widest rounded-full">Grade A Response</span>
-                  </div>
-                  <h3 className="text-3xl font-bold text-primary mb-3">
-                    {criticalIncident.type || 'Fire Incident'} - {criticalIncident.apartment?.floor?.building?.name}
-                  </h3>
-                  <p className="text-slate-500 leading-relaxed max-w-2xl mb-6">
-                    {criticalIncident.description || `Reported at Floor ${criticalIncident.apartment?.floor?.level}, Unit ${criticalIncident.apartment?.unit_number}. Immediate response required.`}
-                    <br />
-                    <span className="font-bold text-primary">Units Assigned: Engine 42, Truck 18, Rescue 09.</span>
-                  </p>
-                </div>
-                <div className="flex flex-col md:flex-row items-center gap-8 border-t border-slate-100 pt-6">
-                  <div className="flex items-center gap-4">
-                    <div className="text-center px-4 border-r border-slate-100">
-                      <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">Elapsed</p>
-                      <p className="text-lg font-bold text-primary tracking-tighter">08:42</p>
+
+            <Card className="overflow-hidden">
+              <CardContent className="p-0">
+                <div className="flex flex-col lg:flex-row">
+                  <div className="relative h-48 w-full flex-shrink-0 bg-neutral-200 sm:h-56 lg:h-auto lg:w-80">
+                    <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-orange-100 to-red-100">
+                      <span className="text-4xl">🔥</span>
                     </div>
-                    <div className="text-center px-4">
-                      <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">Backup ETA</p>
-                      <p className="text-lg font-bold text-primary tracking-tighter">03m 15s</p>
+                    <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4">
+                      <Badge
+                        variant="secondary"
+                        className="gap-1 sm:gap-1.5 bg-white px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm font-medium text-foreground shadow-sm"
+                      >
+                        <MapPin className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-red-500 flex-shrink-0" />
+                        <span className="truncate">
+                          {criticalIncident.apartment?.floor?.building?.name ||
+                            'Unknown Location'}
+                        </span>
+                      </Badge>
                     </div>
                   </div>
-                  <div className="flex-1 w-full flex gap-3">
-                    <button
-                      onClick={() => router.push(`/emergency/${criticalIncident.apartment?.floor?.building?.id}`)}
-                      className="flex-1 bg-primary text-white font-bold py-4 rounded-xl flex items-center justify-center gap-3 hover:bg-primary/90 transition-all shadow-xl shadow-primary/20"
-                    >
-                      <span className="material-symbols-outlined">radiology</span>
-                      Respond to Incident
-                    </button>
-                    <button className="bg-primary/5 text-primary font-bold px-6 rounded-xl hover:bg-primary/10 transition-all">
-                      <span className="material-symbols-outlined">share</span>
-                    </button>
+
+                  <div className="flex flex-1 flex-col p-4 sm:p-5 md:p-6">
+                    <div className="flex flex-wrap gap-2">
+                      <Badge className="bg-red-500 px-2 py-0.5 sm:px-2.5 text-xs font-semibold text-white hover:bg-red-500">
+                        SEVERITY:{' '}
+                        {criticalIncident.severity?.toUpperCase() || 'CRITICAL'}
+                      </Badge>
+                      <Badge
+                        variant="outline"
+                        className="border-amber-500 bg-amber-50 px-2 py-0.5 sm:px-2.5 text-xs font-semibold text-amber-700"
+                      >
+                        GRADE A RESPONSE
+                      </Badge>
+                    </div>
+
+                    <h3 className="mt-3 sm:mt-4 text-lg sm:text-2xl font-bold text-foreground">
+                      {criticalIncident.type || 'Fire Incident'} -{' '}
+                      {criticalIncident.apartment?.floor?.building?.name}
+                    </h3>
+                    <p className="mt-2 sm:mt-3 text-sm leading-relaxed text-muted-foreground">
+                      {criticalIncident.description ||
+                        `Reported at Floor ${criticalIncident.apartment?.floor?.level}, Unit ${criticalIncident.apartment?.unit_number}. Immediate response required.`}{' '}
+                      <span className="font-semibold text-foreground">
+                        Units Assigned: Engine 42, Truck 18, Rescue 09.
+                      </span>
+                    </p>
+
+                    <div className="mt-4 sm:mt-6 flex flex-col gap-3 sm:gap-4 border-t border-border pt-3 sm:pt-4">
+                      <div className="flex gap-6 sm:gap-8">
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                            Elapsed
+                          </p>
+                          <p className="mt-0.5 text-lg sm:text-xl font-bold text-foreground">
+                            08:42
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                            Backup ETA
+                          </p>
+                          <p className="mt-0.5 text-lg sm:text-xl font-bold text-foreground">
+                            03m 15s
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                        <Button
+                          onClick={handleRespondClick}
+                          className="gap-2 bg-[#1f3d2f] px-4 sm:px-6 text-sm text-white hover:bg-[#2a4f3d] w-full sm:w-auto"
+                        >
+                          <Siren className="h-4 w-4 flex-shrink-0" />
+                          Respond to Incident
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={handleShareClick}
+                          className="w-10 h-10 flex-shrink-0"
+                        >
+                          <Share2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           </section>
         ) : (
           <section>
-            <div className="bg-white rounded-3xl p-12 text-center shadow-2xl shadow-primary/10 border border-primary/5">
-              <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6">
-                <CheckCircle className="w-10 h-10 text-green-600" />
-              </div>
-              <h3 className="text-3xl font-bold text-primary mb-3">All Clear</h3>
-              <p className="text-slate-500 text-lg max-w-md mx-auto leading-relaxed">
-                No active incidents at this time. All systems operational and monitoring.
-              </p>
-            </div>
+            <Card className="overflow-hidden">
+              <CardContent className="p-12 text-center">
+                <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6">
+                  <CheckCircle className="w-10 h-10 text-green-600" />
+                </div>
+                <h3 className="text-3xl font-bold text-foreground mb-3">
+                  All Clear
+                </h3>
+                <p className="text-muted-foreground text-lg max-w-md mx-auto leading-relaxed">
+                  No active incidents at this time. All systems operational and
+                  monitoring.
+                </p>
+              </CardContent>
+            </Card>
           </section>
         )}
 
-        {/* Active Feed */}
+        {/* Incident Feed */}
         {activeIncidents.length > 0 && (
-          <section className="pb-10">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-primary text-xl font-bold uppercase tracking-tight">Active Incident Feed</h2>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setFeedFilter('all')}
-                  className={`px-4 py-1.5 rounded-full text-xs font-bold border transition-all ${feedFilter === 'all' ? 'bg-primary/5 text-primary border-primary/10' : 'bg-white text-slate-400 border-slate-100'}`}
-                >
-                  All Units
-                </button>
-                <button
-                  onClick={() => setFeedFilter('priority')}
-                  className={`px-4 py-1.5 rounded-full text-xs font-bold border transition-all ${feedFilter === 'priority' ? 'bg-primary/5 text-primary border-primary/10' : 'bg-white text-slate-400 border-slate-100'}`}
-                >
-                  Priority Only
-                </button>
-              </div>
-            </div>
-            <div className="overflow-hidden rounded-2xl border border-primary/5 bg-white">
-              <table className="w-full text-left border-collapse">
-                <thead className="bg-primary/5 border-b border-primary/5">
-                  <tr>
-                    <th className="px-6 py-4 text-[11px] font-bold text-primary uppercase tracking-widest">ID / Status</th>
-                    <th className="px-6 py-4 text-[11px] font-bold text-primary uppercase tracking-widest">Incident Details</th>
-                    <th className="px-6 py-4 text-[11px] font-bold text-primary uppercase tracking-widest">Resources</th>
-                    <th className="px-6 py-4 text-[11px] font-bold text-primary uppercase tracking-widest">Duration</th>
-                    <th className="px-6 py-4 text-[11px] font-bold text-primary uppercase tracking-widest text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {activeIncidents.map((incident) => (
-                    <tr key={incident.id} className="hover:bg-primary/[0.02] transition-colors group">
-                      <td className="px-6 py-4">
-                        <div className="flex flex-col gap-1">
-                          <span className="text-xs font-bold text-slate-400">#{incident.id}</span>
-                          <span className="flex items-center gap-1.5 text-xs font-bold text-orange-600">
-                            <span className="size-1.5 rounded-full bg-orange-600"></span> {incident.status.toUpperCase()}
-                          </span>
+          <section>
+            <Card>
+              <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pb-3 sm:pb-4">
+                <CardTitle className="text-sm sm:text-base font-bold uppercase tracking-wider text-foreground">
+                  Active Incident Feed
+                </CardTitle>
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <Button
+                    variant={filter === 'all' ? 'outline' : 'ghost'}
+                    size="sm"
+                    onClick={() => setFilter('all')}
+                    className={cn(
+                      'text-xs sm:text-sm font-medium',
+                      filter === 'all' && 'border-foreground'
+                    )}
+                  >
+                    All Units
+                  </Button>
+                  <Button
+                    variant={filter === 'priority' ? 'outline' : 'ghost'}
+                    size="sm"
+                    onClick={() => setFilter('priority')}
+                    className={cn(
+                      'text-xs sm:text-sm font-medium text-muted-foreground',
+                      filter === 'priority' && 'border-foreground text-foreground'
+                    )}
+                  >
+                    Priority Only
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="hidden grid-cols-[100px_1fr_120px_80px_50px] gap-3 border-b border-border bg-muted/50 px-4 sm:px-6 py-2 sm:py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground md:grid">
+                  <div>ID / Status</div>
+                  <div>Incident Details</div>
+                  <div className="text-center">Resources</div>
+                  <div>Duration</div>
+                  <div>Actions</div>
+                </div>
+
+                <div className="divide-y divide-border">
+                  {activeIncidents.map((incident) => {
+                    const colors = getStatusColor(incident.status);
+                    return (
+                      <div
+                        key={incident.id}
+                        className="flex flex-col gap-3 px-4 sm:px-6 py-3 sm:py-4 transition-colors hover:bg-muted/30 md:grid md:grid-cols-[100px_1fr_120px_80px_50px] md:items-center md:gap-3"
+                      >
+                        <div>
+                          <p className="text-xs sm:text-sm font-medium text-muted-foreground">
+                            #{incident.id}
+                          </p>
+                          <div className="mt-1 flex items-center gap-1.5">
+                            <span
+                              className={cn('h-2 w-2 rounded-full', colors.dot)}
+                            />
+                            <span
+                              className={cn('text-xs font-bold', colors.text)}
+                            >
+                              {incident.status?.toUpperCase()}
+                            </span>
+                          </div>
                         </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <p className="font-bold text-primary text-sm">{incident.type}</p>
-                        <p className="text-xs text-slate-500">{incident.apartment?.floor?.building?.address}</p>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex -space-x-2">
-                          <div className="size-7 rounded-full bg-slate-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-slate-600">U1</div>
-                          <div className="size-7 rounded-full bg-primary/10 border-2 border-white flex items-center justify-center text-[10px] font-bold text-primary">+2</div>
+                        <div>
+                          <p className="font-semibold text-foreground text-sm">
+                            {incident.type} -{' '}
+                            {incident.apartment?.floor?.building?.name}
+                          </p>
+                          <p className="mt-0.5 text-xs sm:text-sm text-muted-foreground">
+                            {incident.apartment?.floor?.building?.address ||
+                              `Floor ${incident.apartment?.floor?.level}, Unit ${incident.apartment?.unit_number}`}
+                          </p>
                         </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="text-sm font-medium text-slate-600">--:--</span>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <button className="text-primary hover:text-primary/70 material-symbols-outlined">more_vert</button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                        <div className="flex items-center gap-1 md:justify-center flex-wrap">
+                          <Badge
+                            variant="secondary"
+                            className="px-2 py-0.5 text-xs font-semibold"
+                          >
+                            U1
+                          </Badge>
+                          <Badge
+                            variant="secondary"
+                            className="px-2 py-0.5 text-xs font-semibold bg-muted text-muted-foreground"
+                          >
+                            +2
+                          </Badge>
+                        </div>
+                        <div className="text-xs sm:text-sm font-medium text-foreground">
+                          --:--
+                        </div>
+                        <div className="flex md:justify-center">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-foreground flex-shrink-0"
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
           </section>
         )}
-      </div>
+      </main>
     </DashboardLayout>
   );
 }
