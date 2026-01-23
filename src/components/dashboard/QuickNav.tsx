@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Building, Users, MessageSquare, Receipt, Package, ArrowRight } from 'lucide-react';
-import { Card } from '@/components/ui/card';
+import { Card } from '@/components/ui/Card';
 import { staggerContainer, fadeInUp } from '@/lib/animations';
 
 const QuickNav = () => {

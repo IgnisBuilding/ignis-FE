@@ -189,6 +189,26 @@ class ApiService {
     });
   }
 
+  async createResident(data: Partial<Resident>): Promise<Resident> {
+    return this.request<Resident>('/residents', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateResident(id: number, data: Partial<Resident>): Promise<Resident> {
+    return this.request<Resident>(`/residents/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteResident(id: number): Promise<void> {
+    return this.request<void>(`/residents/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
   // ==================== BUILDING ENDPOINTS ====================
 
   async getBuildings(): Promise<Building[]> {

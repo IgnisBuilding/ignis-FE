@@ -5,8 +5,8 @@ import { motion } from 'framer-motion';
 import { Plus, Search, Building2, Users, MapPin } from 'lucide-react';
 import Image from 'next/image';
 import Button from '@/components/shared/Button';
-import { Input } from '@/components/ui/input';
-import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/Input';
+import { Card } from '@/components/ui/Card';
 import { deleteSociety, type Society } from '@/app/actions/societies';
 import { fadeInUp, staggerContainer } from '@/lib/animations';
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/Button"
 import { useTour } from "@/providers/TourProvider"
 import { Radio, Shield, Server, ArrowRight } from "lucide-react"
 

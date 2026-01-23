@@ -1,7 +1,7 @@
 "use client"
 
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/Input"
+import { Button } from "@/components/ui/Button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Search, Settings, MapPin, Menu } from "lucide-react"
 import { useLanguage } from "@/providers/LanguageProvider"

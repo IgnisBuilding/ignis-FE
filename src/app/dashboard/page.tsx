@@ -12,7 +12,7 @@ import {
   Shield
 } from 'lucide-react';
 import PageTransition from '@/components/shared/pageTransition';
-import { Card } from '@/components/ui/card';
+import { Card } from '@/components/ui/Card';
 import { fadeInUp, staggerContainer } from '@/lib/animations';
 
 interface StatCardProps {
