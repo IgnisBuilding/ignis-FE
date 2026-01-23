@@ -212,7 +212,7 @@ function ResidentsManagementContent() {
 
   return (
     <DashboardLayout role="admin" userName={user?.name || 'Admin'} userTitle="ADMINISTRATOR">
-      <main className="flex-1 space-y-4 overflow-auto p-4 sm:space-y-6 sm:p-6 md:p-8">
+      <div className="space-y-4 sm:space-y-6 overflow-auto p-3 sm:p-4 md:p-6 lg:p-8 w-full">
         <FeatureGuideModal
           features={residentsFeatures}
           isOpen={showGuide}
@@ -509,7 +509,7 @@ function ResidentsManagementContent() {
           onConfirm={handleConfirmDelete}
           onCancel={() => setShowDeleteDialog(false)}
         />
-      </main>
+      </div>
     </DashboardLayout>
   );
 }

@@ -96,6 +96,8 @@ const roleConfig: Record<string, {
       { label: "Residents", href: "/admin/residents", icon: Users },
       { label: "Sensors", href: "/admin/sensors", icon: Radio },
       { label: "Buildings", href: "/admin/buildings", icon: Building2 },
+      { label: "Logistics", href: "/admin/logistics", icon: Truck },
+      { label: "Reports", href: "/admin/reports", icon: BarChart3 },
       { label: "Settings", href: "/settings", icon: Settings },
     ],
     dispatchButton: false,

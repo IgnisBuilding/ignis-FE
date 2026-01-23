@@ -60,7 +60,7 @@ export default function DashboardPage() {
                   Dashboard
                 </h1>
                 <p className="text-dark-green-600">
-                  Welcome back! Here's what's happening with your building.
+                  Welcome back! Heres whats happening with your building.
                 </p>
               </div>
               <select

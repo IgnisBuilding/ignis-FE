@@ -240,7 +240,7 @@ function BuildingsManagementContent() {
 
         {/* Main Content */}
         <div className="flex-1 overflow-auto">
-          <div className="p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto">
+          <div className="p-3 sm:p-4 md:p-6 lg:p-8 w-full">
             {/* Header */}
             <div className="mb-6">
               <div className="flex items-center justify-between mb-6">
