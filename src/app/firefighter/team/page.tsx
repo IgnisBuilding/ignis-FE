@@ -141,7 +141,7 @@ function PersonnelPageContent() {
       userName={user?.name || 'Cmdr. Sterling'}
       userTitle="SENIOR DIRECTOR"
     >
-      <main className="flex-1 space-y-4 overflow-auto p-4 sm:space-y-6 sm:p-6 md:p-8">
+      <div className="flex-1 space-y-4 overflow-auto p-3 sm:p-4 md:p-6 lg:p-8 sm:space-y-6 w-full max-w-none">
         {/* Header */}
         <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <div>
@@ -292,7 +292,7 @@ function PersonnelPageContent() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </main>
+      </div>
     </DashboardLayout>
   );
 }

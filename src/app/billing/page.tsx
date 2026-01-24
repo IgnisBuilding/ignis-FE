@@ -4,8 +4,8 @@ import { motion } from 'framer-motion';
 import { Search, Filter, Download, Eye, DollarSign, Calendar, AlertCircle } from 'lucide-react';
 import PageTransition from '@/components/shared/pageTransition';
 import Button from '@/components/shared/Button';
-import { Input } from '@/components/ui/Input';
-import { Card } from '@/components/ui/Card';
+import { Input } from '@/components/ui/input';
+import { Card } from '@/components/ui/card';
 import { fadeInUp, staggerContainer } from '@/lib/animations';
 
 export default function BillingPage() {

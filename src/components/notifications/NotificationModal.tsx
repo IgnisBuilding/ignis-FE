@@ -4,7 +4,7 @@ import { useState } from "react"
 import { AlertCircle, Bell, CheckCircle, Info, X, XCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useNotifications } from "@/providers/NotificationProvider"
-import { Button } from "@/components/ui/Button"
+import { Button } from "@/components/ui/button"
 
 export function NotificationModal() {
   const { notifications, removeNotification, markAsRead, unreadCount, clearAll } = useNotifications()

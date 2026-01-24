@@ -9,10 +9,10 @@ import { FeatureGuideModal, HelpButton } from '@/components/tour';
 import { ConfirmDialog } from '@/components/dialogs';
 import { useToast } from '@/hooks/use-toast';
 import { api, Resident as ApiResident } from '@/lib/api';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/Input';
+import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Search,
@@ -212,7 +212,7 @@ function ResidentsManagementContent() {
 
   return (
     <DashboardLayout role="admin" userName={user?.name || 'Admin'} userTitle="ADMINISTRATOR">
-      <div className="space-y-4 sm:space-y-6 overflow-auto p-3 sm:p-4 md:p-6 lg:p-8 w-full">
+      <div className="flex-1 space-y-4 sm:space-y-6 overflow-auto p-3 sm:p-4 md:p-6 lg:p-8 w-full max-w-none">
         <FeatureGuideModal
           features={residentsFeatures}
           isOpen={showGuide}
@@ -221,14 +221,14 @@ function ResidentsManagementContent() {
         />
 
         {/* Header */}
-        <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-          <div>
+        <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center w-full">
+          <div className="flex-1">
             <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Residents Management</h1>
             <p className="text-sm text-muted-foreground">
               Active residents: {filteredResidents.filter(r => r.isActive).length} / {residents.length} total
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0">
             <Button onClick={handleAdd} className="gap-2 bg-[#1f3d2f] text-white hover:bg-[#2a4f3d]">
               <Plus className="h-4 w-4" />
               Add Resident
@@ -238,7 +238,7 @@ function ResidentsManagementContent() {
         </div>
 
         {/* Search and Filter */}
-        <div className="flex flex-col gap-2 sm:flex-row sm:gap-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:gap-4 w-full">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
@@ -248,18 +248,18 @@ function ResidentsManagementContent() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Button variant="outline" className="gap-2 bg-transparent w-full sm:w-auto">
+          <Button variant="outline" className="gap-2 bg-transparent flex-shrink-0">
             <Filter className="h-4 w-4" />
             Filter
           </Button>
         </div>
 
         {/* Residents List */}
-        <Card>
+        <Card className="w-full max-w-none">
           <CardHeader>
             <CardTitle className="text-base font-bold">Active Residents</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="w-full">
             {loading ? (
               <div className="flex items-center justify-center py-12">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1f3d2f]"></div>
@@ -274,11 +274,11 @@ function ResidentsManagementContent() {
                 <span>No residents found matching your search.</span>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-3 w-full">
                 {filteredResidents.map((resident) => (
                   <div
                     key={resident.id}
-                    className="flex flex-col items-start gap-4 sm:items-center sm:flex-row sm:justify-between lg:gap-3 p-2 rounded-lg hover:bg-muted/20 transition-colors"
+                    className="flex flex-col items-start gap-4 sm:items-center sm:flex-row sm:justify-between lg:gap-3 p-3 sm:p-4 rounded-lg hover:bg-muted/20 transition-colors border border-border w-full"
                   >
                     <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
                       <Avatar className="flex-shrink-0">

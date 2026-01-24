@@ -11,8 +11,8 @@ import { FeatureGuideModal, HelpButton } from '@/components/tour';
 import { IncidentActionModal } from '@/components/dialogs';
 import { useToast } from '@/hooks/use-toast';
 import { api } from '@/lib/api';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   MapPin,
@@ -201,7 +201,7 @@ function AdminDashboardContent() {
 
   return (
     <DashboardLayout role="admin" userName={user?.name || 'Admin'} userTitle="ADMINISTRATOR">
-      <main className="space-y-4 sm:space-y-6 overflow-auto p-3 sm:p-4 md:p-6 lg:p-8 lg:space-y-8">
+      <div className="flex-1 space-y-4 sm:space-y-6 overflow-auto p-3 sm:p-4 md:p-6 lg:p-8 lg:space-y-8 w-full max-w-none">
         {/* Help Button */}
         <div className="flex justify-end">
           <HelpButton onClick={() => setShowGuide(true)} />
@@ -444,7 +444,7 @@ function AdminDashboardContent() {
             </CardContent>
           </Card>
         </section>
-      </main>
+      </div>
     </DashboardLayout>
   );
 }

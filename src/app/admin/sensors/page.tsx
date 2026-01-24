@@ -126,7 +126,7 @@ function SensorsManagementContent() {
 
   return (
     <DashboardLayout role="admin" userName={user?.name || 'Admin'} userTitle="ADMINISTRATOR">
-      <div className="p-8 max-w-[1600px] mx-auto w-full">
+      <div className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 w-full max-w-none">
           <motion.div variants={fadeIn} initial="initial" animate="animate">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
               <div>

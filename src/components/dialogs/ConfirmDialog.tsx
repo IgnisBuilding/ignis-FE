@@ -1,6 +1,6 @@
 "use client"
 
-import { Button } from '@/components/ui/Button'
+import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 
 interface ConfirmDialogProps {

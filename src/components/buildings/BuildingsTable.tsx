@@ -1,7 +1,7 @@
 "use client"
 
 import { Building2, Edit, Trash2 } from "lucide-react"
-import { Button } from "@/components/ui/Button"
+import { Button } from "@/components/ui/button"
 
 interface Building {
   id: number

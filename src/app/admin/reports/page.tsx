@@ -7,10 +7,10 @@ import DashboardLayout from "@/components/layout/DashboardLayout"
 import { useTour } from "@/providers/TourProvider"
 import { FeatureGuideModal, HelpButton } from "@/components/tour"
 import { useToast } from "@/hooks/use-toast"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card"
-import { Button } from "@/components/ui/Button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/Input"
+import { Input } from "@/components/ui/input"
 import { ConfirmDialog } from "@/components/dialogs"
 import {
   Search,
@@ -100,7 +100,7 @@ function ReportsContent() {
 
   return (
     <DashboardLayout role="admin" userName={user?.name || "Admin"} userTitle="ADMINISTRATOR">
-      <div className="space-y-4 sm:space-y-6 overflow-auto p-3 sm:p-4 md:p-6 lg:p-8 w-full">
+      <div className="flex-1 space-y-4 sm:space-y-6 overflow-auto p-3 sm:p-4 md:p-6 lg:p-8 w-full max-w-none">
         <FeatureGuideModal
           features={reportsFeatures}
           isOpen={showGuide}

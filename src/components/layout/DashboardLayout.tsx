@@ -5,9 +5,17 @@ import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from '@/context/AuthContext';
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useLanguage } from "@/providers/LanguageProvider";
 import { NotificationModal } from "@/components/notifications";
 import {
@@ -29,6 +37,10 @@ import {
   X,
   BookOpen,
   Bell,
+  User,
+  ChevronDown,
+  PanelLeftClose,
+  PanelLeft,
 } from "lucide-react";
 
 interface NavItem {
@@ -70,6 +82,7 @@ const roleConfig: Record<string, {
     subtitle: "RESIDENT PORTAL",
     navItems: [
       { label: "Dashboard", href: "/resident", icon: Home },
+      { label: "Live Map", href: "/resident/map", icon: Map },
       { label: "My Apartment", href: "/resident/apartment", icon: Building2 },
       { label: "Alerts", href: "/resident/alerts", icon: AlertTriangle },
       { label: "Settings", href: "/settings", icon: Settings },
@@ -93,6 +106,7 @@ const roleConfig: Record<string, {
     subtitle: "MANAGEMENT",
     navItems: [
       { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
+      { label: "Live Map", href: "/admin/map", icon: Map },
       { label: "Residents", href: "/admin/residents", icon: Users },
       { label: "Sensors", href: "/admin/sensors", icon: Radio },
       { label: "Buildings", href: "/admin/buildings", icon: Building2 },
@@ -104,13 +118,18 @@ const roleConfig: Record<string, {
   },
 };
 
-// Mobile Sidebar Context
-const SidebarContext = createContext<{ isOpen: boolean; setIsOpen: (open: boolean) => void } | undefined>(undefined);
+// Sidebar Context
+const SidebarContext = createContext<{
+  isOpen: boolean;
+  setIsOpen: (open: boolean) => void;
+  isCollapsed: boolean;
+  setIsCollapsed: (collapsed: boolean) => void;
+} | undefined>(undefined);
 
 function useSidebar() {
   const context = useContext(SidebarContext);
   if (!context) {
-    return { isOpen: false, setIsOpen: () => {} };
+    return { isOpen: false, setIsOpen: () => {}, isCollapsed: false, setIsCollapsed: () => {} };
   }
   return context;
 }
@@ -121,6 +140,7 @@ export default function DashboardLayout({ children, role, userName, userTitle }:
   const { logout } = useAuth();
   const { t } = useLanguage();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const config = roleConfig[role];
 
   const isActive = (href: string) => {
@@ -132,82 +152,105 @@ export default function DashboardLayout({ children, role, userName, userTitle }:
 
   const userInitials = userName.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
 
-  const SidebarContent = () => (
-    <>
-      <div className="flex items-center justify-between px-4 py-5">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#1f3d2f]">
-            <Flame className="h-5 w-5 text-white" />
-          </div>
-          <div>
-            <h1 className="text-lg font-bold leading-tight text-foreground">{config.title}</h1>
-            <p className="text-xs tracking-wide text-muted-foreground">{config.subtitle}</p>
-          </div>
-        </div>
-      </div>
-
-      <nav className="flex-1 px-3 py-4">
-        <ul className="space-y-1">
-          {config.navItems.map((item) => {
-            const active = isActive(item.href);
-            const Icon = item.icon;
-            return (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  onClick={() => setSidebarOpen(false)}
-                  className={cn(
-                    "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                    active
-                      ? "bg-[#1f3d2f] text-white"
-                      : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-                  )}
-                >
-                  <Icon className="h-5 w-5 flex-shrink-0" />
-                  <span>{item.label}</span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
-
-      <div className="p-4 space-y-2">
-        {config.dispatchButton && (
-          <Button
-            onClick={() => router.push('/emergency')}
-            className="w-full gap-2 bg-red-600 py-6 text-base font-semibold text-white hover:bg-red-700"
-          >
-            <Radio className="h-5 w-5 flex-shrink-0" />
-            {t.sidebar.newDispatch}
-          </Button>
-        )}
-        <Button
-          variant="outline"
-          className="w-full gap-2"
-          onClick={logout}
-        >
-          <LogOut className="h-4 w-4" />
-          Logout
-        </Button>
-      </div>
-    </>
-  );
-
   return (
-    <SidebarContext.Provider value={{ isOpen: sidebarOpen, setIsOpen: setSidebarOpen }}>
-      <div className="min-h-screen bg-background">
+    <SidebarContext.Provider value={{ isOpen: sidebarOpen, setIsOpen: setSidebarOpen, isCollapsed: sidebarCollapsed, setIsCollapsed: setSidebarCollapsed }}>
+      <div className="flex min-h-screen w-full bg-background">
         {/* Desktop Sidebar */}
         <aside className={cn(
-          "fixed left-0 top-0 z-40 hidden h-screen flex-col border-r border-border bg-card lg:flex transition-all duration-300",
-          "w-56"
+          "fixed left-0 top-0 z-40 h-screen flex-col border-r border-border bg-card transition-all duration-300",
+          "hidden lg:flex",
+          sidebarCollapsed ? "w-16" : "w-56"
         )}>
-          <SidebarContent />
+          {/* Sidebar Header */}
+          <div className={cn("flex items-center py-5", sidebarCollapsed ? "px-3 justify-center" : "px-4 justify-between")}>
+            {sidebarCollapsed ? (
+              <button
+                onClick={() => setSidebarCollapsed(false)}
+                className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#1f3d2f] flex-shrink-0 hover:bg-[#2a5040] transition-colors cursor-pointer"
+                title="Expand sidebar"
+              >
+                <Flame className="h-5 w-5 text-white" />
+              </button>
+            ) : (
+              <>
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#1f3d2f] flex-shrink-0">
+                    <Flame className="h-5 w-5 text-white" />
+                  </div>
+                  <div className="min-w-0">
+                    <h1 className="text-lg font-bold leading-tight text-foreground truncate">{config.title}</h1>
+                    <p className="text-xs tracking-wide text-muted-foreground truncate">{config.subtitle}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setSidebarCollapsed(true)}
+                  className="flex items-center justify-center h-10 w-8 ml-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-all self-center"
+                  title="Collapse sidebar"
+                >
+                  <Menu className="h-5 w-5" />
+                </button>
+              </>
+            )}
+          </div>
+
+          {/* Navigation */}
+          <nav className={cn("flex-1 py-4", sidebarCollapsed ? "px-2" : "px-3")}>
+            <ul className="space-y-1">
+              {config.navItems.map((item) => {
+                const active = isActive(item.href);
+                const Icon = item.icon;
+                return (
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      className={cn(
+                        "flex w-full items-center rounded-lg py-2.5 text-sm font-medium transition-colors",
+                        sidebarCollapsed ? "justify-center px-2" : "gap-3 px-3",
+                        active
+                          ? "bg-[#1f3d2f] text-white"
+                          : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                      )}
+                      title={sidebarCollapsed ? item.label : undefined}
+                    >
+                      <Icon className="h-5 w-5 flex-shrink-0" />
+                      {!sidebarCollapsed && <span>{item.label}</span>}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </nav>
+
+          {/* Sidebar Footer */}
+          <div className={cn("space-y-2", sidebarCollapsed ? "p-2" : "p-4")}>
+            {config.dispatchButton && (
+              <Button
+                onClick={() => router.push('/emergency')}
+                className={cn(
+                  "bg-red-600 text-white hover:bg-red-700",
+                  sidebarCollapsed ? "w-full p-2" : "w-full gap-2 py-6 text-base font-semibold"
+                )}
+                title={sidebarCollapsed ? t.sidebar.newDispatch : undefined}
+              >
+                <Radio className="h-5 w-5 flex-shrink-0" />
+                {!sidebarCollapsed && t.sidebar.newDispatch}
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              className={cn("w-full", sidebarCollapsed ? "p-2" : "gap-2")}
+              onClick={logout}
+              title={sidebarCollapsed ? "Logout" : undefined}
+            >
+              <LogOut className="h-4 w-4" />
+              {!sidebarCollapsed && "Logout"}
+            </Button>
+          </div>
         </aside>
 
         {/* Mobile Sidebar */}
         <aside className={cn(
-          "fixed left-0 top-0 z-50 flex h-screen w-56 flex-col border-r border-border bg-card transition-all duration-300 lg:hidden",
+          "fixed left-0 top-0 z-50 flex h-screen w-64 flex-col border-r border-border bg-card transition-transform duration-300 lg:hidden",
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}>
           <div className="flex items-center justify-between px-4 py-5">
@@ -224,9 +267,9 @@ export default function DashboardLayout({ children, role, userName, userTitle }:
               variant="ghost"
               size="icon"
               onClick={() => setSidebarOpen(false)}
-              className="text-muted-foreground hover:text-foreground"
+              className="text-muted-foreground hover:text-foreground hover:bg-muted"
             >
-              <X className="h-4 w-4" />
+              <X className="h-5 w-5" />
             </Button>
           </div>
 
@@ -285,64 +328,100 @@ export default function DashboardLayout({ children, role, userName, userTitle }:
           />
         )}
 
-        {/* Main Content Area */}
-        <div className="lg:pl-56">
+        {/* Main Content Area - responsive to sidebar state */}
+        <div className={cn(
+          "flex-1 flex flex-col min-h-screen transition-all duration-300",
+          sidebarCollapsed
+            ? "lg:ml-16 lg:w-[calc(100%-4rem)]"
+            : "lg:ml-56 lg:w-[calc(100%-14rem)]"
+        )}>
           {/* Header */}
-          <header className="sticky top-0 z-30 flex h-14 sm:h-16 items-center justify-between border-b border-border bg-card gap-2 overflow-x-auto px-3 sm:px-6">
-            <div className="flex items-center gap-3 sm:gap-6 min-w-0">
+          <header className="sticky top-0 z-30 flex h-14 sm:h-16 items-center justify-between border-b border-border bg-card px-4 sm:px-6">
+            <div className="flex items-center gap-2 sm:gap-3">
+              {/* Mobile menu button */}
               <Button
                 variant="ghost"
-                size="sm"
+                size="icon"
                 onClick={() => setSidebarOpen(true)}
-                className="text-muted-foreground hover:text-foreground flex-shrink-0 lg:hidden"
+                className="text-muted-foreground hover:text-foreground lg:hidden"
               >
-                <Menu className="h-4 w-4 sm:h-5 sm:w-5" />
+                <Menu className="h-5 w-5" />
               </Button>
-              <div className="hidden sm:flex items-center gap-2 flex-shrink-0">
-                <span className="h-2 w-2 sm:h-2.5 sm:w-2.5 rounded-full bg-green-500" />
-                <span className="text-xs sm:text-sm font-medium text-foreground whitespace-nowrap">{t.header.systemOptimal}</span>
+
+              <div className="hidden sm:flex items-center gap-2">
+                <span className="h-2.5 w-2.5 rounded-full bg-green-500" />
+                <span className="text-sm font-medium text-foreground">{t.header.systemOptimal}</span>
               </div>
-              <div className="hidden md:flex items-center gap-2 text-muted-foreground flex-shrink-0">
-                <MapPin className="h-3 w-3 sm:h-4 sm:w-4" />
-                <span className="text-xs sm:text-sm whitespace-nowrap">{t.header.gpsLocked}</span>
+              <div className="hidden md:flex items-center gap-2 text-muted-foreground">
+                <MapPin className="h-4 w-4" />
+                <span className="text-sm">{t.header.gpsLocked}</span>
               </div>
             </div>
 
-            <div className="mx-2 sm:mx-8 max-w-xs sm:max-w-md flex-1 min-w-0">
+            <div className="flex-1 max-w-md mx-4">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-3 w-3 sm:h-4 sm:w-4 -translate-y-1/2 text-muted-foreground flex-shrink-0" />
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   type="search"
                   placeholder={t.header.searchIncidents}
-                  className="w-full border-0 bg-secondary pl-8 sm:pl-10 text-xs sm:text-sm h-8 sm:h-10"
+                  className="w-full border-0 bg-secondary pl-10 text-sm h-9 sm:h-10"
                 />
               </div>
             </div>
 
-            <div className="flex items-center gap-1 sm:gap-3 flex-shrink-0">
+            <div className="flex items-center gap-2 sm:gap-3">
               <NotificationModal />
-              <Link href="/settings">
-                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground hidden sm:flex h-8 w-8 sm:h-10 sm:w-10 p-0">
-                  <Settings className="h-4 w-4 sm:h-5 sm:w-5" />
-                </Button>
-              </Link>
 
-              <div className="hidden sm:flex items-center gap-2 sm:gap-3 border-l border-border pl-2 sm:pl-4">
-                <div className="text-right hidden lg:block">
-                  <p className="text-xs sm:text-sm font-semibold text-foreground">{userName}</p>
-                  <p className="text-xs text-muted-foreground">{userTitle}</p>
-                </div>
-                <Avatar className="h-8 w-8 sm:h-10 sm:w-10 border-2 border-[#1f3d2f] flex-shrink-0">
-                  <AvatarFallback className="bg-[#1f3d2f] text-xs sm:text-sm font-semibold text-white">
-                    {userInitials}
-                  </AvatarFallback>
-                </Avatar>
-              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="flex items-center gap-2 sm:gap-3 border-l border-border pl-2 sm:pl-4 hover:opacity-80 transition-opacity cursor-pointer">
+                    <div className="text-right hidden lg:block">
+                      <p className="text-sm font-semibold text-foreground">{userName}</p>
+                      <p className="text-xs text-muted-foreground">{userTitle}</p>
+                    </div>
+                    <Avatar className="h-8 w-8 sm:h-10 sm:w-10 border-2 border-[#1f3d2f]">
+                      <AvatarFallback className="bg-[#1f3d2f] text-sm font-semibold text-white">
+                        {userInitials}
+                      </AvatarFallback>
+                    </Avatar>
+                    <ChevronDown className="h-4 w-4 text-muted-foreground hidden sm:block" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel>
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium">{userName}</p>
+                      <p className="text-xs text-muted-foreground">{userTitle}</p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href="/settings" className="flex items-center gap-2 cursor-pointer">
+                      <User className="h-4 w-4" />
+                      <span>Profile</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/settings" className="flex items-center gap-2 cursor-pointer">
+                      <Settings className="h-4 w-4" />
+                      <span>Settings</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={logout}
+                    className="flex items-center gap-2 cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    <span>Logout</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </header>
 
           {/* Page Content */}
-          <main>
+          <main className="flex-1 w-full overflow-x-hidden">
             {children}
           </main>
         </div>

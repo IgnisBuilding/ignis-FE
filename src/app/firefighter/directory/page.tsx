@@ -153,7 +153,7 @@ function DirectoryContent() {
       userName={user?.name || 'Cmdr. Sterling'}
       userTitle="SENIOR DIRECTOR"
     >
-      <main className="flex-1 space-y-4 overflow-auto p-4 sm:space-y-6 sm:p-6 md:p-8">
+      <div className="flex-1 space-y-4 overflow-auto p-3 sm:p-4 md:p-6 lg:p-8 sm:space-y-6 w-full max-w-none">
         <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
           {/* Filter Sidebar */}
           <aside className="w-full flex-shrink-0 lg:w-64">
@@ -399,7 +399,7 @@ function DirectoryContent() {
             </div>
           </div>
         </div>
-      </main>
+      </div>
     </DashboardLayout>
   );
 }

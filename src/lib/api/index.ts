@@ -133,6 +133,39 @@ class ApiService {
     }
   }
 
+  // ==================== GENERIC HTTP METHODS ====================
+
+  async get<T>(endpoint: string, cache?: RequestCache): Promise<{ data: T }> {
+    const data = await this.request<T>(endpoint, {
+      method: 'GET',
+      cache: cache,
+    });
+    return { data };
+  }
+
+  async post<T>(endpoint: string, body?: unknown): Promise<{ data: T }> {
+    const data = await this.request<T>(endpoint, {
+      method: 'POST',
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    return { data };
+  }
+
+  async put<T>(endpoint: string, body?: unknown): Promise<{ data: T }> {
+    const data = await this.request<T>(endpoint, {
+      method: 'PUT',
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    return { data };
+  }
+
+  async delete<T>(endpoint: string): Promise<{ data: T }> {
+    const data = await this.request<T>(endpoint, {
+      method: 'DELETE',
+    });
+    return { data };
+  }
+
   // ==================== AUTH ENDPOINTS ====================
 
   async login(email: string, password: string): Promise<LoginResponse> {
@@ -172,6 +205,26 @@ class ApiService {
   async getSensorStats(): Promise<any> {
     return this.request<any>('/sensors/stats', {
       method: 'GET',
+    });
+  }
+
+  async createSensor(data: Partial<Sensor>): Promise<Sensor> {
+    return this.request<Sensor>('/sensors', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateSensor(id: number, data: Partial<Sensor>): Promise<Sensor> {
+    return this.request<Sensor>(`/sensors/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteSensor(id: number): Promise<void> {
+    return this.request<void>(`/sensors/${id}`, {
+      method: 'DELETE',
     });
   }
 
@@ -281,6 +334,48 @@ class ApiService {
 
   async getActiveAlerts(): Promise<any[]> {
     return this.request<any[]>('/alerts/active', {
+      method: 'GET',
+    });
+  }
+
+  async getMyAlerts(): Promise<any[]> {
+    return this.request<any[]>('/alerts/my-alerts', {
+      method: 'GET',
+    });
+  }
+
+  // ==================== HAZARD ENDPOINTS ====================
+
+  async getHazards(): Promise<any[]> {
+    return this.request<any[]>('/hazards', {
+      method: 'GET',
+    });
+  }
+
+  async respondToHazard(id: number, data: { status: string; notes?: string }): Promise<any> {
+    return this.request<any>(`/hazards/${id}/respond`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async resolveHazard(id: number, data: { resolution: string; notes?: string }): Promise<any> {
+    return this.request<any>(`/hazards/${id}/resolve`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // ==================== FLOOR PLAN / BUILDING DATA ENDPOINTS ====================
+
+  async getBuildingFloorPlan(buildingId: number | string): Promise<any> {
+    return this.request<any>(`/buildings/${buildingId}/floor-plan`, {
+      method: 'GET',
+    });
+  }
+
+  async getBuildingRooms(buildingId: number | string): Promise<any> {
+    return this.request<any>(`/buildings/${buildingId}/rooms`, {
       method: 'GET',
     });
   }

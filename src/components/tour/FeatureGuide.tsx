@@ -2,8 +2,8 @@
 
 import React from "react"
 import { useState } from "react"
-import { Button } from "@/components/ui/Button"
-import { Card, CardContent } from "@/components/ui/Card"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
 import { HelpCircle, X, ChevronRight, ChevronLeft } from "lucide-react"
 import { cn } from "@/lib/utils"
 

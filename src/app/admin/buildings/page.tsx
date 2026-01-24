@@ -9,9 +9,9 @@ import ProtectedRoute from "@/components/auth/ProtectedRoute"
 import { BuildingsTable } from "@/components/buildings"
 import { FilterSidebar } from "@/components/buildings"
 import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog"
-import { Button } from "@/components/ui/Button"
-import { Card } from "@/components/ui/Card"
-import { Input } from "@/components/ui/Input"
+import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 
@@ -234,13 +234,13 @@ function BuildingsManagementContent() {
 
   return (
     <DashboardLayout role="admin" userName={user?.name || "Admin"} userTitle="ADMINISTRATOR">
-      <div className="flex h-[calc(100vh-4rem)]">
+      <div className="flex h-[calc(100vh-4rem)] w-full max-w-none">
         {/* Filter Sidebar */}
         <FilterSidebar selectedFilters={selectedFilters} onFilterChange={handleFilterChange} />
 
         {/* Main Content */}
-        <div className="flex-1 overflow-auto">
-          <div className="p-3 sm:p-4 md:p-6 lg:p-8 w-full">
+        <div className="flex-1 overflow-auto w-full">
+          <div className="p-3 sm:p-4 md:p-6 lg:p-8 w-full max-w-none">
             {/* Header */}
             <div className="mb-6">
               <div className="flex items-center justify-between mb-6">

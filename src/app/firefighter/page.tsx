@@ -190,7 +190,7 @@ function FirefighterDashboardContent() {
       userName={user?.name || 'Cmdr. Sterling'}
       userTitle="SENIOR DIRECTOR"
     >
-      <main className="space-y-4 sm:space-y-6 overflow-auto p-3 sm:p-4 md:p-6 lg:p-8 lg:space-y-8">
+      <div className="flex-1 space-y-4 sm:space-y-6 overflow-auto p-3 sm:p-4 md:p-6 lg:p-8 lg:space-y-8 w-full max-w-none">
         {/* Stats Cards */}
         <div className="grid gap-3 grid-cols-1 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {statsData.map((stat) => (
@@ -466,7 +466,7 @@ function FirefighterDashboardContent() {
             </Card>
           </section>
         )}
-      </main>
+      </div>
     </DashboardLayout>
   );
 }
