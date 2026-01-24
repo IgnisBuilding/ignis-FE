@@ -5,6 +5,8 @@ export interface MapConfig {
   zoom: number;
   minZoom: number;
   maxZoom: number;
+  pitch?: number;    // Tilt angle for isometric view
+  bearing?: number;  // Rotation angle
   style: string;
   apiBase: string;
 }

@@ -1,5 +1,5 @@
 // Central API configuration for NestJS backend (ignis-be)
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7000';
 
 // Type definitions
 export interface LoginResponse {
@@ -128,7 +128,12 @@ class ApiService {
 
       return await response.json();
     } catch (error) {
-      console.error('API Request failed:', error);
+      // Only log non-network errors (network errors are expected when backend is offline)
+      if (error instanceof TypeError && (error.message === 'Failed to fetch' || error.message.includes('NetworkError'))) {
+        // Silent fail for network errors - backend is likely offline
+      } else {
+        console.error('API Request failed:', error);
+      }
       throw error;
     }
   }

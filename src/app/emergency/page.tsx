@@ -1,37 +1,29 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useState, useCallback } from 'react';
+import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Flame,
-  User as UserIcon,
   MessageCircle,
   X,
   AlertTriangle,
-  Shield,
   Users,
-  Search,
-  Bell,
-  Settings,
-  Plus,
-  Layers,
-  ZoomIn,
-  ZoomOut,
-  Navigation,
-  Compass,
-  History,
-  BarChart3,
-  Truck,
-  Wrench,
-  Radio,
-  RefreshCw
+  LayoutDashboard,
+  Box,
+  Grid3X3,
+  Share2,
+  Check,
+  PersonStanding,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import type { EmergencyState } from '@/lib/map';
-import { uploadSampleFloorPlan } from '@/lib/map/sampleFloorPlan';
-import { api } from '@/lib/api';
+import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 // Dynamically import EvacuationMap to avoid SSR issues with MapLibre
 const EvacuationMap = dynamic(
@@ -39,169 +31,58 @@ const EvacuationMap = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="w-full h-full bg-slate-100 flex items-center justify-center">
+      <div className="w-full h-full bg-muted flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin w-10 h-10 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p className="text-slate-600">Loading evacuation map...</p>
+          <p className="text-muted-foreground">Loading tactical map...</p>
         </div>
       </div>
     )
   }
 );
 
-// Hazard interface from backend
-interface Hazard {
-  id: number;
-  type: string;
-  severity: 'low' | 'medium' | 'high' | 'critical';
-  status: 'active' | 'reported' | 'responding' | 'resolved';
-  apartment?: {
-    id: number;
-    unit_number: string;
-    floor?: {
-      level: number;
-      building?: {
-        name: string;
-        address: string;
-      };
-    };
-  };
-  node?: { id: number };
-  created_at: string;
-  updated_at: string;
-}
+// Navigation items for sidebar
+const navItems = [
+  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
+  { id: '3d-map', label: '3D Isometric Map', icon: Box, href: '/emergency', active: true },
+  { id: 'grid', label: 'External Grid', icon: Grid3X3, href: '/admin/buildings' },
+  { id: 'personnel', label: 'Personnel', icon: Users, href: '/admin/residents' },
+];
 
-// Convert hazard to incident format for display
-interface Incident {
-  id: string;
-  priority: number;
-  title: string;
-  location: string;
-  unitsAssigned: number;
-  elapsed: string;
-  severity: string;
-  hazardId: number;
-}
+// Floor data
+const floors = ['F09', 'F08', 'F07', 'F06', 'F05'];
+
+// Mock units for unit tracking
+const defaultUnits = [
+  { id: 'SQ42', name: 'Squad 42', status: 'Entering Floor 07', active: true },
+  { id: 'RE02', name: 'Rescue 02', status: 'Staging Floor 05', active: false },
+];
 
 export default function EmergencyPage() {
   const { user } = useAuth();
-  const searchParams = useSearchParams();
+
+  // UI State
+  const [activeFloor, setActiveFloor] = useState('F07');
+  const [viewMode, setViewMode] = useState<'2d' | '3d'>('3d');
+  const [stackMode, setStackMode] = useState(false);
   const [isAIOpen, setIsAIOpen] = useState(false);
   const [isTalking, setIsTalking] = useState(false);
+
+  // Emergency State
   const [emergencyState, setEmergencyState] = useState<EmergencyState | null>(null);
-  const [mapKey, setMapKey] = useState(0);
-  const [isLoadingData, setIsLoadingData] = useState(true);
-  const [showLayers, setShowLayers] = useState(false);
-  const [layers, setLayers] = useState({
-    thermalHeatmap: true,
-    hydrantNetwork: false,
-    floorPlans: true
-  });
+  const [units, setUnits] = useState(defaultUnits);
+  const [criticalAlert, setCriticalAlert] = useState<{
+    title: string;
+    description: string;
+    acknowledged: boolean;
+  } | null>(null);
+
+  // AI Messages
   const [aiMessages, setAiMessages] = useState<string[]>([
     "System ready. Monitoring for fire hazards.",
     "All evacuation routes are clear.",
     "Emergency services on standby."
   ]);
-
-  // Backend data
-  const [incidents, setIncidents] = useState<Incident[]>([]);
-  const [isLoadingIncidents, setIsLoadingIncidents] = useState(true);
-  const [sensorCount, setSensorCount] = useState<number>(0);
-
-  // Get building info from URL params
-  const buildingName = searchParams.get('building') || 'Command Center';
-
-  // Fetch hazards from backend API
-  const fetchHazards = useCallback(async () => {
-    setIsLoadingIncidents(true);
-    try {
-      const hazards = await api.getHazards();
-
-      // Convert hazards to incidents format
-      const convertedIncidents: Incident[] = hazards
-        .filter((h: Hazard) => h.status !== 'resolved')
-        .map((hazard: Hazard, index: number) => {
-          const priority = hazard.severity === 'critical' ? 1 :
-                          hazard.severity === 'high' ? 2 : 3;
-
-          const buildingName = hazard.apartment?.floor?.building?.name || 'Unknown Building';
-          const unitNumber = hazard.apartment?.unit_number || 'N/A';
-          const floorLevel = hazard.apartment?.floor?.level || 'N/A';
-
-          // Calculate elapsed time
-          const createdAt = new Date(hazard.created_at);
-          const now = new Date();
-          const diffMs = now.getTime() - createdAt.getTime();
-          const diffMins = Math.floor(diffMs / 60000);
-          const elapsed = diffMins < 60 ? `${diffMins}m` : `${Math.floor(diffMins / 60)}h ${diffMins % 60}m`;
-
-          return {
-            id: `${hazard.id}-${index}`,
-            priority,
-            title: `${hazard.type || 'Fire'} - ${buildingName}`,
-            location: `Unit ${unitNumber}, Floor ${floorLevel}`,
-            unitsAssigned: priority === 1 ? 4 : priority === 2 ? 2 : 1,
-            elapsed,
-            severity: hazard.severity,
-            hazardId: hazard.id
-          };
-        });
-
-      setIncidents(convertedIncidents);
-    } catch (error) {
-      console.error('Failed to fetch hazards:', error);
-      // Fallback to empty array on error
-      setIncidents([]);
-    } finally {
-      setIsLoadingIncidents(false);
-    }
-  }, []);
-
-  // Fetch sensor stats
-  const fetchSensorStats = useCallback(async () => {
-    try {
-      const sensors = await api.getSensors();
-      setSensorCount(Array.isArray(sensors) ? sensors.filter((s: { status?: string }) => s.status === 'online' || s.status === 'active').length : 0);
-    } catch (error) {
-      console.error('Failed to fetch sensors:', error);
-      setSensorCount(0);
-    }
-  }, []);
-
-  // Upload sample floor plan data when page loads
-  useEffect(() => {
-    const loadFloorPlanData = async () => {
-      setIsLoadingData(true);
-      try {
-        console.log('[EmergencyPage] Uploading sample floor plan data...');
-        const uploaded = await uploadSampleFloorPlan(buildingName);
-        if (uploaded) {
-          console.log('[EmergencyPage] Sample data uploaded successfully');
-          setMapKey(prev => prev + 1);
-        }
-      } catch (error) {
-        console.error('[EmergencyPage] Error uploading floor plan data:', error);
-      } finally {
-        setIsLoadingData(false);
-      }
-    };
-
-    loadFloorPlanData();
-  }, [buildingName]);
-
-  // Fetch data on mount and set up polling
-  useEffect(() => {
-    fetchHazards();
-    fetchSensorStats();
-
-    // Poll for updates every 30 seconds
-    const interval = setInterval(() => {
-      fetchHazards();
-      fetchSensorStats();
-    }, 30000);
-
-    return () => clearInterval(interval);
-  }, [fetchHazards, fetchSensorStats]);
 
   // Handle emergency state changes from map
   const handleEmergencyStateChange = useCallback((state: EmergencyState) => {
@@ -216,6 +97,17 @@ export default function EmergencyPage() {
         "Avoid elevators - use stairs only"
       ]);
       setIsTalking(true);
+
+      setCriticalAlert({
+        title: 'Unit 701: Breach',
+        description: 'Thermal escalation in NW quadrant. Recommend pathing via East Stairs (Safety Trail updated).',
+        acknowledged: false,
+      });
+
+      setUnits([
+        { id: 'SQ42', name: 'Squad 42', status: 'Responding to Alert', active: true },
+        { id: 'RE02', name: 'Rescue 02', status: 'En Route', active: true },
+      ]);
     } else if (state.mode === 'evacuation_in_progress') {
       setAiMessages([
         "EVACUATION IN PROGRESS",
@@ -223,6 +115,11 @@ export default function EmergencyPage() {
         `Evacuation ${Math.round(state.evacuationProgress * 100)}% complete`,
         "Follow illuminated exit signs",
         "Assist those who need help"
+      ]);
+
+      setUnits([
+        { id: 'SQ42', name: 'Squad 42', status: 'Clearing Floor 07', active: true },
+        { id: 'RE02', name: 'Rescue 02', status: 'Assisting Evacuation', active: true },
       ]);
     } else if (state.mode === 'evacuation_complete') {
       setAiMessages([
@@ -233,6 +130,12 @@ export default function EmergencyPage() {
         "Do not re-enter the building"
       ]);
       setIsTalking(false);
+      setCriticalAlert(null);
+
+      setUnits([
+        { id: 'SQ42', name: 'Squad 42', status: 'Sweep Complete', active: false },
+        { id: 'RE02', name: 'Rescue 02', status: 'Standby', active: false },
+      ]);
     } else if (state.mode === 'idle') {
       setAiMessages([
         "System ready. Monitoring for fire hazards.",
@@ -240,6 +143,8 @@ export default function EmergencyPage() {
         "Emergency services on standby."
       ]);
       setIsTalking(false);
+      setCriticalAlert(null);
+      setUnits(defaultUnits);
     }
   }, []);
 
@@ -255,388 +160,347 @@ export default function EmergencyPage() {
     ]);
   }, []);
 
-  const getPriorityColor = (priority: number) => {
-    switch (priority) {
-      case 1: return 'text-red-600';
-      case 2: return 'text-amber-600';
-      default: return 'text-slate-500';
+  // Handle acknowledge alert
+  const handleAcknowledgeAlert = () => {
+    if (criticalAlert) {
+      setCriticalAlert({ ...criticalAlert, acknowledged: true });
     }
   };
 
-  const getPriorityBg = (priority: number) => {
-    switch (priority) {
-      case 1: return 'border-red-200 bg-red-50 hover:bg-red-100';
-      case 2: return 'border-slate-200 bg-white hover:bg-slate-50';
-      default: return 'border-slate-200 bg-white hover:bg-slate-50';
-    }
+  // Get building system status
+  const getAirstreamIntegrity = () => {
+    if (!emergencyState || emergencyState.mode === 'idle') return 100;
+    if (emergencyState.mode === 'fire_detected') return 75;
+    if (emergencyState.mode === 'evacuation_in_progress') return 60;
+    return 100;
   };
 
-  const activeAlerts = incidents.filter(i => i.priority === 1).length || emergencyState?.fireMarkers?.length || 0;
+  const getStairwellStatus = () => {
+    if (!emergencyState || emergencyState.mode === 'idle') return [true, true, true, true];
+    if (emergencyState.mode === 'fire_detected') return [true, false, true, false];
+    return [true, true, true, true];
+  };
 
   return (
-    <div className="fixed inset-0 bg-slate-100 flex flex-col overflow-hidden z-[100]">
-      {/* Top Navigation Bar */}
-      <header className="flex items-center justify-between whitespace-nowrap border-b border-primary/10 bg-card px-6 py-3 z-30 shadow-sm flex-shrink-0">
-        <div className="flex items-center gap-8">
-          <div className="flex items-center gap-3 text-primary">
-            <div className="size-8 bg-primary rounded-lg flex items-center justify-center text-white">
-              <Flame className="w-5 h-5" />
-            </div>
-            <h2 className="text-primary text-xl font-bold leading-tight tracking-tight">Ignis Command</h2>
+    <div className="fixed inset-0 flex bg-background">
+      {/* Left Sidebar */}
+      <aside className="flex-shrink-0 w-52 flex flex-col border-r border-border bg-card">
+        <div className="flex items-center gap-2 p-4">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
+            <Flame className="h-4 w-4 text-primary-foreground" />
           </div>
-          <div className="flex min-w-64 h-10">
-            <div className="flex w-full flex-1 items-stretch rounded-lg h-full">
-              <div className="text-primary/60 flex border-none bg-primary/5 items-center justify-center pl-4 rounded-l-lg">
-                <Search className="w-5 h-5" />
-              </div>
-              <input
-                className="flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-primary focus:outline-none focus:ring-0 border-none bg-primary/5 h-full placeholder:text-primary/50 px-4 rounded-l-none pl-2 text-sm"
-                placeholder="Search coordinates, units, or incidents..."
-              />
-            </div>
+          <div>
+            <h1 className="text-sm font-bold text-foreground">IGNIS COMMAND</h1>
+            <p className="text-[10px] text-muted-foreground">ELITE TACTICAL</p>
           </div>
         </div>
-        <div className="flex flex-1 justify-end gap-4 items-center">
-          <div className="flex gap-2">
-            <button
-              onClick={() => { fetchHazards(); fetchSensorStats(); }}
-              className="flex size-10 items-center justify-center rounded-lg bg-primary/5 text-primary hover:bg-primary/10 transition-colors"
-              title="Refresh data"
+
+        <nav className="flex-1 space-y-0.5 px-2 py-2">
+          {navItems.map((item) => (
+            <Link
+              key={item.id}
+              href={item.href}
+              className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
+                item.active
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-foreground hover:bg-muted'
+              }`}
             >
-              <RefreshCw className={`w-5 h-5 ${isLoadingIncidents ? 'animate-spin' : ''}`} />
-            </button>
-            <button className="flex size-10 items-center justify-center rounded-lg bg-primary/5 text-primary hover:bg-primary/10 transition-colors">
-              <Bell className="w-5 h-5" />
-            </button>
-            <button className="flex size-10 items-center justify-center rounded-lg bg-primary/5 text-primary hover:bg-primary/10 transition-colors">
-              <Settings className="w-5 h-5" />
-            </button>
-          </div>
-          <div className="h-8 w-px bg-primary/10 mx-2"></div>
-          <div className="flex items-center gap-3">
-            <div className="text-right">
-              <p className="text-xs font-bold text-primary">{user?.name || 'Commander'}</p>
-              <p className="text-[10px] text-primary/60">Station Chief</p>
-            </div>
-            <div className="bg-primary/10 rounded-full size-10 flex items-center justify-center border-2 border-primary/20">
-              <UserIcon className="w-5 h-5 text-primary" />
-            </div>
-          </div>
-        </div>
-      </header>
+              <item.icon className="h-4 w-4" />
+              {item.label}
+            </Link>
+          ))}
+        </nav>
 
-      <main className="relative flex-1 flex overflow-hidden">
-        {/* Floating Left Sidebar (Incident List) */}
-        <aside className="absolute left-4 top-4 bottom-4 w-72 z-20 flex flex-col gap-3 pointer-events-none">
-          <div className="bg-card/95 backdrop-blur-md rounded-xl border border-primary/10 shadow-xl pointer-events-auto overflow-hidden flex flex-col flex-1">
-            <div className="p-4 border-b border-primary/10 flex justify-between items-center bg-primary text-white">
-              <h3 className="font-bold text-sm tracking-wide uppercase">Active Incidents</h3>
-              <span className="bg-red-600 text-[10px] px-2 py-0.5 rounded-full font-bold">
-                {activeAlerts} ALERT{activeAlerts !== 1 ? 'S' : ''}
-              </span>
-            </div>
-            <div className="flex-1 overflow-y-auto p-2 space-y-2">
-              {isLoadingIncidents ? (
-                <div className="flex items-center justify-center py-8">
-                  <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full"></div>
-                </div>
-              ) : incidents.length === 0 ? (
-                <div className="text-center py-8 text-primary/50">
-                  <Shield className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">No active incidents</p>
-                </div>
-              ) : (
-                incidents.map((incident) => (
-                  <div
-                    key={incident.id}
-                    className={`p-3 rounded-lg border cursor-pointer transition-colors ${getPriorityBg(incident.priority)}`}
-                  >
-                    <div className="flex justify-between items-start mb-1">
-                      <span className={`text-[10px] font-bold uppercase tracking-widest ${getPriorityColor(incident.priority)}`}>
-                        Priority {incident.priority}
-                      </span>
-                      <span className="text-[10px] text-primary/40 font-mono">#{incident.hazardId}</span>
-                    </div>
-                    <h4 className="font-bold text-sm text-primary leading-tight">{incident.title}</h4>
-                    <p className="text-xs text-primary/60 mt-1">
-                      {incident.unitsAssigned} Units Assigned &bull; {incident.elapsed} elapsed
-                    </p>
-                    <p className="text-[10px] text-primary/40 mt-1">{incident.location}</p>
-                  </div>
-                ))
-              )}
-            </div>
-            <div className="p-3 bg-primary/5 border-t border-primary/10">
-              <button className="w-full flex items-center justify-center gap-2 py-2 bg-primary text-white rounded-lg text-xs font-bold hover:bg-primary/90 transition-colors">
-                <Plus className="w-4 h-4" />
-                New Dispatch
-              </button>
-            </div>
-          </div>
-
-          {/* Sensor Summary Stats */}
-          <div className="bg-card/95 backdrop-blur-md rounded-xl border border-primary/10 shadow-lg pointer-events-auto p-3">
-            <div className="flex items-center gap-3">
-              <div className="size-8 rounded-full bg-green-100 flex items-center justify-center text-green-700">
-                <Radio className="w-4 h-4" />
-              </div>
-              <div>
-                <p className="text-[10px] uppercase font-bold text-primary/40">Sensor Network</p>
-                <p className="text-xs font-bold text-primary">
-                  {sensorCount} Nodes Online
-                  <span className="ml-1 inline-block w-2 h-2 rounded-full bg-green-500"></span>
-                </p>
-              </div>
-            </div>
-          </div>
-        </aside>
-
-        {/* Main Map Area */}
-        <div className="relative flex-1 w-full h-full overflow-hidden">
-          {/* Map Background with Grid Pattern */}
-          <div
-            className="absolute inset-0 z-0"
-            style={{
-              backgroundColor: '#f1f3f0',
-              backgroundImage: `
-                radial-gradient(#d1d5db 1px, transparent 1px),
-                linear-gradient(to right, #e5e7eb 1px, transparent 1px),
-                linear-gradient(to bottom, #e5e7eb 1px, transparent 1px)
-              `,
-              backgroundSize: '40px 40px, 160px 160px, 160px 160px'
-            }}
-          />
-
-          {/* EvacuationMap Component */}
-          <div className="absolute inset-0 z-10">
-            {isLoadingData ? (
-              <div className="w-full h-full flex items-center justify-center">
-                <div className="text-center">
-                  <div className="animate-spin w-10 h-10 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-                  <p className="text-slate-600">Loading floor plan data...</p>
-                </div>
-              </div>
-            ) : (
-              <EvacuationMap
-                key={mapKey}
-                className="w-full h-full"
-                showControls={true}
-                showLegend={true}
-                showEmergencyControls={true}
-                onRoomClick={handleRoomClick}
-                onEmergencyStateChange={handleEmergencyStateChange}
-              />
-            )}
-          </div>
-
-          {/* Bottom Right Controls */}
-          <div className="absolute bottom-6 right-6 flex flex-col items-end gap-3 z-20 pointer-events-none">
-            {/* Layers Toggle */}
-            <div className="bg-card/95 backdrop-blur-md rounded-xl border border-primary/10 shadow-xl overflow-hidden flex flex-col p-1 pointer-events-auto">
-              <button
-                onClick={() => setShowLayers(!showLayers)}
-                className="flex items-center gap-3 px-4 py-2.5 hover:bg-primary hover:text-white rounded-lg transition-colors group"
-              >
-                <Layers className="w-5 h-5 text-primary group-hover:text-white" />
-                <span className="text-sm font-semibold pr-2">Map Layers</span>
-              </button>
-
-              <AnimatePresence>
-                {showLayers && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <div className="h-px bg-primary/10 mx-2"></div>
-                    <div className="p-2 space-y-1">
-                      <label className="flex items-center gap-2 px-2 py-1.5 hover:bg-primary/5 rounded cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={layers.thermalHeatmap}
-                          onChange={(e) => setLayers(prev => ({ ...prev, thermalHeatmap: e.target.checked }))}
-                          className="size-4 rounded text-primary border-primary/20 bg-transparent focus:ring-0"
-                        />
-                        <span className="text-xs font-medium">Thermal Heatmap</span>
-                      </label>
-                      <label className="flex items-center gap-2 px-2 py-1.5 hover:bg-primary/5 rounded cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={layers.hydrantNetwork}
-                          onChange={(e) => setLayers(prev => ({ ...prev, hydrantNetwork: e.target.checked }))}
-                          className="size-4 rounded text-primary border-primary/20 bg-transparent focus:ring-0"
-                        />
-                        <span className="text-xs font-medium">Hydrant Network</span>
-                      </label>
-                      <label className="flex items-center gap-2 px-2 py-1.5 hover:bg-primary/5 rounded cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={layers.floorPlans}
-                          onChange={(e) => setLayers(prev => ({ ...prev, floorPlans: e.target.checked }))}
-                          className="size-4 rounded text-primary border-primary/20 bg-transparent focus:ring-0"
-                        />
-                        <span className="text-xs font-medium">Floor Plans</span>
-                      </label>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* Navigation Controls */}
-            <div className="flex flex-col gap-1 bg-card rounded-lg border border-primary/10 shadow-lg overflow-hidden pointer-events-auto">
-              <button className="p-2.5 hover:bg-primary/5 text-primary border-b border-primary/10">
-                <ZoomIn className="w-5 h-5" />
-              </button>
-              <button className="p-2.5 hover:bg-primary/5 text-primary border-b border-primary/10">
-                <ZoomOut className="w-5 h-5" />
-              </button>
-              <button className="p-2.5 hover:bg-primary/5 text-primary">
-                <Navigation className="w-5 h-5" />
-              </button>
-            </div>
-
-            <button className="flex size-11 items-center justify-center rounded-xl bg-primary text-white shadow-xl hover:scale-105 transition-transform pointer-events-auto">
-              <Compass className="w-5 h-5" />
-            </button>
-          </div>
-
-          {/* Bottom Center Toolbar */}
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center bg-card/95 backdrop-blur-md rounded-2xl border border-primary/10 shadow-2xl px-2 py-1.5 gap-1 z-20">
-            <button className="p-2 text-primary hover:bg-primary/10 rounded-xl transition-colors" title="Equipment">
-              <Wrench className="w-5 h-5" />
-            </button>
-            <button className="p-2 text-primary hover:bg-primary/10 rounded-xl transition-colors" title="Vehicles">
-              <Truck className="w-5 h-5" />
-            </button>
-            <div className="h-6 w-px bg-primary/10 mx-1"></div>
-            <button className="p-2 text-primary hover:bg-primary/10 rounded-xl transition-colors" title="History">
-              <History className="w-5 h-5" />
-            </button>
-            <button className="p-2 text-primary hover:bg-primary/10 rounded-xl transition-colors" title="Analytics">
-              <BarChart3 className="w-5 h-5" />
-            </button>
-          </div>
-
-          {/* Status Badge - Top Right of Map */}
-          <motion.div
-            animate={emergencyState?.mode === 'fire_detected' ? { scale: [1, 1.05, 1] } : {}}
-            transition={{ repeat: Infinity, duration: 1 }}
-            className={`absolute top-4 right-4 z-20 ${
-              emergencyState?.mode === 'fire_detected'
-                ? 'bg-red-500'
-                : emergencyState?.mode === 'evacuation_in_progress'
-                ? 'bg-orange-500'
-                : emergencyState?.mode === 'evacuation_complete'
-                ? 'bg-green-500'
-                : 'bg-primary'
-            } text-white px-4 py-2 rounded-xl shadow-lg flex items-center gap-2`}
+        <div className="p-3">
+          <Button
+            variant="destructive"
+            className="w-full gap-2 py-4 text-sm font-semibold"
           >
-            {emergencyState?.mode === 'fire_detected' ? (
-              <AlertTriangle className="w-5 h-5" />
-            ) : emergencyState?.mode === 'evacuation_in_progress' ? (
-              <Users className="w-5 h-5" />
-            ) : (
-              <Shield className="w-5 h-5" />
-            )}
-            <span className="font-bold text-sm">
-              {emergencyState?.mode === 'fire_detected'
-                ? 'FIRE DETECTED'
-                : emergencyState?.mode === 'evacuation_in_progress'
-                ? 'EVACUATION IN PROGRESS'
-                : emergencyState?.mode === 'evacuation_complete'
-                ? 'EVACUATION COMPLETE'
-                : 'System Ready'}
-            </span>
-          </motion.div>
+            <AlertTriangle className="h-4 w-4" />
+            Evacuation Alert
+          </Button>
+        </div>
+      </aside>
 
-          {/* Quick Stats - Top Center */}
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-3">
-            <div className="bg-card/95 backdrop-blur-md rounded-xl border border-primary/10 shadow-lg px-4 py-2 flex items-center gap-3">
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Header */}
+        <header className="flex-shrink-0 flex h-14 items-center justify-between border-b border-border bg-card px-4">
+          <div className="flex items-center gap-3">
+            <div>
               <div className="flex items-center gap-2">
-                <Flame className={`w-5 h-5 ${emergencyState?.fireMarkers?.length || incidents.filter(i => i.priority === 1).length ? 'text-red-500' : 'text-slate-400'}`} />
-                <div>
-                  <p className="text-[10px] text-primary/50 font-bold uppercase">Active Fires</p>
-                  <p className="text-lg font-bold text-primary">{emergencyState?.fireMarkers?.length || incidents.filter(i => i.priority === 1).length}</p>
-                </div>
+                <h1 className="text-base font-bold text-foreground">CENTRAL PLAZA COMPLEX</h1>
+                <Badge variant="secondary" className="text-[10px] font-semibold">HIGH RISE</Badge>
               </div>
-              <div className="h-8 w-px bg-primary/10"></div>
-              <div className="flex items-center gap-2">
-                <Users className="w-5 h-5 text-amber-500" />
-                <div>
-                  <p className="text-[10px] text-primary/50 font-bold uppercase">Occupancy</p>
-                  <p className="text-lg font-bold text-primary">{emergencyState?.occupancy || '--'}</p>
-                </div>
-              </div>
-              <div className="h-8 w-px bg-primary/10"></div>
-              <div className="flex items-center gap-2">
-                <Shield className="w-5 h-5 text-green-500" />
-                <div>
-                  <p className="text-[10px] text-primary/50 font-bold uppercase">Evacuation</p>
-                  <p className="text-lg font-bold text-primary">
-                    {emergencyState?.evacuationProgress
-                      ? `${Math.round(emergencyState.evacuationProgress * 100)}%`
-                      : '0%'}
-                  </p>
-                </div>
-              </div>
+              <p className="text-xs text-muted-foreground">1248 North Ave, Metropolis Sector 4</p>
             </div>
           </div>
-        </div>
 
-        {/* AI Agent Button */}
-        <motion.button
-          onClick={() => setIsAIOpen(!isAIOpen)}
-          className="fixed bottom-6 right-6 w-14 h-14 bg-primary rounded-full shadow-2xl flex items-center justify-center z-[110] hover:scale-105 transition-transform"
-          whileTap={{ scale: 0.95 }}
-        >
-          {isAIOpen ? <X className="w-6 h-6 text-white" /> : <MessageCircle className="w-6 h-6 text-white" />}
-          {isTalking && (
-            <motion.div
-              className="absolute inset-0 border-4 border-white rounded-full"
-              animate={{ scale: [1, 1.3, 1] }}
-              transition={{ repeat: Infinity, duration: 1.5 }}
-            />
-          )}
-        </motion.button>
+          <div className="flex items-center gap-3">
+            {/* View Mode Toggle */}
+            <div className="flex rounded-lg border border-border bg-secondary p-0.5">
+              <Button
+                variant="ghost"
+                size="sm"
+                className={`px-3 h-7 text-xs ${viewMode === '2d' ? 'bg-card shadow-sm' : ''}`}
+                onClick={() => setViewMode('2d')}
+              >
+                2D PLAN
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className={`px-3 h-7 text-xs ${viewMode === '3d' ? 'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground' : ''}`}
+                onClick={() => setViewMode('3d')}
+              >
+                3D VIEW
+              </Button>
+            </div>
 
-        {/* AI Chat Window */}
-        <AnimatePresence>
-          {isAIOpen && (
-            <motion.div
-              initial={{ opacity: 0, y: 20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 20, scale: 0.95 }}
-              className="fixed bottom-24 right-6 w-80 bg-white rounded-2xl shadow-2xl z-[110] overflow-hidden border border-primary/10"
-            >
-              <div className={`${emergencyState?.mode === 'fire_detected' ? 'bg-red-500' : 'bg-primary'} text-white p-4`}>
-                <h3 className="font-bold">Emergency AI Assistant</h3>
-                <p className="text-sm opacity-90">
-                  {emergencyState?.mode === 'fire_detected' ? 'Emergency Mode Active' : 'Real-time guidance'}
-                </p>
+            {/* User Profile */}
+            <div className="flex items-center gap-2 border-l border-border pl-3">
+              <div className="text-right">
+                <p className="text-xs font-semibold text-foreground">{user?.name || 'Cmdr. Sterling'}</p>
+                <p className="text-[10px] text-muted-foreground">SENIOR DIRECTOR</p>
               </div>
-              <div className="p-4 space-y-3 max-h-80 overflow-y-auto">
-                {aiMessages.map((msg, idx) => (
-                  <motion.div
-                    key={`${idx}-${msg}`}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: idx * 0.1 }}
-                    className={`p-3 rounded-lg text-sm ${
-                      emergencyState?.mode === 'fire_detected' && idx === 0
-                        ? 'bg-red-100 text-red-800 font-semibold'
-                        : 'bg-slate-100 text-primary'
-                    }`}
-                  >
-                    {msg}
-                  </motion.div>
+              <Avatar className="h-8 w-8 border-2 border-primary">
+                <AvatarFallback className="bg-primary text-xs font-semibold text-primary-foreground">
+                  {user?.name?.split(' ').map(n => n[0]).join('') || 'CS'}
+                </AvatarFallback>
+              </Avatar>
+            </div>
+          </div>
+        </header>
+
+        <div className="flex flex-1 min-h-0">
+          {/* Floor Selector */}
+          <div className="flex-shrink-0 flex flex-col items-center gap-1 border-r border-border bg-card px-3 py-4">
+            {floors.map((floor) => (
+              <button
+                key={floor}
+                type="button"
+                onClick={() => setActiveFloor(floor)}
+                className={`flex h-10 w-10 items-center justify-center rounded-lg text-xs font-bold transition-colors ${
+                  activeFloor === floor
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:bg-muted'
+                }`}
+              >
+                {floor}
+              </button>
+            ))}
+            <div className="mt-2 flex flex-col items-center gap-1">
+              <Switch checked={stackMode} onCheckedChange={setStackMode} />
+              <span className="text-[9px] font-medium text-muted-foreground">STACK</span>
+            </div>
+          </div>
+
+          {/* Map View Area */}
+          <div className="relative flex-1 min-w-0">
+            {/* Critical Alert Card */}
+            <AnimatePresence>
+              {criticalAlert && !criticalAlert.acknowledged && (
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="absolute left-4 top-4 z-20 w-64"
+                >
+                  <Card className="border-0 bg-gradient-to-br from-red-400 to-red-500 text-white shadow-xl">
+                    <CardContent className="p-3">
+                      <div className="mb-1 flex items-center justify-between">
+                        <Badge className="bg-red-700/50 text-[9px] font-bold text-white hover:bg-red-700/50">CRITICAL ALERT</Badge>
+                        <div className="h-2 w-2 rounded-full bg-white/50 animate-pulse" />
+                      </div>
+                      <h3 className="text-base font-bold">{criticalAlert.title}</h3>
+                      <p className="mt-1 text-xs text-white/90">
+                        {criticalAlert.description}
+                      </p>
+                      <div className="mt-3 flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleAcknowledgeAlert}
+                          className="flex-1 border-white/30 bg-transparent text-white hover:bg-white/20 text-xs h-8"
+                        >
+                          ACKNOWLEDGE
+                        </Button>
+                        <Button size="icon" className="bg-red-700 text-white hover:bg-red-800 h-8 w-8">
+                          <Share2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Evacuation Map */}
+            <EvacuationMap
+              className="absolute inset-0"
+              showControls={true}
+              showLegend={false}
+              showEmergencyControls={true}
+              onRoomClick={handleRoomClick}
+              onEmergencyStateChange={handleEmergencyStateChange}
+            />
+
+            {/* Tactical Overlay Legend */}
+            <Card className="absolute bottom-4 left-1/2 -translate-x-1/2 shadow-lg">
+              <CardContent className="flex items-center gap-4 px-4 py-2">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Tactical Overlay</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-full bg-red-400" />
+                  <span className="text-xs text-foreground">Smoke Zone</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <svg width="16" height="2"><line x1="0" y1="1" x2="16" y2="1" stroke="currentColor" strokeWidth="2" strokeDasharray="3,3" className="text-muted-foreground" /></svg>
+                  <span className="text-xs text-foreground">Safety Path</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="flex h-3 w-3 items-center justify-center rounded bg-green-500">
+                    <Check className="h-2 w-2 text-white" />
+                  </div>
+                  <span className="text-xs text-foreground">Exit</span>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Right Sidebar - Command Intelligence */}
+          <div className="flex-shrink-0 w-64 border-l border-border bg-card p-4 overflow-y-auto">
+            <h2 className="mb-4 text-xs font-bold uppercase tracking-wider text-foreground">Command Intelligence</h2>
+
+            {/* Airstream Integrity */}
+            <div className="mb-4 rounded-lg border border-border p-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Airstream Integrity</span>
+                <span className="text-xs font-semibold text-foreground">
+                  {getAirstreamIntegrity() > 80 ? 'Positive' : 'Compromised'}
+                </span>
+              </div>
+              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-secondary">
+                <motion.div
+                  className="h-full bg-green-500"
+                  initial={{ width: '100%' }}
+                  animate={{ width: `${getAirstreamIntegrity()}%` }}
+                  transition={{ duration: 0.5 }}
+                />
+              </div>
+            </div>
+
+            {/* Stairwell Pressurization */}
+            <div className="mb-4 rounded-lg border border-border p-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Stairwell Pressurization</span>
+                <span className="text-xs font-semibold text-foreground">Active</span>
+              </div>
+              <div className="mt-2 flex gap-1">
+                {getStairwellStatus().map((active, idx) => (
+                  <div
+                    key={idx}
+                    className={`h-1.5 flex-1 rounded-full ${active ? 'bg-green-500' : 'bg-secondary'}`}
+                  />
                 ))}
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </main>
+            </div>
+
+            {/* Unit Tracking */}
+            <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-foreground">Unit Tracking</h3>
+            <div className="space-y-2">
+              {units.map((unit) => (
+                <div
+                  key={unit.id}
+                  className={`flex items-center justify-between rounded-lg p-2 ${
+                    unit.active ? 'bg-primary text-primary-foreground' : 'bg-secondary'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className={`flex h-8 w-8 items-center justify-center rounded text-[10px] font-bold ${
+                      unit.active ? 'bg-primary-foreground/20' : 'bg-card'
+                    }`}>
+                      {unit.id}
+                    </div>
+                    <div>
+                      <p className={`text-xs font-semibold ${unit.active ? 'text-primary-foreground' : 'text-foreground'}`}>{unit.name}</p>
+                      <p className={`text-[10px] ${unit.active ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>{unit.status}</p>
+                    </div>
+                  </div>
+                  {unit.active && <PersonStanding className="h-4 w-4 text-primary-foreground/70" />}
+                </div>
+              ))}
+            </div>
+
+            {/* Elite Protocol */}
+            <Card className="mt-4 border-0 bg-primary text-primary-foreground">
+              <CardContent className="p-3">
+                <div className="mb-1 flex items-center gap-2">
+                  <Check className="h-3 w-3" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider">Elite Protocol</span>
+                </div>
+                <p className="text-[11px] italic text-primary-foreground/80">
+                  "Tactical awareness is superiority. The 3D view ensures no vertical spread goes unnoticed."
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+
+      {/* AI Agent Button */}
+      <motion.button
+        type="button"
+        onClick={() => setIsAIOpen(!isAIOpen)}
+        className="fixed bottom-6 right-6 w-16 h-16 bg-primary rounded-full shadow-2xl flex items-center justify-center z-50"
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.95 }}
+      >
+        {isAIOpen ? <X className="w-6 h-6 text-primary-foreground" /> : <MessageCircle className="w-6 h-6 text-primary-foreground" />}
+        {isTalking && (
+          <motion.div
+            className="absolute inset-0 border-4 border-primary-foreground rounded-full"
+            animate={{ scale: [1, 1.3, 1] }}
+            transition={{ repeat: Infinity, duration: 1.5 }}
+          />
+        )}
+      </motion.button>
+
+      {/* AI Chat Window */}
+      <AnimatePresence>
+        {isAIOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            className="fixed bottom-24 right-6 w-80 bg-card rounded-2xl shadow-2xl z-50 overflow-hidden border border-border"
+          >
+            <div className={`${emergencyState?.mode === 'fire_detected' ? 'bg-destructive' : 'bg-primary'} text-primary-foreground p-4`}>
+              <h3 className="font-bold text-sm">Emergency AI Assistant</h3>
+              <p className="text-xs opacity-90">
+                {emergencyState?.mode === 'fire_detected' ? 'Emergency Mode Active' : 'Real-time guidance'}
+              </p>
+            </div>
+            <div className="p-4 space-y-3 max-h-80 overflow-y-auto">
+              {aiMessages.map((msg, idx) => (
+                <motion.div
+                  key={`${idx}-${msg}`}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: idx * 0.1 }}
+                  className={`p-3 rounded-lg text-sm ${
+                    emergencyState?.mode === 'fire_detected' && idx === 0
+                      ? 'bg-destructive/10 text-destructive font-semibold'
+                      : 'bg-muted text-foreground'
+                  }`}
+                >
+                  {msg}
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

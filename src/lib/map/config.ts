@@ -1,13 +1,15 @@
 // Map Configuration Constants
 
-import type { MapConfig, FloorLayer } from '@/types';
+import type { MapConfig, FloorLayer } from './types';
 
 // Default map configuration
 export const DEFAULT_MAP_CONFIG: MapConfig = {
   center: [67.1128, 24.8621],
-  zoom: 19,
-  minZoom: 17,
+  zoom: 18,
+  minZoom: 14,  // Allow zooming out to see more context
   maxZoom: 22,
+  pitch: 45,    // Tilt angle for isometric-like view
+  bearing: -20, // Rotation angle for better perspective
   style: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
   apiBase: process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:7000',
 };
@@ -56,21 +58,21 @@ export const FLOOR_LAYERS: Record<string, FloorLayer> = {
 
 // Layer paint properties
 export const LAYER_STYLES = {
-  // Building shadow
+  // Building shadow - subtle for clean look
   buildingShadow: {
-    'fill-color': '#2c3e50',
-    'fill-opacity': 0.1,
-    'fill-translate': [5, 5],
+    'fill-color': '#9e9e9e',
+    'fill-opacity': 0.15,
+    'fill-translate': [8, 8],
   },
 
-  // Floor fill
+  // Floor fill - Simple white/light theme
   floorFill: {
-    'fill-color': ['get', 'color'],
+    'fill-color': '#f5f5f5',  // Light gray/white for all rooms
     'fill-opacity': [
       'case',
       ['boolean', ['feature-state', 'hover'], false],
+      0.95,
       0.9,
-      0.8,
     ],
   },
 
@@ -100,10 +102,10 @@ export const LAYER_STYLES = {
     'fill-opacity': 0.3,
   },
 
-  // Corridors
+  // Corridors - light gray to match white theme
   corridors: {
-    'fill-color': '#e8f5e9',
-    'fill-opacity': 0.3,
+    'fill-color': '#eeeeee',
+    'fill-opacity': 0.5,
   },
 
   // Exterior walls

@@ -1,6 +1,6 @@
 // Map Utility Functions
 
-import type { Sensor, HazardData, RouteNode } from '@/types';
+import type { Sensor, HazardData, RouteNode } from './types';
 import { DEFAULT_MAP_CONFIG, API_ENDPOINTS } from './config';
 
 /**

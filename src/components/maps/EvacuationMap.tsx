@@ -107,10 +107,10 @@ const EvacuationMap = memo(({
   const socketRef = useRef<Socket | null>(null);
   const lastFirePlacementRef = useRef<number>(0); // Debounce fire placements
 
-  // Panel collapse states
-  const [isEmergencyPanelCollapsed, setIsEmergencyPanelCollapsed] = useState(false);
-  const [isFireZonePanelCollapsed, setIsFireZonePanelCollapsed] = useState(false);
-  const [isRoutePanelCollapsed, setIsRoutePanelCollapsed] = useState(false);
+  // Panel collapse states - start collapsed for cleaner initial view
+  const [isEmergencyPanelCollapsed, setIsEmergencyPanelCollapsed] = useState(true);
+  const [isFireZonePanelCollapsed, setIsFireZonePanelCollapsed] = useState(true);
+  const [isRoutePanelCollapsed, setIsRoutePanelCollapsed] = useState(true);
 
   // Isolation alert state (when person is trapped by fire)
   const [isolationAlert, setIsolationAlert] = useState<IsolationResponse | null>(null);
@@ -148,6 +148,8 @@ const EvacuationMap = memo(({
       zoom: DEFAULT_MAP_CONFIG.zoom,
       minZoom: DEFAULT_MAP_CONFIG.minZoom,
       maxZoom: DEFAULT_MAP_CONFIG.maxZoom,
+      pitch: DEFAULT_MAP_CONFIG.pitch || 0,      // Isometric tilt angle
+      bearing: DEFAULT_MAP_CONFIG.bearing || 0,  // Rotation angle
       attributionControl: false,
       preserveDrawingBuffer: true,
     });
@@ -233,18 +235,25 @@ const EvacuationMap = memo(({
         // Add all layers
         addMapLayers(map);
 
-        // Fit to building bounds or center
+        // Fit to building bounds or center - preserve isometric view
         if (buildingCenter) {
           // Use building center from imported data
           map.flyTo({
             center: buildingCenter,
             zoom: 19,
+            pitch: DEFAULT_MAP_CONFIG.pitch || 45,
+            bearing: DEFAULT_MAP_CONFIG.bearing || -20,
             duration: 1000,
           });
         } else {
           const bounds = calculateBounds(roomsData);
           if (bounds) {
-            map.fitBounds(bounds, { padding: 50, duration: 1000 });
+            map.fitBounds(bounds, {
+              padding: 50,
+              duration: 1000,
+              pitch: DEFAULT_MAP_CONFIG.pitch || 45,
+              bearing: DEFAULT_MAP_CONFIG.bearing || -20,
+            });
           }
         }
 
@@ -388,7 +397,7 @@ const EvacuationMap = memo(({
       paint: LAYER_STYLES.buildingShadow as any,
     });
 
-    // Floor 1 layers (level '0' = ground floor)
+    // Floor 1 layers (level '0' = ground floor) - White/simple theme
     map.addLayer({
       id: 'floor1-fill',
       type: 'fill',
@@ -398,7 +407,10 @@ const EvacuationMap = memo(({
         ['==', ['get', 'level'], '0'],
         ['!=', ['geometry-type'], 'LineString'],
       ],
-      paint: LAYER_STYLES.floorFill as any,
+      paint: {
+        'fill-color': '#f5f5f5',  // White/light gray for all rooms
+        'fill-opacity': 0.9,
+      },
     });
 
     map.addLayer({
@@ -853,7 +865,7 @@ const EvacuationMap = memo(({
       source: 'building',
       filter: ['==', ['get', 'level'], '1'],
       layout: { visibility: 'none' },
-      paint: { 'fill-color': ['get', 'color'], 'fill-opacity': 0.8 },
+      paint: { 'fill-color': '#f5f5f5', 'fill-opacity': 0.9 },  // White/simple theme
     });
 
     map.addLayer({

@@ -1,33 +1,30 @@
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
-  // Disable ESLint during build to allow deployment
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  
   // Disable TypeScript type checking during build
   typescript: {
     ignoreBuildErrors: true,
   },
-  
+
+  // Transpile maplibre-gl to fix Turbopack HMR issues
+  transpilePackages: ['maplibre-gl'],
+
   // Performance optimizations
   compress: true,
   poweredByHeader: false,
-  
+
   // Development optimizations
   experimental: {
-    optimizePackageImports: ['framer-motion', 'lucide-react', 'maplibre-gl', '@heroicons/react'],
+    optimizePackageImports: ['framer-motion', 'lucide-react', '@heroicons/react'],
   },
-  
-  
+
   // Turbopack optimizations
   turbopack: {
     resolveAlias: {
       '@': './src',
     },
   },
-  
+
   // Image optimization
   images: {
     remotePatterns: [
@@ -41,14 +38,14 @@ const nextConfig: NextConfig = {
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
     minimumCacheTTL: 60,
   },
-  
+
   // Compiler optimizations
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production' ? {
       exclude: ['error', 'warn']
     } : false,
   },
-  
+
   // Headers for caching
   async headers() {
     return [
