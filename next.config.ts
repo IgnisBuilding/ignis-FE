@@ -17,16 +17,9 @@ const nextConfig: NextConfig = {
   
   // Development optimizations
   experimental: {
-    optimizePackageImports: ['framer-motion', 'lucide-react'],
+    optimizePackageImports: ['framer-motion', 'lucide-react', 'maplibre-gl', '@heroicons/react'],
   },
   
-  // Disable caching in development
-  webpack: (config, { dev }) => {
-    if (dev) {
-      config.cache = false;
-    }
-    return config;
-  },
   
   // Turbopack optimizations
   turbopack: {

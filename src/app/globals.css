@@ -1,28 +1,136 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --color-primary: #1a3d35;
-  --color-accent: #FDFBF7;
-  --color-background-light: #FDFBF7;
-  --color-background-dark: #151d1b;
-  --color-forest: #1a3d35;
-  --color-cream: #FDFBF7;
+/* RTL Support */
+html[dir="rtl"] {
+  direction: rtl;
+  text-align: right;
 }
 
-body {
-  margin: 0;
-  padding: 0;
-  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  background-color: var(--color-background-light);
-  color: #1e293b;
+html[dir="rtl"] * {
+  direction: rtl;
+}
+
+html[dir="ltr"] {
+  direction: ltr;
+  text-align: left;
+}
+
+html[dir="ltr"] * {
+  direction: ltr;
+}
+
+@layer base {
+  :root {
+    /* shadcn/ui variables - converted from oklch to HSL */
+    --background: 0 0% 98%;
+    --foreground: 160 10% 15%;
+    --card: 0 0% 100%;
+    --card-foreground: 160 10% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 160 10% 15%;
+    --primary: 160 25% 25%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 160 10% 96%;
+    --secondary-foreground: 160 25% 25%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
+    --accent: 160 10% 96%;
+    --accent-foreground: 160 25% 25%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 160 25% 25%;
+    --radius: 0.5rem;
+
+    /* Chart colors */
+    --chart-1: 25 95% 53%;
+    --chart-2: 180 60% 45%;
+    --chart-3: 220 50% 35%;
+    --chart-4: 45 95% 55%;
+    --chart-5: 35 95% 50%;
+
+    /* Sidebar */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 160 10% 15%;
+    --sidebar-primary: 160 25% 25%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 160 10% 96%;
+    --sidebar-accent-foreground: 160 25% 25%;
+    --sidebar-border: 0 0% 92%;
+    --sidebar-ring: 160 25% 25%;
+
+    /* Custom dashboard colors - success/warning */
+    --success: 145 60% 35%;
+    --success-foreground: 0 0% 100%;
+    --warning: 45 90% 50%;
+    --warning-foreground: 0 0% 20%;
+
+    /* Legacy ignis colors */
+    --color-primary: #1a3d35;
+    --color-accent: #FDFBF7;
+    --color-background-light: #FDFBF7;
+    --color-background-dark: #151d1b;
+    --color-forest: #1a3d35;
+    --color-cream: #FDFBF7;
+  }
+
+  .dark {
+    --background: 0 0% 9%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 0 0% 12%;
+    --secondary: 0 0% 16%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 16%;
+    --muted-foreground: 0 0% 64%;
+    --accent: 0 0% 16%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 16%;
+    --input: 0 0% 16%;
+    --ring: 0 0% 35%;
+
+    /* Chart colors - dark mode */
+    --chart-1: 250 90% 60%;
+    --chart-2: 160 70% 50%;
+    --chart-3: 35 90% 55%;
+    --chart-4: 290 80% 60%;
+    --chart-5: 10 90% 55%;
+
+    /* Sidebar - dark mode */
+    --sidebar-background: 0 0% 12%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 250 90% 60%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 0 0% 16%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 0 0% 16%;
+    --sidebar-ring: 0 0% 35%;
+
+    /* Custom dashboard colors - dark mode */
+    --success: 145 60% 40%;
+    --success-foreground: 0 0% 100%;
+    --warning: 45 85% 55%;
+    --warning-foreground: 0 0% 15%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
 }
 
 /* Stitch Design System - Glass Card Effect */

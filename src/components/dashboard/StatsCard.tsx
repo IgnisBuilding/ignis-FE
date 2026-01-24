@@ -1,7 +1,7 @@
 'use client';
 import { motion } from 'framer-motion';
 import { Users, Building, DollarSign, AlertTriangle } from 'lucide-react';
-import Card from '@/components/ui/Card';
+import { Card } from '@/components/ui/card';
 import { staggerContainer, fadeInUp } from '@/lib/animations';
 
 const StatsCards = () => {

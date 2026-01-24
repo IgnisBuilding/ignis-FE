@@ -1,235 +1,413 @@
 'use client';
+
+import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import DashboardLayout from '@/components/layout/DashboardLayout';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
+import { Download, Plus, X, Building2 } from 'lucide-react';
+
+interface Building {
+  id: number;
+  name: string;
+  address: string;
+  occupancy: number;
+  lastInspection: string;
+  safetyScore: number;
+  status: 'CERTIFIED' | 'PENDING' | 'AT RISK' | 'REVIEW REQ.';
+  icon: 'building' | 'highrise' | 'complex' | 'alert';
+}
+
+const buildingsData: Building[] = [
+  {
+    id: 1,
+    name: 'Grandview Heights',
+    address: '1022 Marina Way, North District',
+    occupancy: 450,
+    lastInspection: 'Oct 12, 2023',
+    safetyScore: 92,
+    status: 'CERTIFIED',
+    icon: 'highrise',
+  },
+  {
+    id: 2,
+    name: 'The Meridian',
+    address: '404 Skyline Dr, North District',
+    occupancy: 820,
+    lastInspection: 'Nov 05, 2023',
+    safetyScore: 78,
+    status: 'PENDING',
+    icon: 'building',
+  },
+  {
+    id: 3,
+    name: 'Oakwood Lofts',
+    address: '88 Forest Ave, East District',
+    occupancy: 120,
+    lastInspection: 'Sep 28, 2023',
+    safetyScore: 45,
+    status: 'AT RISK',
+    icon: 'alert',
+  },
+  {
+    id: 4,
+    name: 'Harbor Plaza',
+    address: '22 Port St, Harbor District',
+    occupancy: 1100,
+    lastInspection: 'Dec 01, 2023',
+    safetyScore: 88,
+    status: 'CERTIFIED',
+    icon: 'highrise',
+  },
+  {
+    id: 5,
+    name: 'Emerald Towers',
+    address: '71 Central Ave, Main District',
+    occupancy: 640,
+    lastInspection: 'Oct 20, 2023',
+    safetyScore: 62,
+    status: 'REVIEW REQ.',
+    icon: 'building',
+  },
+];
+
+const filterCategories = [
+  { title: 'Area Districts', icon: '📍' },
+  { title: 'Risk Priority', icon: '⚠️' },
+  { title: 'Occupancy Range', icon: '👥' },
+  { title: 'Structure Type', icon: '🏢' },
+  { title: 'Inspection Status', icon: '📋' },
+];
+
+const savedViews = [
+  { name: 'High-Rise Residential', count: 12 },
+  { name: 'Overdue Inspections', count: 4 },
+];
 
 function DirectoryContent() {
-    const { user } = useAuth();
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [selectedFilters, setSelectedFilters] = useState<string[]>([
+    'NORTH DISTRICT',
+    'RESIDENTIAL HIGH-RISE',
+  ]);
+  const [currentPage, setCurrentPage] = useState(1);
 
-    return (
-        <DashboardLayout role="firefighter" userName={user?.name || 'Cmdr. Sterling'} userTitle="SENIOR DIRECTOR" disablePadding={true}>
-            <div className="flex h-full bg-[#f9fbfa] dark:bg-background-dark min-h-[calc(100vh-80px)]">
-                {/* SideNavBar (Directory Filters) */}
-                <aside className="w-72 border-r border-[#eaf0ef] dark:border-primary/20 p-6 flex flex-col justify-between bg-[#f9fbfa] dark:bg-background-dark shrink-0">
-                    <div className="flex flex-col gap-8">
-                        <div className="flex flex-col">
-                            <h1 className="text-primary dark:text-white text-base font-bold leading-normal">Directory Filters</h1>
-                            <p className="text-[#60857d] text-xs font-normal leading-normal">Refine monitored building list</p>
-                        </div>
-                        <div className="flex flex-col gap-2">
-                            <button className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-primary text-white shadow-sm w-full text-left">
-                                <span className="material-symbols-outlined text-xl">map</span>
-                                <p className="text-sm font-semibold">Area Districts</p>
-                            </button>
-                            <button className="flex items-center gap-3 px-3 py-2.5 text-[#60857d] hover:bg-[#eaf0ef] dark:hover:bg-primary/10 rounded-lg cursor-pointer transition-colors w-full text-left">
-                                <span className="material-symbols-outlined text-xl">warning</span>
-                                <p className="text-sm font-medium">Risk Priority</p>
-                            </button>
-                            <button className="flex items-center gap-3 px-3 py-2.5 text-[#60857d] hover:bg-[#eaf0ef] dark:hover:bg-primary/10 rounded-lg cursor-pointer transition-colors w-full text-left">
-                                <span className="material-symbols-outlined text-xl">group</span>
-                                <p className="text-sm font-medium">Occupancy Range</p>
-                            </button>
-                            <button className="flex items-center gap-3 px-3 py-2.5 text-[#60857d] hover:bg-[#eaf0ef] dark:hover:bg-primary/10 rounded-lg cursor-pointer transition-colors w-full text-left">
-                                <span className="material-symbols-outlined text-xl">apartment</span>
-                                <p className="text-sm font-medium">Structure Type</p>
-                            </button>
-                            <button className="flex items-center gap-3 px-3 py-2.5 text-[#60857d] hover:bg-[#eaf0ef] dark:hover:bg-primary/10 rounded-lg cursor-pointer transition-colors w-full text-left">
-                                <span className="material-symbols-outlined text-xl">calendar_month</span>
-                                <p className="text-sm font-medium">Inspection Status</p>
-                            </button>
-                        </div>
-                        <div className="pt-6 border-t border-[#eaf0ef] dark:border-primary/20">
-                            <h3 className="text-xs font-bold text-[#60857d] uppercase tracking-widest mb-4">Saved Views</h3>
-                            <div className="flex flex-col gap-2">
-                                <div className="flex items-center justify-between text-sm text-primary dark:text-white px-3 cursor-pointer hover:bg-primary/5 py-1 rounded">
-                                    <span>High-Rise Residential</span>
-                                    <span className="text-[10px] bg-[#eaf0ef] dark:bg-primary px-1.5 py-0.5 rounded">12</span>
-                                </div>
-                                <div className="flex items-center justify-between text-sm text-primary dark:text-white px-3 cursor-pointer hover:bg-primary/5 py-1 rounded">
-                                    <span>Overdue Inspections</span>
-                                    <span className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded">04</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <button className="flex w-full items-center justify-center gap-2 rounded-lg h-10 bg-[#eaf0ef] dark:bg-primary/20 text-primary dark:text-white text-xs font-bold uppercase tracking-wider hover:bg-opacity-80 transition-all border border-primary/5">
-                        <span className="material-symbols-outlined text-sm">filter_alt_off</span>
-                        <span>Clear Filters</span>
-                    </button>
-                </aside>
+  const handleExportReport = () => {
+    toast({
+      title: 'Report Generated',
+      description: 'Building safety report is being prepared for download',
+      duration: 3000,
+    });
+  };
 
-                {/* Main Content Container */}
-                <div className="flex-1 flex flex-col overflow-y-auto">
-                    {/* PageHeading */}
-                    <div className="flex flex-wrap justify-between items-end gap-4 px-10 pt-8 pb-4">
-                        <div className="flex flex-col gap-1">
-                            <p className="text-primary dark:text-white text-3xl font-black leading-tight tracking-[-0.033em]">Building Safety Directory</p>
-                            <p className="text-[#60857d] text-sm font-medium leading-normal">Managing safety protocols for 1,284 monitored complexes</p>
-                        </div>
-                        <div className="flex gap-3">
-                            <button className="flex h-10 items-center justify-center rounded-lg px-4 bg-[#eaf0ef] dark:bg-primary/20 text-primary dark:text-white text-sm font-bold tracking-[0.015em] hover:bg-opacity-70 transition-all">
-                                <span className="material-symbols-outlined mr-2 text-lg">download</span>
-                                <span className="truncate">Export Report</span>
-                            </button>
-                            <button className="flex h-10 items-center justify-center rounded-lg px-4 bg-primary text-white text-sm font-bold tracking-[0.015em] hover:bg-opacity-90 shadow-md transition-all">
-                                <span className="material-symbols-outlined mr-2 text-lg">add_location</span>
-                                <span className="truncate">Register Facility</span>
-                            </button>
-                        </div>
-                    </div>
+  const handleRegisterFacility = () => {
+    toast({
+      title: 'New Building Registration',
+      description: 'Opening building registration form',
+      duration: 3000,
+    });
+  };
 
-                    {/* Chips (Active Filters) */}
-                    <div className="flex gap-2 px-10 py-4 flex-wrap">
-                        <button className="flex h-7 items-center justify-center gap-2 rounded-full bg-[#eaf0ef] dark:bg-primary/30 pl-3 pr-2 border border-primary/5">
-                            <p className="text-primary dark:text-white text-[11px] font-bold uppercase tracking-wider">North District</p>
-                            <span className="material-symbols-outlined text-sm">close</span>
-                        </button>
-                        <button className="flex h-7 items-center justify-center gap-2 rounded-full bg-[#eaf0ef] dark:bg-primary/30 pl-3 pr-2 border border-primary/5">
-                            <p className="text-primary dark:text-white text-[11px] font-bold uppercase tracking-wider">Residential High-Rise</p>
-                            <span className="material-symbols-outlined text-sm">close</span>
-                        </button>
-                        <button className="flex h-7 items-center justify-center gap-2 rounded-full border border-dashed border-[#60857d] px-3 hover:bg-primary/5 transition-colors">
-                            <p className="text-[#60857d] text-[11px] font-bold uppercase tracking-wider">Add District</p>
-                            <span className="material-symbols-outlined text-sm">add</span>
-                        </button>
-                    </div>
+  const handleRemoveFilter = (filter: string) => {
+    setSelectedFilters(selectedFilters.filter((f) => f !== filter));
+    toast({
+      title: 'Filter Removed',
+      description: `${filter} filter has been removed`,
+      duration: 2000,
+    });
+  };
 
-                    {/* Table Section */}
-                    <div className="px-10 py-2 pb-12">
-                        <div className="overflow-hidden rounded-xl border border-[#eaf0ef] dark:border-primary/20 bg-white dark:bg-background-dark/50 shadow-sm">
-                            <table className="w-full text-left border-collapse">
-                                <thead>
-                                    <tr className="bg-[#eaf0ef]/50 dark:bg-primary/10 border-b border-[#eaf0ef] dark:border-primary/20">
-                                        <th className="px-6 py-4 text-primary dark:text-white text-xs font-bold uppercase tracking-wider w-[35%]">
-                                            <div className="flex items-center gap-2 cursor-pointer hover:text-primary/70">
-                                                Building Name
-                                                <span className="material-symbols-outlined text-xs">arrow_downward</span>
-                                            </div>
-                                        </th>
-                                        <th className="px-6 py-4 text-primary dark:text-white text-xs font-bold uppercase tracking-wider">Occupancy</th>
-                                        <th className="px-6 py-4 text-primary dark:text-white text-xs font-bold uppercase tracking-wider">Last Inspection</th>
-                                        <th className="px-6 py-4 text-primary dark:text-white text-xs font-bold uppercase tracking-wider">Safety Score</th>
-                                        <th className="px-6 py-4 text-primary dark:text-white text-xs font-bold uppercase tracking-wider text-right">Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-[#eaf0ef] dark:divide-primary/10">
-                                    {/* Row 1 */}
-                                    <tr className="hover:bg-[#eaf0ef]/30 dark:hover:bg-primary/5 cursor-pointer transition-colors group">
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-4">
-                                                <div className="size-10 rounded bg-[#eaf0ef] flex items-center justify-center dark:bg-primary/20">
-                                                    <span className="material-symbols-outlined text-primary dark:text-white">apartment</span>
-                                                </div>
-                                                <div>
-                                                    <p className="text-primary dark:text-white text-sm font-bold">Grandview Heights</p>
-                                                    <p className="text-[#60857d] text-xs">1022 Marina Way, North District</p>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 text-[#60857d] text-sm font-medium">450 Residents</td>
-                                        <td className="px-6 py-4 text-[#60857d] text-sm font-medium">Oct 12, 2023</td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-24 overflow-hidden rounded-full bg-[#eaf0ef] dark:bg-primary/20 h-1.5">
-                                                    <div className="h-full bg-primary" style={{ width: '92%' }}></div>
-                                                </div>
-                                                <p className="text-primary dark:text-white text-sm font-bold">92</p>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 text-right">
-                                            <span className="inline-flex items-center rounded-full bg-green-100 dark:bg-green-900/30 px-2.5 py-0.5 text-xs font-bold text-green-700 dark:text-green-400">
-                                                CERTIFIED
-                                            </span>
-                                        </td>
-                                    </tr>
-                                    {/* Row 2 */}
-                                    <tr className="hover:bg-[#eaf0ef]/30 dark:hover:bg-primary/5 cursor-pointer transition-colors group">
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-4">
-                                                <div className="size-10 rounded bg-[#eaf0ef] flex items-center justify-center dark:bg-primary/20">
-                                                    <span className="material-symbols-outlined text-primary dark:text-white">corporate_fare</span>
-                                                </div>
-                                                <div>
-                                                    <p className="text-primary dark:text-white text-sm font-bold">The Meridian</p>
-                                                    <p className="text-[#60857d] text-xs">404 Skyline Dr, North District</p>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 text-[#60857d] text-sm font-medium">820 Residents</td>
-                                        <td className="px-6 py-4 text-[#60857d] text-sm font-medium">Nov 05, 2023</td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-24 overflow-hidden rounded-full bg-[#eaf0ef] dark:bg-primary/20 h-1.5">
-                                                    <div className="h-full bg-primary/60" style={{ width: '78%' }}></div>
-                                                </div>
-                                                <p className="text-primary dark:text-white text-sm font-bold">78</p>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 text-right">
-                                            <span className="inline-flex items-center rounded-full bg-blue-100 dark:bg-blue-900/30 px-2.5 py-0.5 text-xs font-bold text-blue-700 dark:text-blue-400">
-                                                PENDING
-                                            </span>
-                                        </td>
-                                    </tr>
-                                    {/* Row 3 */}
-                                    <tr className="hover:bg-[#eaf0ef]/30 dark:hover:bg-primary/5 cursor-pointer transition-colors group">
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-4">
-                                                <div className="size-10 rounded bg-red-50 flex items-center justify-center dark:bg-red-900/20">
-                                                    <span className="material-symbols-outlined text-red-600">emergency</span>
-                                                </div>
-                                                <div>
-                                                    <p className="text-primary dark:text-white text-sm font-bold">Oakwood Lofts</p>
-                                                    <p className="text-[#60857d] text-xs">88 Forest Ave, East District</p>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 text-[#60857d] text-sm font-medium">120 Residents</td>
-                                        <td className="px-6 py-4 text-[#60857d] text-sm font-medium">Sep 28, 2023</td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-24 overflow-hidden rounded-full bg-[#eaf0ef] dark:bg-primary/20 h-1.5">
-                                                    <div className="h-full bg-red-500" style={{ width: '45%' }}></div>
-                                                </div>
-                                                <p className="text-primary dark:text-white text-sm font-bold">45</p>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 text-right">
-                                            <span className="inline-flex items-center rounded-full bg-red-100 dark:bg-red-900/30 px-2.5 py-0.5 text-xs font-bold text-red-700 dark:text-red-400">
-                                                AT RISK
-                                            </span>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                            {/* Pagination */}
-                            <div className="flex items-center justify-between px-6 py-4 border-t border-[#eaf0ef] dark:border-primary/20 bg-[#eaf0ef]/20 dark:bg-primary/5">
-                                <p className="text-xs text-[#60857d] font-medium">Showing <span className="text-primary dark:text-white font-bold">1 - 3</span> of 1,284 results</p>
-                                <div className="flex gap-1">
-                                    <button className="flex size-8 items-center justify-center rounded border border-[#eaf0ef] dark:border-primary/30 text-[#60857d] hover:bg-white dark:hover:bg-primary/20 transition-colors">
-                                        <span className="material-symbols-outlined text-sm">chevron_left</span>
-                                    </button>
-                                    <button className="flex size-8 items-center justify-center rounded bg-primary text-white text-xs font-bold">1</button>
-                                    <button className="flex size-8 items-center justify-center rounded border border-[#eaf0ef] dark:border-primary/30 text-[#60857d] hover:bg-white dark:hover:bg-primary/20 text-xs font-bold transition-colors">2</button>
-                                    <button className="flex size-8 items-center justify-center rounded border border-[#eaf0ef] dark:border-primary/30 text-[#60857d] hover:bg-white dark:hover:bg-primary/20 text-xs font-bold transition-colors">3</button>
-                                    <span className="px-2 text-[#60857d]">...</span>
-                                    <button className="flex size-8 items-center justify-center rounded border border-[#eaf0ef] dark:border-primary/30 text-[#60857d] hover:bg-white dark:hover:bg-primary/20 transition-colors">
-                                        <span className="material-symbols-outlined text-sm">chevron_right</span>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+  const handleBuildingClick = (building: Building) => {
+    toast({
+      title: `${building.name} Safety Score: ${building.safetyScore}`,
+      description: `Status: ${building.status}`,
+      duration: 3000,
+    });
+  };
+
+  const getStatusBadge = (status: string) => {
+    const badgeStyles: Record<string, string> = {
+      CERTIFIED: 'bg-green-100 text-green-700 font-semibold hover:bg-green-100',
+      PENDING: 'bg-blue-100 text-blue-700 font-semibold hover:bg-blue-100',
+      'AT RISK': 'bg-red-100 text-red-700 font-semibold hover:bg-red-100',
+      'REVIEW REQ.':
+        'bg-yellow-100 text-yellow-700 font-semibold hover:bg-yellow-100',
+    };
+    return badgeStyles[status] || 'bg-gray-100 text-gray-700';
+  };
+
+  const getSafetyScoreColor = (score: number) => {
+    if (score >= 85) return 'bg-green-600';
+    if (score >= 70) return 'bg-blue-600';
+    if (score >= 50) return 'bg-yellow-600';
+    return 'bg-red-600';
+  };
+
+  return (
+    <DashboardLayout
+      role="firefighter"
+      userName={user?.name || 'Cmdr. Sterling'}
+      userTitle="SENIOR DIRECTOR"
+    >
+      <div className="flex-1 space-y-4 overflow-auto p-3 sm:p-4 md:p-6 lg:p-8 sm:space-y-6 w-full max-w-none">
+        <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
+          {/* Filter Sidebar */}
+          <aside className="w-full flex-shrink-0 lg:w-64">
+            <Card className="border border-border">
+              <CardContent className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+                <div>
+                  <h2 className="text-xs sm:text-sm font-bold text-foreground">
+                    DIRECTORY FILTERS
+                  </h2>
+                  <p className="text-xs text-muted-foreground">
+                    Refine monitored building list
+                  </p>
                 </div>
+
+                <div className="space-y-3">
+                  {filterCategories.map((category) => (
+                    <Button
+                      key={category.title}
+                      variant="outline"
+                      className="w-full justify-start gap-2 rounded-lg border-0 bg-secondary px-4 py-2 text-foreground hover:bg-[#1f3d2f] hover:text-white"
+                    >
+                      <span>{category.icon}</span>
+                      {category.title}
+                    </Button>
+                  ))}
+                </div>
+
+                <div className="space-y-3 border-t border-border pt-6">
+                  <h3 className="text-xs font-bold tracking-wide text-muted-foreground">
+                    SAVED VIEWS
+                  </h3>
+                  {savedViews.map((view) => (
+                    <div
+                      key={view.name}
+                      className="flex items-center justify-between text-sm"
+                    >
+                      <button className="text-foreground hover:text-[#1f3d2f]">
+                        {view.name}
+                      </button>
+                      <span className="rounded bg-red-100 px-2 py-0.5 text-xs font-bold text-red-600">
+                        {String(view.count).padStart(2, '0')}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                <Button
+                  variant="outline"
+                  className="w-full justify-start gap-2 border border-border bg-transparent"
+                >
+                  <X className="h-4 w-4" /> CLEAR FILTERS
+                </Button>
+              </CardContent>
+            </Card>
+          </aside>
+
+          {/* Main Content */}
+          <div className="flex-1 space-y-4 sm:space-y-6 min-w-0">
+            {/* Header Section */}
+            <div className="flex flex-col items-start justify-between gap-4 sm:gap-6 md:flex-row md:items-end">
+              <div className="flex-1 min-w-0">
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground">
+                  Building Safety Directory
+                </h1>
+                <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-muted-foreground">
+                  Managing safety protocols for 1,284 monitored complexes
+                </p>
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row w-full sm:w-auto flex-shrink-0">
+                <Button
+                  variant="outline"
+                  className="gap-2 bg-transparent text-xs sm:text-sm h-9 sm:h-10 w-full sm:w-auto"
+                  onClick={handleExportReport}
+                >
+                  <Download className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                  <span className="hidden sm:inline">Export Report</span>
+                </Button>
+                <Button
+                  className="gap-2 bg-[#1f3d2f] text-white hover:bg-[#2a4f3d] text-xs sm:text-sm h-9 sm:h-10 w-full sm:w-auto"
+                  onClick={handleRegisterFacility}
+                >
+                  <Plus className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                  <span className="hidden sm:inline">Register Facility</span>
+                </Button>
+              </div>
             </div>
-        </DashboardLayout>
-    );
+
+            {/* Active Filters */}
+            <div className="flex flex-wrap items-center gap-2 overflow-x-auto pb-2">
+              {selectedFilters.map((filter) => (
+                <div
+                  key={filter}
+                  className="flex items-center gap-2 rounded-lg border border-border bg-card px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm font-medium flex-shrink-0"
+                >
+                  {filter}
+                  <button
+                    onClick={() => handleRemoveFilter(filter)}
+                    className="ml-1 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+              <button className="rounded-lg border-2 border-dashed border-border px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm font-medium text-muted-foreground hover:bg-secondary flex-shrink-0">
+                + DISTRICT
+              </button>
+            </div>
+
+            {/* Buildings Table */}
+            <Card className="rounded-lg border border-border bg-card overflow-hidden">
+              <CardContent className="p-0">
+                <table className="w-full text-sm">
+                  <thead className="border-b border-border bg-secondary">
+                    <tr>
+                      <th className="px-6 py-4 text-left font-bold text-foreground">
+                        BUILDING NAME
+                      </th>
+                      <th className="px-6 py-4 text-left font-bold text-foreground hidden sm:table-cell">
+                        OCCUPANCY
+                      </th>
+                      <th className="px-6 py-4 text-left font-bold text-foreground hidden md:table-cell">
+                        LAST INSPECTION
+                      </th>
+                      <th className="px-6 py-4 text-left font-bold text-foreground hidden lg:table-cell">
+                        SAFETY SCORE
+                      </th>
+                      <th className="px-6 py-4 text-left font-bold text-foreground">
+                        STATUS
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {buildingsData.map((building, idx) => (
+                      <tr
+                        key={building.id}
+                        className={`${
+                          idx % 2 === 0 ? 'bg-card' : 'bg-secondary/50'
+                        } hover:bg-secondary/80 cursor-pointer transition-colors`}
+                        onClick={() => handleBuildingClick(building)}
+                      >
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="rounded-lg bg-secondary p-2">
+                              <Building2 className="h-4 w-4 text-foreground" />
+                            </div>
+                            <div>
+                              <p className="font-semibold text-foreground">
+                                {building.name}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {building.address}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 hidden sm:table-cell">
+                          <p className="font-semibold text-foreground">
+                            {building.occupancy}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Residents
+                          </p>
+                        </td>
+                        <td className="px-6 py-4 text-muted-foreground hidden md:table-cell">
+                          {building.lastInspection}
+                        </td>
+                        <td className="px-6 py-4 hidden lg:table-cell">
+                          <div className="flex items-center gap-3">
+                            <div
+                              className={`h-2 w-16 rounded ${getSafetyScoreColor(
+                                building.safetyScore
+                              )}`}
+                            />
+                            <span className="font-semibold text-foreground">
+                              {building.safetyScore}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <Badge
+                            variant="outline"
+                            className={`${getStatusBadge(
+                              building.status
+                            )} border-0 text-xs`}
+                          >
+                            {building.status}
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </CardContent>
+            </Card>
+
+            {/* Pagination */}
+            <div className="flex flex-col items-start justify-between gap-4 pt-6 sm:flex-row sm:items-center">
+              <p className="text-xs sm:text-sm text-muted-foreground">
+                Showing 1 - 5 of 1,284 results
+              </p>
+              <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto pb-1">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8 sm:h-9 sm:w-9 text-xs flex-shrink-0 bg-transparent"
+                >
+                  &lt;
+                </Button>
+                {[1, 2, 3].map((page) => (
+                  <Button
+                    key={page}
+                    variant={page === currentPage ? 'default' : 'outline'}
+                    size="icon"
+                    className={`h-8 w-8 sm:h-9 sm:w-9 text-xs flex-shrink-0 ${
+                      page === currentPage ? 'bg-[#1f3d2f]' : ''
+                    }`}
+                    onClick={() => setCurrentPage(page)}
+                  >
+                    {page}
+                  </Button>
+                ))}
+                <Button
+                  variant="outline"
+                  className="h-8 px-2 sm:h-9 text-xs flex-shrink-0 bg-transparent"
+                >
+                  ...
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8 sm:h-9 sm:w-9 text-xs flex-shrink-0 bg-transparent"
+                >
+                  257
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8 sm:h-9 sm:w-9 text-xs flex-shrink-0 bg-transparent"
+                >
+                  &gt;
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </DashboardLayout>
+  );
 }
 
 export default function Directory() {
-    return (
-        <ProtectedRoute allowedRoles={['firefighter']}>
-            <DirectoryContent />
-        </ProtectedRoute>
-    );
+  return (
+    <ProtectedRoute allowedRoles={['firefighter']}>
+      <DirectoryContent />
+    </ProtectedRoute>
+  );
 }

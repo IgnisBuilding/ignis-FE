@@ -1,5 +1,5 @@
 // User Types
-export type UserRole = 'building_authority' | 'management' | 'resident' | 'firefighter';
+export type UserRole = 'building_authority' | 'management' | 'resident' | 'firefighter' | 'admin';
 
 export interface User {
   id: string;

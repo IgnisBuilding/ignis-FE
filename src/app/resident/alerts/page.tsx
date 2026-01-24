@@ -3,11 +3,12 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Bell, AlertTriangle, Info, CheckCircle, Filter, Search } from 'lucide-react';
-import PageTransition from '@/components/shared/pageTransition';
+import DashboardLayout from '@/components/layout/DashboardLayout';
 import { fadeIn } from '@/lib/animations';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 import { Alert } from '@/types';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
 
 export default function AlertsPage() {
   const router = useRouter();
@@ -51,14 +52,14 @@ export default function AlertsPage() {
 
   if (loading) {
     return (
-      <PageTransition>
-        <div className="min-h-screen cream-gradient flex items-center justify-center">
+      <DashboardLayout role="resident" userName={user?.name || 'Resident'} userTitle="RESIDENT">
+        <div className="flex items-center justify-center h-[calc(100vh-100px)]">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
             <p className="text-dark-green-600">Loading alerts...</p>
           </div>
         </div>
-      </PageTransition>
+      </DashboardLayout>
     );
   }
 
@@ -89,9 +90,8 @@ export default function AlertsPage() {
   });
 
   return (
-    <PageTransition>
-      <div className="min-h-screen cream-gradient py-8 px-4">
-        <div className="max-w-6xl mx-auto">
+    <DashboardLayout role="resident" userName={user?.name || 'Resident'} userTitle="RESIDENT">
+      <div className="p-8 max-w-[1600px] mx-auto w-full">
           <motion.div variants={fadeIn} initial="initial" animate="animate">
             <div className="flex justify-between items-center mb-8">
               <div>
@@ -206,9 +206,7 @@ export default function AlertsPage() {
               )}
             </div>
           </motion.div>
-        </div>
       </div>
-    </PageTransition>
+    </DashboardLayout>
   );
 }
-

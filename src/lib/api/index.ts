@@ -1,5 +1,5 @@
 // Central API configuration for NestJS backend (ignis-be)
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 // Type definitions
 export interface LoginResponse {
@@ -27,22 +27,12 @@ export interface Sensor {
   unit?: string;
   status: string;
   roomId?: number;
-  room?: {
-    id: number;
-    name: string;
-  };
+  room?: { id: number; name: string };
   latitude?: number;
   longitude?: number;
   lastReading?: string;
   createdAt: string;
   updatedAt: string;
-}
-
-export interface SensorStats {
-  total: number;
-  active: number;
-  alert: number;
-  inactive: number;
 }
 
 export interface Resident {
@@ -51,22 +41,12 @@ export interface Resident {
   email: string;
   phone?: string;
   apartmentId?: number;
-  apartment?: {
-    id: number;
-    unit_number: string;
-  };
+  apartment?: { id: number; unit_number: string };
   type: string;
   isActive: boolean;
   emergencyContact?: string;
   createdAt: string;
   updatedAt: string;
-}
-
-export interface ResidentStats {
-  total: number;
-  residents: number;
-  owners: number;
-  tenants: number;
 }
 
 export interface Building {
@@ -78,12 +58,6 @@ export interface Building {
   society_id: number;
   created_at: string;
   updated_at: string;
-}
-
-export interface BuildingStats {
-  total: number;
-  floors: number;
-  apartments: number;
 }
 
 class ApiService {
@@ -101,11 +75,11 @@ class ApiService {
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
     };
-    
+
     if (this.token) {
       headers['Authorization'] = `Bearer ${this.token}`;
     }
-    
+
     return headers;
   }
 
@@ -129,7 +103,7 @@ class ApiService {
     options: RequestInit = {}
   ): Promise<T> {
     const url = `${this.baseURL}${endpoint}`;
-    
+
     const config: RequestInit = {
       ...options,
       headers: {
@@ -140,7 +114,7 @@ class ApiService {
 
     try {
       const response = await fetch(url, config);
-      
+
       if (!response.ok) {
         if (response.status === 401) {
           this.clearToken();
@@ -159,18 +133,51 @@ class ApiService {
     }
   }
 
+  // ==================== GENERIC HTTP METHODS ====================
+
+  async get<T>(endpoint: string, cache?: RequestCache): Promise<{ data: T }> {
+    const data = await this.request<T>(endpoint, {
+      method: 'GET',
+      cache: cache,
+    });
+    return { data };
+  }
+
+  async post<T>(endpoint: string, body?: unknown): Promise<{ data: T }> {
+    const data = await this.request<T>(endpoint, {
+      method: 'POST',
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    return { data };
+  }
+
+  async put<T>(endpoint: string, body?: unknown): Promise<{ data: T }> {
+    const data = await this.request<T>(endpoint, {
+      method: 'PUT',
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    return { data };
+  }
+
+  async delete<T>(endpoint: string): Promise<{ data: T }> {
+    const data = await this.request<T>(endpoint, {
+      method: 'DELETE',
+    });
+    return { data };
+  }
+
   // ==================== AUTH ENDPOINTS ====================
-  
+
   async login(email: string, password: string): Promise<LoginResponse> {
     const response = await this.request<LoginResponse>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
-    
+
     if (response.access_token) {
       this.setToken(response.access_token);
     }
-    
+
     return response;
   }
 
@@ -188,21 +195,15 @@ class ApiService {
   }
 
   // ==================== SENSOR ENDPOINTS ====================
-  
-  async getSensors(): Promise<Sensor[]> {
-    return this.request<Sensor[]>('/sensors', {
+
+  async getSensors(): Promise<any[]> {
+    return this.request<any[]>('/sensors', {
       method: 'GET',
     });
   }
 
-  async getSensorStats(): Promise<SensorStats> {
-    return this.request<SensorStats>('/sensors/stats', {
-      method: 'GET',
-    });
-  }
-
-  async getSensorById(id: number): Promise<Sensor> {
-    return this.request<Sensor>(`/sensors/${id}`, {
+  async getSensorStats(): Promise<any> {
+    return this.request<any>('/sensors/stats', {
       method: 'GET',
     });
   }
@@ -227,29 +228,16 @@ class ApiService {
     });
   }
 
-  async updateSensorReading(id: number, value: number): Promise<Sensor> {
-    return this.request<Sensor>(`/sensors/${id}/reading`, {
-      method: 'PATCH',
-      body: JSON.stringify({ value }),
-    });
-  }
-
   // ==================== RESIDENT ENDPOINTS ====================
-  
-  async getResidents(): Promise<Resident[]> {
-    return this.request<Resident[]>('/residents', {
+
+  async getResidents(): Promise<any[]> {
+    return this.request<any[]>('/residents', {
       method: 'GET',
     });
   }
 
-  async getResidentStats(): Promise<ResidentStats> {
-    return this.request<ResidentStats>('/residents/stats', {
-      method: 'GET',
-    });
-  }
-
-  async getResidentById(id: number): Promise<Resident> {
-    return this.request<Resident>(`/residents/${id}`, {
+  async getResidentStats(): Promise<any> {
+    return this.request<any>('/residents/stats', {
       method: 'GET',
     });
   }
@@ -275,73 +263,55 @@ class ApiService {
   }
 
   // ==================== BUILDING ENDPOINTS ====================
-  
-  getBuildings = async (): Promise<Building[]> => {
+
+  async getBuildings(): Promise<Building[]> {
     return this.request<Building[]>('/buildings', {
       method: 'GET',
     });
   }
 
-  getBuildingStats = async (): Promise<BuildingStats> => {
-    return this.request<BuildingStats>('/buildings/stats', {
+  async getBuildingStats(): Promise<any> {
+    return this.request<any>('/buildings/stats', {
       method: 'GET',
     });
   }
 
-  getBuildingById = async (id: number): Promise<Building> => {
+  async getBuildingById(id: number): Promise<Building> {
     return this.request<Building>(`/buildings/${id}`, {
       method: 'GET',
     });
   }
 
-  getBuildingFloors = async (id: number): Promise<any[]> => {
-    return this.request<any[]>(`/buildings/${id}/floors`, {
-      method: 'GET',
-    });
-  }
-
-  getBuildingApartments = async (id: number): Promise<any[]> => {
-    return this.request<any[]>(`/buildings/${id}/apartments`, {
-      method: 'GET',
-    });
-  }
-
-  createBuilding = async (data: { name: string; address: string; type?: string }): Promise<Building> => {
+  async createBuilding(data: { name: string; address: string; type?: string }): Promise<Building> {
     return this.request<Building>('/buildings', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
-  updateBuilding = async (id: number, data: { name?: string; address?: string; type?: string }): Promise<Building> => {
+  async updateBuilding(id: number, data: { name?: string; address?: string; type?: string }): Promise<Building> {
     return this.request<Building>(`/buildings/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
     });
   }
 
-  deleteBuilding = async (id: number): Promise<void> => {
+  async deleteBuilding(id: number): Promise<void> {
     return this.request<void>(`/buildings/${id}`, {
       method: 'DELETE',
     });
   }
 
   // ==================== DASHBOARD ENDPOINTS ====================
-  
+
   async getDashboardStats(): Promise<any> {
     return this.request('/dashboard/stats', {
       method: 'GET',
     });
   }
 
-  async getRecentAlerts(): Promise<any[]> {
-    return this.request<any[]>('/dashboard/recent-alerts', {
-      method: 'GET',
-    });
-  }
-
   // ==================== APARTMENT ENDPOINTS ====================
-  
+
   async getApartments(): Promise<any[]> {
     return this.request<any[]>('/apartments', {
       method: 'GET',
@@ -354,16 +324,8 @@ class ApiService {
     });
   }
 
-  async getApartmentById(id: number): Promise<any> {
-    return this.request(`/apartments/${id}`, {
-      method: 'GET',
-    });
-  }
-
   // ==================== ALERT ENDPOINTS ====================
 
-  // ==================== ALERT ENDPOINTS ====================
-  
   async getAlerts(): Promise<any[]> {
     return this.request<any[]>('/alerts', {
       method: 'GET',
@@ -376,127 +338,58 @@ class ApiService {
     });
   }
 
-  async getAlertsByBuilding(buildingId: number): Promise<any[]> {
-    return this.request<any[]>(`/alerts/building/${buildingId}`, {
+  async getMyAlerts(): Promise<any[]> {
+    return this.request<any[]>('/alerts/my-alerts', {
       method: 'GET',
-    });
-  }
-
-  async getAlertsByApartment(apartmentId: number): Promise<any[]> {
-    return this.request<any[]>(`/alerts/apartment/${apartmentId}`, {
-      method: 'GET',
-    });
-  }
-
-  async createAlert(data: any): Promise<any> {
-    return this.request('/alerts', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  }
-
-  async updateAlert(id: number, data: any): Promise<any> {
-    return this.request(`/alerts/${id}`, {
-      method: 'PATCH',
-      body: JSON.stringify(data),
-    });
-  }
-
-  async resolveAlert(id: number): Promise<any> {
-    return this.request(`/alerts/${id}/resolve`, {
-      method: 'PATCH',
     });
   }
 
   // ==================== HAZARD ENDPOINTS ====================
-  
+
   async getHazards(): Promise<any[]> {
     return this.request<any[]>('/hazards', {
       method: 'GET',
     });
   }
 
-  async getActiveHazards(): Promise<any[]> {
-    return this.request<any[]>('/hazards/active', {
-      method: 'GET',
-    });
-  }
-
-  async getHazardById(id: number): Promise<any> {
-    return this.request(`/hazards/${id}`, {
-      method: 'GET',
-    });
-  }
-
-  async createHazard(data: any): Promise<any> {
-    return this.request('/hazards', {
+  async respondToHazard(id: number, data: { status: string; notes?: string }): Promise<any> {
+    return this.request<any>(`/hazards/${id}/respond`, {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
-  async respondToHazard(id: number): Promise<any> {
-    return this.request(`/hazards/${id}/respond`, {
-      method: 'PATCH',
+  async resolveHazard(id: number, data: { resolution: string; notes?: string }): Promise<any> {
+    return this.request<any>(`/hazards/${id}/resolve`, {
+      method: 'POST',
+      body: JSON.stringify(data),
     });
   }
 
-  async resolveHazard(id: number): Promise<any> {
-    return this.request(`/hazards/${id}/resolve`, {
-      method: 'PATCH',
-    });
-  }
+  // ==================== FLOOR PLAN / BUILDING DATA ENDPOINTS ====================
 
-  // ==================== SAFETY EQUIPMENT ENDPOINTS ====================
-  
-  async getSafetyEquipment(): Promise<any[]> {
-    return this.request<any[]>('/safety-equipment', {
+  async getBuildingFloorPlan(buildingId: number | string): Promise<any> {
+    return this.request<any>(`/buildings/${buildingId}/floor-plan`, {
       method: 'GET',
     });
   }
 
-  async getSafetyEquipmentByApartment(apartmentId: number): Promise<any[]> {
-    return this.request<any[]>(`/safety-equipment/apartment/${apartmentId}`, {
-      method: 'GET',
-    });
-  }
-
-  async getSafetyEquipmentByBuilding(buildingId: number): Promise<any[]> {
-    return this.request<any[]>(`/safety-equipment/building/${buildingId}`, {
-      method: 'GET',
-    });
-  }
-
-  async getDueSafetyEquipment(): Promise<any[]> {
-    return this.request<any[]>('/safety-equipment/due', {
+  async getBuildingRooms(buildingId: number | string): Promise<any> {
+    return this.request<any>(`/buildings/${buildingId}/rooms`, {
       method: 'GET',
     });
   }
 }
 
-const apiInstance = new ApiService();
+// Export singleton instance
+export const api = new ApiService();
 
-// Export api as default
-export const api = apiInstance;
-
-// Explicit exports for building operations to fix Turbopack bundling issues
+// Export buildingApi for backwards compatibility
 export const buildingApi = {
-  getBuildings: async () => {
-    return apiInstance.getBuildings();
-  },
-  createBuilding: async (data: { name: string; address: string; type?: string }) => {
-    return apiInstance.createBuilding(data);
-  },
-  updateBuilding: async (id: number, data: { name?: string; address?: string; type?: string }) => {
-    return apiInstance.updateBuilding(id, data);
-  },
-  deleteBuilding: async (id: number) => {
-    return apiInstance.deleteBuilding(id);
-  },
-  getBuildingById: async (id: number) => {
-    return apiInstance.getBuildingById(id);
-  },
-  getBuildingStats: async () => {
-    return apiInstance.getBuildingStats();
-  },
+  getBuildings: () => api.getBuildings(),
+  getBuildingById: (id: number) => api.getBuildingById(id),
+  getBuildingStats: () => api.getBuildingStats(),
+  createBuilding: (data: { name: string; address: string; type?: string }) => api.createBuilding(data),
+  updateBuilding: (id: number, data: { name?: string; address?: string; type?: string }) => api.updateBuilding(id, data),
+  deleteBuilding: (id: number) => api.deleteBuilding(id),
 };

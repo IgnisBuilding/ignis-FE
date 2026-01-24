@@ -12,7 +12,7 @@ import {
   Shield
 } from 'lucide-react';
 import PageTransition from '@/components/shared/pageTransition';
-import Card from '@/components/ui/Card';
+import { Card } from '@/components/ui/card';
 import { fadeInUp, staggerContainer } from '@/lib/animations';
 
 interface StatCardProps {
@@ -60,7 +60,7 @@ export default function DashboardPage() {
                   Dashboard
                 </h1>
                 <p className="text-dark-green-600">
-                  Welcome back! Here's what's happening with your building.
+                  Welcome back! Heres whats happening with your building.
                 </p>
               </div>
               <select

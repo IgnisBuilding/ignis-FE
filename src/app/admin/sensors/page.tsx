@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Plus, Edit2, Trash2, Search, Activity, Thermometer, Wind, Droplets, AlertCircle } from 'lucide-react';
-import PageTransition from '@/components/shared/pageTransition';
+import DashboardLayout from '@/components/layout/DashboardLayout';
 import { fadeIn } from '@/lib/animations';
 import { useAuth } from '@/context/AuthContext';
 import { api, Sensor as ApiSensor } from '@/lib/api';
@@ -125,9 +125,8 @@ function SensorsManagementContent() {
   };
 
   return (
-    <PageTransition>
-      <div className="min-h-screen cream-gradient py-8 px-4">
-        <div className="max-w-7xl mx-auto">
+    <DashboardLayout role="admin" userName={user?.name || 'Admin'} userTitle="ADMINISTRATOR">
+      <div className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 w-full max-w-none">
           <motion.div variants={fadeIn} initial="initial" animate="animate">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
               <div>
@@ -275,9 +274,8 @@ function SensorsManagementContent() {
               </div>
             )}
           </motion.div>
-        </div>
       </div>
-    </PageTransition>
+    </DashboardLayout>
   );
 }
 

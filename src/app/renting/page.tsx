@@ -4,8 +4,8 @@ import { motion } from 'framer-motion';
 import { Search, Filter, Calendar, MapPin, Star, Clock } from 'lucide-react';
 import PageTransition from '@/components/shared/pageTransition';
 import Button from '@/components/shared/Button';
-import Input from '@/components/ui/Input';
-import Card from '@/components/ui/Card';
+import { Input } from '@/components/ui/input';
+import { Card } from '@/components/ui/card';
 import { fadeInUp, staggerContainer } from '@/lib/animations';
 
 export default function RentingPage() {

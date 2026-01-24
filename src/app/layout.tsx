@@ -1,7 +1,7 @@
 import './globals.css';
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
-import { Providers } from './providers';
+import ClientLayout from './ClientLayout';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -30,14 +30,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning className={inter.variable}>
-      <head>
-        <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&display=swap" rel="stylesheet" />
-        <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
-      </head>
       <body className={inter.className} suppressHydrationWarning>
-        <Providers>
-          {children}
-        </Providers>
+        <ClientLayout>{children}</ClientLayout>
       </body>
     </html>
   );

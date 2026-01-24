@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { User, UserRole, SignupData } from '@/types';
-import { createApi } from '@/lib/api';
+import { api } from '@/lib/api';
 
 interface AuthContextType {
   user: User | null;
@@ -19,7 +19,6 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const router = useRouter();
-  const api = useMemo(() => createApi(), []);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -29,10 +28,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(false);
       return;
     }
-    
+
     const storedUser = localStorage.getItem('ignis_user');
     const token = localStorage.getItem('ignis_token');
-    
+
     if (storedUser && token) {
       try {
         setUser(JSON.parse(storedUser));
@@ -49,7 +48,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setLoading(true);
     try {
       const response = await api.login(email, password);
-      
+
       if (response.access_token && response.user) {
         // Map backend user to frontend User type
         const mappedUser: User = {
@@ -58,7 +57,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           email: response.user.email,
           role: response.user.role as UserRole,
         };
-        
+
         setUser(mappedUser);
         if (typeof window !== 'undefined') {
           localStorage.setItem('ignis_user', JSON.stringify(mappedUser));
@@ -66,7 +65,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setLoading(false);
         return true;
       }
-      
+
       setLoading(false);
       return false;
     } catch (error) {
@@ -74,13 +73,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(false);
       return false;
     }
-  }, [api]);
+  }, []);
 
   const logout = useCallback(() => {
     setUser(null);
     api.clearToken();
     router.push('/login');
-  }, [api, router]);
+  }, [router]);
 
   const signup = useCallback(async (data: SignupData): Promise<boolean> => {
     setLoading(true);
@@ -91,15 +90,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         name: data.name,
         role: data.role,
       };
-      
+
       const response = await api.register(registerData);
-      
+
       if (response) {
         // Auto-login after successful signup
         const loginSuccess = await login(data.email, registerData.password);
         return loginSuccess;
       }
-      
+
       setLoading(false);
       return false;
     } catch (error) {
@@ -107,7 +106,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(false);
       return false;
     }
-  }, [login, api]);
+  }, [login]);
 
   const value: AuthContextType = useMemo(() => ({
     user,
@@ -125,7 +124,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    // Return a default loading state instead of throwing
+    // This handles the case during SSR/hydration
+    return {
+      user: null,
+      role: null,
+      isAuthenticated: false,
+      login: async () => false,
+      logout: () => {},
+      signup: async () => false,
+      loading: true,
+    };
   }
   return context;
 };
