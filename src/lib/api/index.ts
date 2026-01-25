@@ -1,5 +1,5 @@
 // Central API configuration for NestJS backend (ignis-be)
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
 // Type definitions
 export interface LoginResponse {

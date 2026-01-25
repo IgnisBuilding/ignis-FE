@@ -53,7 +53,7 @@ function ResidentDashboardContent() {
 
       // In a real app, un-comment this fetch. For verify without backend, we might need mock data if fetch fails.
       // But preserving original logic means keeping the fetch.
-      const response = await fetch('http://localhost:7000/apartments/my-apartment', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/apartments/my-apartment`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,

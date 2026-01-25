@@ -82,7 +82,7 @@ function FirefighterDashboardContent() {
   const fetchHazards = async () => {
     try {
       const token = localStorage.getItem('ignis_token');
-      const response = await fetch('http://localhost:7000/hazards/active', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/hazards/active`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await response.json();
