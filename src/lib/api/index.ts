@@ -60,6 +60,15 @@ export interface Building {
   updated_at: string;
 }
 
+export interface Floor {
+  id: number;
+  name: string;
+  level: number;
+  building_id: number;
+  created_at: string;
+  updated_at: string;
+}
+
 class ApiService {
   private baseURL: string;
   private token: string | null = null;
@@ -283,6 +292,12 @@ class ApiService {
 
   async getBuildingById(id: number): Promise<Building> {
     return this.request<Building>(`/buildings/${id}`, {
+      method: 'GET',
+    });
+  }
+
+  async getBuildingFloors(buildingId: number): Promise<Floor[]> {
+    return this.request<Floor[]>(`/buildings/${buildingId}/floors`, {
       method: 'GET',
     });
   }

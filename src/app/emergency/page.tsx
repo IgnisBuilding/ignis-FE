@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import type { EmergencyState } from '@/lib/map';
+import { api, type Floor } from '@/lib/api';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent } from '@/components/ui/card';
@@ -49,9 +50,6 @@ const navItems = [
   { id: 'personnel', label: 'Personnel', icon: Users, href: '/admin/residents' },
 ];
 
-// Floor data
-const floors = ['F09', 'F08', 'F07', 'F06', 'F05'];
-
 // Mock units for unit tracking
 const defaultUnits = [
   { id: 'SQ42', name: 'Squad 42', status: 'Entering Floor 07', active: true },
@@ -61,8 +59,13 @@ const defaultUnits = [
 export default function EmergencyPage() {
   const { user } = useAuth();
 
+  // Building & Floor State
+  const [buildingId] = useState(1); // Default building ID - can be made dynamic later
+  const [floors, setFloors] = useState<Floor[]>([]);
+  const [activeFloor, setActiveFloor] = useState<Floor | null>(null);
+  const [isLoadingFloors, setIsLoadingFloors] = useState(true);
+
   // UI State
-  const [activeFloor, setActiveFloor] = useState('F07');
   const [viewMode, setViewMode] = useState<'2d' | '3d'>('3d');
   const [stackMode, setStackMode] = useState(false);
   const [isAIOpen, setIsAIOpen] = useState(false);
@@ -71,6 +74,35 @@ export default function EmergencyPage() {
   // Emergency State
   const [emergencyState, setEmergencyState] = useState<EmergencyState | null>(null);
   const [units, setUnits] = useState(defaultUnits);
+
+  // Fetch floors from API
+  useEffect(() => {
+    const fetchFloors = async () => {
+      try {
+        setIsLoadingFloors(true);
+        const buildingFloors = await api.getBuildingFloors(buildingId);
+        // Sort by level descending (highest floor first)
+        const sortedFloors = buildingFloors.sort((a, b) => b.level - a.level);
+        setFloors(sortedFloors);
+        // Set the first floor as active by default
+        if (sortedFloors.length > 0) {
+          setActiveFloor(sortedFloors[0]);
+        }
+      } catch (error) {
+        console.error('Failed to fetch floors:', error);
+        // Fallback to default floors if API fails
+        setFloors([
+          { id: 2, name: 'Floor 2', level: 2, building_id: 1, created_at: '', updated_at: '' },
+          { id: 1, name: 'Floor 1', level: 1, building_id: 1, created_at: '', updated_at: '' },
+        ]);
+        setActiveFloor({ id: 1, name: 'Floor 1', level: 1, building_id: 1, created_at: '', updated_at: '' });
+      } finally {
+        setIsLoadingFloors(false);
+      }
+    };
+
+    fetchFloors();
+  }, [buildingId]);
   const [criticalAlert, setCriticalAlert] = useState<{
     title: string;
     description: string;
@@ -276,20 +308,24 @@ export default function EmergencyPage() {
         <div className="flex flex-1 min-h-0">
           {/* Floor Selector */}
           <div className="flex-shrink-0 flex flex-col items-center gap-1 border-r border-border bg-card px-3 py-4">
-            {floors.map((floor) => (
-              <button
-                key={floor}
-                type="button"
-                onClick={() => setActiveFloor(floor)}
-                className={`flex h-10 w-10 items-center justify-center rounded-lg text-xs font-bold transition-colors ${
-                  activeFloor === floor
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-muted'
-                }`}
-              >
-                {floor}
-              </button>
-            ))}
+            {isLoadingFloors ? (
+              <div className="animate-pulse h-10 w-10 bg-muted rounded-lg" />
+            ) : (
+              floors.map((floor) => (
+                <button
+                  key={floor.id}
+                  type="button"
+                  onClick={() => setActiveFloor(floor)}
+                  className={`flex h-10 w-10 items-center justify-center rounded-lg text-xs font-bold transition-colors ${
+                    activeFloor?.id === floor.id
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:bg-muted'
+                  }`}
+                >
+                  F{String(floor.level).padStart(2, '0')}
+                </button>
+              ))
+            )}
             <div className="mt-2 flex flex-col items-center gap-1">
               <Switch checked={stackMode} onCheckedChange={setStackMode} />
               <span className="text-[9px] font-medium text-muted-foreground">STACK</span>
@@ -342,6 +378,8 @@ export default function EmergencyPage() {
               showControls={true}
               showLegend={false}
               showEmergencyControls={true}
+              showFloorSelector={false}
+              floor={activeFloor ? `floor${activeFloor.level}` as 'floor1' | 'floor2' : 'floor1'}
               onRoomClick={handleRoomClick}
               onEmergencyStateChange={handleEmergencyStateChange}
             />

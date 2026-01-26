@@ -37,9 +37,11 @@ import type { EmergencyState, MapCallbacks, Sensor, HazardData, IsolationRespons
 interface EvacuationMapProps {
   className?: string;
   initialFloor?: 'floor1' | 'floor2';
+  floor?: 'floor1' | 'floor2'; // External floor control from parent
   showControls?: boolean;
   showLegend?: boolean;
   showEmergencyControls?: boolean;
+  showFloorSelector?: boolean; // Whether to show internal floor tabs
   onRoomClick?: (room: GeoJSON.Feature) => void;
   onEmergencyStateChange?: (state: EmergencyState) => void;
 }
@@ -64,9 +66,11 @@ Notification.displayName = 'Notification';
 const EvacuationMap = memo(({
   className = '',
   initialFloor = 'floor1',
+  floor: externalFloor,
   showControls = true,
   showLegend = true,
   showEmergencyControls = true,
+  showFloorSelector = true,
   onRoomClick,
   onEmergencyStateChange,
 }: EvacuationMapProps) => {
@@ -134,6 +138,31 @@ const EvacuationMap = memo(({
   useEffect(() => {
     onEmergencyStateChange?.(emergencyState);
   }, [emergencyState, onEmergencyStateChange]);
+
+  // Sync external floor prop with internal state and switch map layers
+  useEffect(() => {
+    if (externalFloor && externalFloor !== currentFloor && isMapLoaded && mapRef.current) {
+      const map = mapRef.current;
+      const allLayers = [...FLOOR_LAYERS.floor1.layers, ...FLOOR_LAYERS.floor2.layers];
+
+      // Hide all floor layers
+      allLayers.forEach(layerId => {
+        if (map.getLayer(layerId)) {
+          map.setLayoutProperty(layerId, 'visibility', 'none');
+        }
+      });
+
+      // Show selected floor layers
+      const showLayers = FLOOR_LAYERS[externalFloor]?.layers || FLOOR_LAYERS.floor1.layers;
+      showLayers.forEach(layerId => {
+        if (map.getLayer(layerId)) {
+          map.setLayoutProperty(layerId, 'visibility', 'visible');
+        }
+      });
+
+      setCurrentFloor(externalFloor);
+    }
+  }, [externalFloor, currentFloor, isMapLoaded]);
 
   // Initialize map
   useEffect(() => {
@@ -1667,8 +1696,8 @@ const EvacuationMap = memo(({
         {/* Map Container */}
         <div ref={mapContainerRef} className="w-full h-full rounded-lg overflow-hidden" />
 
-      {/* Floor Selector */}
-      {isMapLoaded && (
+      {/* Floor Selector - only show if showFloorSelector is true */}
+      {showFloorSelector && isMapLoaded && (
         <div className="absolute top-4 left-4 z-10 flex gap-2">
           <button
             onClick={() => switchFloor('floor1')}
