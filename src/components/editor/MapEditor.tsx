@@ -41,6 +41,7 @@ import {
   AlertCircle,
   Shield,
   Target,
+  Video,
 } from "lucide-react";
 
 
@@ -78,13 +79,25 @@ interface SafePoint {
   capacity: number;
 }
 
+interface Camera {
+  id: string;
+  position: Point;
+  level: string;
+  name: string;
+  camera_id: string; // Unique identifier for fire-detect pipeline
+  rtsp_url: string;
+  is_fire_detection_enabled: boolean;
+  linked_room_id?: string; // Optional link to a room
+  rotation: number; // Camera rotation angle in degrees
+}
+
 interface ErrorState {
   message: string;
   type: 'error' | 'warning' | 'info';
   timestamp: number;
 }
 
-type EditorMode = 'calibrate' | 'draw' | 'door' | 'select' | 'pan' | 'route_test' | 'safe_point';
+type EditorMode = 'calibrate' | 'draw' | 'door' | 'select' | 'pan' | 'route_test' | 'safe_point' | 'camera';
 
 
 // ==================== CONSTANTS ====================
@@ -548,6 +561,10 @@ export default function IGNISFloorPlanEditor() {
   const [safePoints, setSafePoints] = useState([]);
   const [selectedSafePoint, setSelectedSafePoint] = useState(null);
 
+  // Camera State (Phase 6 - Fire Detection Integration)
+  const [cameras, setCameras] = useState<Camera[]>([]);
+  const [selectedCamera, setSelectedCamera] = useState<string | null>(null);
+
   // Point-Level History for Drawing (Feature 4)
   const [pointHistory, setPointHistory] = useState([]);
   const [pointHistoryIndex, setPointHistoryIndex] = useState(-1);
@@ -584,6 +601,7 @@ export default function IGNISFloorPlanEditor() {
       rooms,
       openings,
       safePoints,
+      cameras,
       levels,
       currentLevel,
       buildingLocation,
@@ -595,6 +613,7 @@ export default function IGNISFloorPlanEditor() {
       rooms,
       openings,
       safePoints,
+      cameras,
       levels,
       currentLevel,
       buildingLocation,
@@ -610,6 +629,7 @@ export default function IGNISFloorPlanEditor() {
     setRooms(snapshot.rooms || []);
     setOpenings(snapshot.openings || []);
     setSafePoints(snapshot.safePoints || []);
+    setCameras(snapshot.cameras || []);
     setLevels(snapshot.levels || ["1"]);
     setCurrentLevel(snapshot.currentLevel || "1");
     setBuildingLocation(
@@ -700,6 +720,8 @@ export default function IGNISFloorPlanEditor() {
         imageSize,
         rooms,
         openings,
+        safePoints,
+        cameras,
         levels,
         currentLevel,
         buildingLocation,
@@ -724,6 +746,8 @@ export default function IGNISFloorPlanEditor() {
     imageSize,
     rooms,
     openings,
+    safePoints,
+    cameras,
     levels,
     currentLevel,
     buildingLocation,
@@ -747,6 +771,8 @@ export default function IGNISFloorPlanEditor() {
       if (data.imageSize) setImageSize(data.imageSize);
       if (data.rooms) setRooms(data.rooms);
       if (data.openings) setOpenings(data.openings);
+      if (data.safePoints) setSafePoints(data.safePoints);
+      if (data.cameras) setCameras(data.cameras);
       if (data.levels) setLevels(data.levels);
       if (data.currentLevel) setCurrentLevel(data.currentLevel);
       if (data.buildingLocation) setBuildingLocation(data.buildingLocation);
@@ -1174,6 +1200,41 @@ export default function IGNISFloorPlanEditor() {
       } catch (err) {
         errorHandler.handle(err, "Place Safe Point");
       }
+    } else if (mode === "camera") {
+      // Phase 6: Place camera for fire detection
+      try {
+        // Find if camera is being placed inside a room
+        let linkedRoomId: string | undefined = undefined;
+        for (const room of rooms) {
+          if (room.level === currentLevel && isPointInPolygon(pos, room.points)) {
+            linkedRoomId = room.id;
+            break;
+          }
+        }
+
+        const newCamera: Camera = {
+          id: `cam-${Date.now()}`,
+          position: pos,
+          level: currentLevel,
+          name: `Camera ${cameras.length + 1}`,
+          camera_id: `CAM${String(cameras.length + 1).padStart(3, '0')}`,
+          rtsp_url: '',
+          is_fire_detection_enabled: true,
+          linked_room_id: linkedRoomId,
+          rotation: 0,
+        };
+
+        pushToHistory();
+        setCameras([...cameras, newCamera]);
+        setSelectedCamera(newCamera.id);
+        setSelectedRoom(null);
+        setSelectedOpening(null);
+        setSelectedSafePoint(null);
+        setHasUnsavedChanges(true);
+        errorHandler.info(linkedRoomId ? `Camera placed in room` : "Camera placed");
+      } catch (err) {
+        errorHandler.handle(err, "Place Camera");
+      }
     }
   };
 
@@ -1411,6 +1472,31 @@ export default function IGNISFloorPlanEditor() {
       setHasUnsavedChanges(true);
     } catch (err) {
       errorHandler.handle(err, "Delete Safe Point");
+    }
+  };
+
+  // ==================== CAMERA OPERATIONS (Phase 6) ====================
+
+  const updateCamera = (id: string, updates: Partial<Camera>) => {
+    try {
+      pushToHistory();
+      setCameras(
+        cameras.map((cam) => (cam.id === id ? { ...cam, ...updates } : cam))
+      );
+      setHasUnsavedChanges(true);
+    } catch (err) {
+      errorHandler.handle(err, "Update Camera");
+    }
+  };
+
+  const deleteCamera = (id: string) => {
+    try {
+      pushToHistory();
+      setCameras(cameras.filter((cam) => cam.id !== id));
+      if (selectedCamera === id) setSelectedCamera(null);
+      setHasUnsavedChanges(true);
+    } catch (err) {
+      errorHandler.handle(err, "Delete Camera");
     }
   };
 
@@ -1751,6 +1837,32 @@ export default function IGNISFloorPlanEditor() {
         });
       });
 
+      // Phase 6: Export cameras as Points
+      cameras.forEach((cam) => {
+        const geo = pixelToGeo(cam.position.x, cam.position.y);
+
+        features.push({
+          type: "Feature",
+          properties: {
+            id: cam.id,
+            type: "camera",
+            is_camera: true,
+            level: cam.level,
+            name: cam.name,
+            camera_id: cam.camera_id,
+            rtsp_url: cam.rtsp_url,
+            is_fire_detection_enabled: cam.is_fire_detection_enabled,
+            linked_room_id: cam.linked_room_id,
+            rotation: cam.rotation,
+            color: cam.is_fire_detection_enabled ? "#dc2626" : "#6b7280",
+          },
+          geometry: {
+            type: "Point",
+            coordinates: [geo.lng, geo.lat],
+          },
+        });
+      });
+
       const geojson = {
         type: "FeatureCollection",
         properties: {
@@ -1933,6 +2045,32 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
       });
     });
 
+    // Phase 6: Export cameras as Points
+    cameras.forEach((cam) => {
+      const geo = pixelToGeo(cam.position.x, cam.position.y);
+
+      features.push({
+        type: "Feature",
+        properties: {
+          id: cam.id,
+          type: "camera",
+          is_camera: true,
+          level: cam.level,
+          name: cam.name,
+          camera_id: cam.camera_id,
+          rtsp_url: cam.rtsp_url,
+          is_fire_detection_enabled: cam.is_fire_detection_enabled,
+          linked_room_id: cam.linked_room_id,
+          rotation: cam.rotation,
+          color: cam.is_fire_detection_enabled ? "#dc2626" : "#6b7280",
+        },
+        geometry: {
+          type: "Point",
+          coordinates: [geo.lng, geo.lat],
+        },
+      });
+    });
+
     return {
       type: "FeatureCollection",
       properties: {
@@ -1995,6 +2133,17 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
           level: sp.level,
           capacity: sp.capacity,
           coordinates: pixelToGeo(sp.position.x, sp.position.y),
+        })),
+        cameras: cameras.map((cam) => ({
+          id: cam.id,
+          name: cam.name,
+          camera_id: cam.camera_id,
+          rtsp_url: cam.rtsp_url,
+          is_fire_detection_enabled: cam.is_fire_detection_enabled,
+          linked_room_id: cam.linked_room_id,
+          level: cam.level,
+          rotation: cam.rotation,
+          coordinates: pixelToGeo(cam.position.x, cam.position.y),
         })),
       };
 
@@ -2132,6 +2281,7 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
     const importedRooms = [];
     const importedOpenings = [];
     const importedSafePoints = [];
+    const importedCameras: Camera[] = [];
     const importedCorridors = [];
     const detectedLevels = new Set();
 
@@ -2227,6 +2377,23 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
             capacity: props.capacity || 50,
           });
         }
+        // Phase 6: Camera
+        if (props.type === "camera" || props.is_camera) {
+          const pixel = geoToPixel(geom.coordinates[0], geom.coordinates[1]);
+          importedCameras.push({
+            id:
+              props.id ||
+              `cam-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            position: { x: pixel.x, y: pixel.y },
+            level: props.level || "1",
+            name: props.name || "Camera",
+            camera_id: props.camera_id || `CAM${String(importedCameras.length + 1).padStart(3, '0')}`,
+            rtsp_url: props.rtsp_url || "",
+            is_fire_detection_enabled: props.is_fire_detection_enabled !== false,
+            linked_room_id: props.linked_room_id,
+            rotation: props.rotation || 0,
+          });
+        }
       }
     });
 
@@ -2244,6 +2411,7 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
     setRooms([...importedRooms, ...importedCorridors]);
     setOpenings(importedOpenings);
     setSafePoints(importedSafePoints);
+    setCameras(importedCameras);
     setHasUnsavedChanges(true);
   };
   // ==================== LEVEL MANAGEMENT ====================
@@ -2605,6 +2773,18 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
                 title="Place Safe Point"
               >
                 <Shield size={18} className="mx-auto" />
+              </button>
+              {/* Phase 6: Camera Mode */}
+              <button
+                onClick={() => setMode("camera")}
+                className={`p-3 rounded-lg transition-all ${
+                  mode === "camera"
+                    ? "bg-red-500/20 border-red-500 text-red-400"
+                    : "bg-white border-cream-300 text-dark-green-600 hover:bg-cream-50"
+                } border`}
+                title="Place Camera"
+              >
+                <Video size={18} className="mx-auto" />
               </button>
               {/* Feature 3: Corridor Mode */}
               <button
@@ -3147,6 +3327,81 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
                     </g>
                   ))}
 
+                {/* Phase 6: Cameras */}
+                {cameras
+                  .filter((cam) => showLevels[cam.level])
+                  .map((cam) => (
+                    <g key={cam.id}>
+                      {/* Camera field of view cone */}
+                      <path
+                        d={`M ${cam.position.x} ${cam.position.y}
+                            L ${cam.position.x + Math.cos((cam.rotation - 30) * Math.PI / 180) * 40 / zoom} ${cam.position.y + Math.sin((cam.rotation - 30) * Math.PI / 180) * 40 / zoom}
+                            A ${40 / zoom} ${40 / zoom} 0 0 1 ${cam.position.x + Math.cos((cam.rotation + 30) * Math.PI / 180) * 40 / zoom} ${cam.position.y + Math.sin((cam.rotation + 30) * Math.PI / 180) * 40 / zoom}
+                            Z`}
+                        fill={cam.is_fire_detection_enabled ? "rgba(239, 68, 68, 0.15)" : "rgba(156, 163, 175, 0.15)"}
+                        stroke={cam.is_fire_detection_enabled ? "#ef4444" : "#9ca3af"}
+                        strokeWidth={1 / zoom}
+                        strokeDasharray={cam.is_fire_detection_enabled ? "none" : "3,3"}
+                      />
+                      {/* Camera body */}
+                      <rect
+                        x={cam.position.x - 12 / zoom}
+                        y={cam.position.y - 8 / zoom}
+                        width={24 / zoom}
+                        height={16 / zoom}
+                        rx={3 / zoom}
+                        fill={cam.is_fire_detection_enabled ? "#dc2626" : "#6b7280"}
+                        stroke={selectedCamera === cam.id ? "#fff" : "none"}
+                        strokeWidth={2 / zoom}
+                        className="cursor-pointer"
+                        transform={`rotate(${cam.rotation}, ${cam.position.x}, ${cam.position.y})`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (mode === "select") {
+                            setSelectedCamera(cam.id);
+                            setSelectedRoom(null);
+                            setSelectedOpening(null);
+                            setSelectedSafePoint(null);
+                          }
+                        }}
+                      />
+                      {/* Camera lens */}
+                      <circle
+                        cx={cam.position.x + 8 / zoom}
+                        cy={cam.position.y}
+                        r={4 / zoom}
+                        fill="#1f2937"
+                        stroke="#374151"
+                        strokeWidth={1 / zoom}
+                        style={{ pointerEvents: "none" }}
+                        transform={`rotate(${cam.rotation}, ${cam.position.x}, ${cam.position.y})`}
+                      />
+                      {/* Camera ID label */}
+                      <text
+                        x={cam.position.x}
+                        y={cam.position.y + 25 / zoom}
+                        textAnchor="middle"
+                        fill={cam.is_fire_detection_enabled ? "#ef4444" : "#6b7280"}
+                        fontSize={10 / zoom}
+                        fontWeight="bold"
+                        style={{ pointerEvents: "none" }}
+                      >
+                        {cam.camera_id}
+                      </text>
+                      {/* Fire detection indicator */}
+                      {cam.is_fire_detection_enabled && (
+                        <circle
+                          cx={cam.position.x + 10 / zoom}
+                          cy={cam.position.y - 10 / zoom}
+                          r={4 / zoom}
+                          fill="#22c55e"
+                          stroke="#fff"
+                          strokeWidth={1 / zoom}
+                        />
+                      )}
+                    </g>
+                  ))}
+
                 {/* Current drawing points */}
                 {currentPoints.length > 0 && (
                   <g>
@@ -3374,17 +3629,186 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
               </div>
             </div>
           ) : (
-            // Room/Opening/Safe Point Properties
+            // Room/Opening/Safe Point/Camera Properties
             <>
               <h3 className="text-xs font-semibold text-dark-green-500 uppercase tracking-wider mb-4">
-                {selectedSafePoint
+                {selectedCamera
+                  ? "Camera Properties"
+                  : selectedSafePoint
                   ? "Safe Point Properties"
                   : selectedOpening
                   ? "Opening Properties"
                   : "Room Properties"}
               </h3>
 
-              {selectedSafePoint ? (
+              {selectedCamera ? (
+                // Camera properties (Phase 6)
+                (() => {
+                  const camera = cameras.find(
+                    (cam) => cam.id === selectedCamera
+                  );
+                  if (!camera) return null;
+                  return (
+                    <div className="space-y-4">
+                      <div className="p-3 bg-white rounded-lg space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Video size={16} className="text-red-500" />
+                            <span className="font-medium text-red-400">
+                              {camera.name}
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => deleteCamera(camera.id)}
+                            className="p-1 hover:bg-red-500/20 rounded text-red-400"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+
+                        <div>
+                          <label className="text-xs text-dark-green-500 block mb-1">
+                            Camera Name
+                          </label>
+                          <input
+                            type="text"
+                            value={camera.name}
+                            onChange={(e) =>
+                              updateCamera(camera.id, {
+                                name: e.target.value,
+                              })
+                            }
+                            className="w-full bg-cream-100 border border-cream-300 rounded px-2 py-1.5 text-sm"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-xs text-dark-green-500 block mb-1">
+                            Camera ID (for fire-detect)
+                          </label>
+                          <input
+                            type="text"
+                            value={camera.camera_id}
+                            onChange={(e) =>
+                              updateCamera(camera.id, {
+                                camera_id: e.target.value,
+                              })
+                            }
+                            className="w-full bg-cream-100 border border-cream-300 rounded px-2 py-1.5 text-sm font-mono"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-xs text-dark-green-500 block mb-1">
+                            RTSP URL
+                          </label>
+                          <input
+                            type="text"
+                            value={camera.rtsp_url}
+                            placeholder="rtsp://192.168.1.100:8080/stream"
+                            onChange={(e) =>
+                              updateCamera(camera.id, {
+                                rtsp_url: e.target.value,
+                              })
+                            }
+                            className="w-full bg-cream-100 border border-cream-300 rounded px-2 py-1.5 text-sm font-mono text-xs"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-xs text-dark-green-500 block mb-1">
+                            Rotation (degrees)
+                          </label>
+                          <input
+                            type="range"
+                            min="0"
+                            max="360"
+                            value={camera.rotation}
+                            onChange={(e) =>
+                              updateCamera(camera.id, {
+                                rotation: parseInt(e.target.value),
+                              })
+                            }
+                            className="w-full"
+                          />
+                          <div className="text-xs text-center text-dark-green-500">
+                            {camera.rotation}°
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="text-xs text-dark-green-500 block mb-1">
+                            Linked Room
+                          </label>
+                          <select
+                            value={camera.linked_room_id || ""}
+                            onChange={(e) =>
+                              updateCamera(camera.id, {
+                                linked_room_id: e.target.value || undefined,
+                              })
+                            }
+                            className="w-full bg-cream-100 border border-cream-300 rounded px-2 py-1.5 text-sm"
+                          >
+                            <option value="">No linked room</option>
+                            {rooms
+                              .filter((r) => r.level === camera.level)
+                              .map((r) => (
+                                <option key={r.id} value={r.id}>
+                                  {r.name}
+                                </option>
+                              ))}
+                          </select>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs text-dark-green-500">
+                            Fire Detection Enabled
+                          </label>
+                          <button
+                            onClick={() =>
+                              updateCamera(camera.id, {
+                                is_fire_detection_enabled: !camera.is_fire_detection_enabled,
+                              })
+                            }
+                            className={`w-10 h-5 rounded-full transition-colors ${
+                              camera.is_fire_detection_enabled
+                                ? "bg-green-500"
+                                : "bg-gray-300"
+                            }`}
+                          >
+                            <div
+                              className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${
+                                camera.is_fire_detection_enabled
+                                  ? "translate-x-5"
+                                  : "translate-x-0.5"
+                              }`}
+                            />
+                          </button>
+                        </div>
+
+                        <div className="text-xs text-dark-green-500 space-y-1">
+                          <p>Level: {camera.level}</p>
+                          <p>
+                            Position: ({camera.position.x.toFixed(0)},{" "}
+                            {camera.position.y.toFixed(0)})
+                          </p>
+                        </div>
+
+                        <div className={`p-2 border rounded text-xs ${
+                          camera.is_fire_detection_enabled
+                            ? "bg-red-500/10 border-red-500/30 text-red-400"
+                            : "bg-gray-500/10 border-gray-500/30 text-gray-500"
+                        }`}>
+                          <Video size={12} className="inline mr-1" />
+                          {camera.is_fire_detection_enabled
+                            ? "Fire detection active - alerts will be sent to ignis-BE"
+                            : "Fire detection disabled"}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()
+              ) : selectedSafePoint ? (
                 // Safe Point properties (Feature 2)
                 (() => {
                   const safePoint = safePoints.find(

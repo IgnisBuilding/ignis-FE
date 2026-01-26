@@ -111,6 +111,11 @@ const EvacuationMap = memo(({
   const socketRef = useRef<Socket | null>(null);
   const lastFirePlacementRef = useRef<number>(0); // Debounce fire placements
 
+  // Ignis-BE fire detection integration (real-time from cameras)
+  const [ignisFireDetectionEnabled, setIgnisFireDetectionEnabled] = useState(true); // Enabled by default
+  const [isConnectedToIgnis, setIsConnectedToIgnis] = useState(false);
+  const ignisSocketRef = useRef<Socket | null>(null);
+
   // Panel collapse states - start collapsed for cleaner initial view
   const [isEmergencyPanelCollapsed, setIsEmergencyPanelCollapsed] = useState(true);
   const [isFireZonePanelCollapsed, setIsFireZonePanelCollapsed] = useState(true);
@@ -1348,6 +1353,93 @@ const EvacuationMap = memo(({
     };
   }, [autoFireEnabled, autoFireRoom, autoPlaceFireInRoom]);
 
+  // Ignis-BE WebSocket for real-time fire detection alerts from camera pipeline
+  useEffect(() => {
+    if (!ignisFireDetectionEnabled) {
+      if (ignisSocketRef.current) {
+        console.log('[IgnisFire] Disconnecting from ignis-BE fire detection');
+        ignisSocketRef.current.disconnect();
+        ignisSocketRef.current = null;
+        setIsConnectedToIgnis(false);
+      }
+      return;
+    }
+
+    console.log('[IgnisFire] Connecting to ignis-BE fire detection WebSocket...');
+    const socket = io(`${process.env.NEXT_PUBLIC_API_URL}/fire-detection`, {
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+    });
+
+    ignisSocketRef.current = socket;
+
+    socket.on('connect', () => {
+      console.log('[IgnisFire] Connected to ignis-BE fire detection');
+      setIsConnectedToIgnis(true);
+    });
+
+    socket.on('disconnect', () => {
+      console.log('[IgnisFire] Disconnected from ignis-BE fire detection');
+      setIsConnectedToIgnis(false);
+    });
+
+    socket.on('connected', (data) => {
+      console.log('[IgnisFire] Server acknowledged connection:', data);
+    });
+
+    socket.on('fire.detected', (event: {
+      camera_id: string;
+      camera_name: string;
+      building_id: number;
+      floor_id?: number;
+      room_id?: number;
+      confidence: number;
+      timestamp: number;
+      hazard_id?: number;
+      severity: string;
+      location_description?: string;
+    }) => {
+      console.log('[IgnisFire] Fire detected event received:', event);
+
+      // Try to find the room by room_id if available
+      if (event.room_id) {
+        const roomIdStr = String(event.room_id);
+        // Check if fire already placed in this room
+        if (!activeFireZones.some(fz => fz.roomId === roomIdStr)) {
+          autoPlaceFireInRoom(roomIdStr, {
+            camera_id: event.camera_id,
+            confidence: event.confidence,
+            severity: event.severity,
+          });
+        }
+      } else {
+        // If no room_id, show notification but can't place fire on map
+        showNotification(
+          `Fire detected by ${event.camera_name} - ${(event.confidence * 100).toFixed(1)}% confidence`,
+          'error'
+        );
+        updateEmergencyState({
+          isActive: true,
+          mode: 'fire_detected',
+        });
+      }
+    });
+
+    socket.on('fire.resolved', (event: { hazard_id: number; building_id: number }) => {
+      console.log('[IgnisFire] Fire resolved event:', event);
+      showNotification(`Fire alert resolved - Hazard #${event.hazard_id}`, 'success');
+    });
+
+    return () => {
+      console.log('[IgnisFire] Cleanup - disconnecting socket');
+      socket.disconnect();
+      ignisSocketRef.current = null;
+      setIsConnectedToIgnis(false);
+    };
+  }, [ignisFireDetectionEnabled, activeFireZones, autoPlaceFireInRoom, showNotification, updateEmergencyState]);
+
   const clearFireZones = useCallback(async () => {
     const map = mapRef.current;
     if (!map) return;
@@ -1808,6 +1900,27 @@ const EvacuationMap = memo(({
 
             {!isFireZonePanelCollapsed && (
               <div className="px-4 pb-4 space-y-3">
+                {/* Ignis-BE Real-time Fire Detection Status */}
+                <div className="p-2 bg-blue-50 border border-blue-200 rounded-lg mb-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-medium text-blue-800">
+                      📡 Camera Fire Detection
+                    </span>
+                    <span className={`text-[10px] px-2 py-0.5 rounded ${
+                      isConnectedToIgnis
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-yellow-100 text-yellow-700'
+                    }`}>
+                      {isConnectedToIgnis ? '● Live' : '○ Connecting...'}
+                    </span>
+                  </div>
+                  {isConnectedToIgnis && (
+                    <p className="text-[9px] text-blue-600 mt-1">
+                      Receiving real-time fire alerts from registered cameras
+                    </p>
+                  )}
+                </div>
+
                 {/* Automatic Fire Detection Section */}
                 <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
                   <div className="flex items-center justify-between mb-2">
@@ -1824,7 +1937,7 @@ const EvacuationMap = memo(({
                         className="w-4 h-4 text-orange-600 rounded focus:ring-orange-500"
                       />
                       <span className="text-xs font-medium text-orange-800">
-                        🤖 Auto Fire Detection
+                        🤖 Manual Room Detection
                       </span>
                     </label>
                     {autoFireEnabled && (

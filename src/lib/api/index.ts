@@ -69,6 +69,57 @@ export interface Floor {
   updated_at: string;
 }
 
+export interface Room {
+  id: number;
+  name: string;
+  type: string;
+  floor_id: number;
+  apartment_id?: number;
+}
+
+export interface Camera {
+  id: number;
+  name: string;
+  rtsp_url: string;
+  camera_id: string;
+  building_id: number;
+  floor_id?: number;
+  room_id?: number;
+  status: string;
+  location_description?: string;
+  is_fire_detection_enabled: boolean;
+  building?: Building;
+  floor?: Floor;
+  room?: Room;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CameraStats {
+  total: number;
+  active: number;
+  inactive: number;
+  maintenance: number;
+  fireDetectionEnabled: number;
+}
+
+export interface FireDetectionStats {
+  total: number;
+  alertsTriggered: number;
+  detectionsToday: number;
+  alertRate: string;
+}
+
+export interface FireAlertConfig {
+  id: number;
+  building_id: number;
+  min_confidence: number;
+  consecutive_detections: number;
+  cooldown_seconds: number;
+  auto_create_hazard: boolean;
+  auto_notify_firefighters: boolean;
+}
+
 class ApiService {
   private baseURL: string;
   private token: string | null = null;
@@ -397,6 +448,100 @@ class ApiService {
   async getBuildingRooms(buildingId: number | string): Promise<any> {
     return this.request<any>(`/buildings/${buildingId}/rooms`, {
       method: 'GET',
+    });
+  }
+
+  // ==================== CAMERA ENDPOINTS ====================
+
+  async getCameras(filters?: { building_id?: number; floor_id?: number; room_id?: number; status?: string }): Promise<Camera[]> {
+    const params = new URLSearchParams();
+    if (filters?.building_id) params.append('building_id', filters.building_id.toString());
+    if (filters?.floor_id) params.append('floor_id', filters.floor_id.toString());
+    if (filters?.room_id) params.append('room_id', filters.room_id.toString());
+    if (filters?.status) params.append('status', filters.status);
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return this.request<Camera[]>(`/cameras${query}`, {
+      method: 'GET',
+    });
+  }
+
+  async getCameraStats(): Promise<CameraStats> {
+    return this.request<CameraStats>('/cameras/stats', {
+      method: 'GET',
+    });
+  }
+
+  async getCameraById(id: number): Promise<Camera> {
+    return this.request<Camera>(`/cameras/${id}`, {
+      method: 'GET',
+    });
+  }
+
+  async getCameraByCode(cameraCode: string): Promise<Camera> {
+    return this.request<Camera>(`/cameras/by-code/${cameraCode}`, {
+      method: 'GET',
+    });
+  }
+
+  async getCamerasByBuilding(buildingId: number): Promise<Camera[]> {
+    return this.request<Camera[]>(`/cameras/building/${buildingId}`, {
+      method: 'GET',
+    });
+  }
+
+  async createCamera(data: Partial<Camera>): Promise<Camera> {
+    return this.request<Camera>('/cameras', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateCamera(id: number, data: Partial<Camera>): Promise<Camera> {
+    return this.request<Camera>(`/cameras/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateCameraStatus(id: number, status: string): Promise<Camera> {
+    return this.request<Camera>(`/cameras/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    });
+  }
+
+  async deleteCamera(id: number): Promise<void> {
+    return this.request<void>(`/cameras/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // ==================== FIRE DETECTION ENDPOINTS ====================
+
+  async getFireDetectionStats(buildingId?: number): Promise<FireDetectionStats> {
+    const query = buildingId ? `?building_id=${buildingId}` : '';
+    return this.request<FireDetectionStats>(`/fire-detection/stats${query}`, {
+      method: 'GET',
+    });
+  }
+
+  async getFireDetectionLogs(cameraId: number, limit?: number): Promise<any[]> {
+    const query = limit ? `?limit=${limit}` : '';
+    return this.request<any[]>(`/fire-detection/logs/camera/${cameraId}${query}`, {
+      method: 'GET',
+    });
+  }
+
+  async getFireAlertConfig(buildingId: number): Promise<FireAlertConfig> {
+    return this.request<FireAlertConfig>(`/fire-detection/config/${buildingId}`, {
+      method: 'GET',
+    });
+  }
+
+  async updateFireAlertConfig(buildingId: number, data: Partial<FireAlertConfig>): Promise<FireAlertConfig> {
+    return this.request<FireAlertConfig>(`/fire-detection/config/${buildingId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
     });
   }
 }
