@@ -1,5 +1,7 @@
 import type { NextConfig } from 'next'
 
+const isDev = process.env.NODE_ENV !== 'production'
+
 const nextConfig: NextConfig = {
   // Disable TypeScript type checking during build
   typescript: {
@@ -8,6 +10,9 @@ const nextConfig: NextConfig = {
 
   // Transpile maplibre-gl to fix Turbopack HMR issues
   transpilePackages: ['maplibre-gl'],
+
+  // Disable caching in development
+  cacheMaxMemorySize: isDev ? 0 : undefined,
 
   // Performance optimizations
   compress: true,
@@ -46,8 +51,21 @@ const nextConfig: NextConfig = {
     } : false,
   },
 
-  // Headers for caching
+  // Headers for caching - disabled in dev
   async headers() {
+    if (isDev) {
+      return [
+        {
+          source: '/:path*',
+          headers: [
+            {
+              key: 'Cache-Control',
+              value: 'no-store, no-cache, must-revalidate',
+            },
+          ],
+        },
+      ]
+    }
     return [
       {
         source: '/:all*(svg|jpg|jpeg|png|webp|avif|gif)',

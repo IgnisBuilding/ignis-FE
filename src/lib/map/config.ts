@@ -11,7 +11,7 @@ export const DEFAULT_MAP_CONFIG: MapConfig = {
   pitch: 45,    // Tilt angle for isometric-like view
   bearing: -20, // Rotation angle for better perspective
   style: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
-  apiBase: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000',
+  apiBase: process.env.NEXT_PUBLIC_API_URL!,
 };
 
 // Floor layer definitions

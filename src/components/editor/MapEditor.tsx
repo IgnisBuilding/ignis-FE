@@ -95,8 +95,7 @@ const SPATIAL_GRID_SIZE = 100; // pixels per grid cell
 
 // API Configuration for ignis-FE backend (Feature 5)
 const API_CONFIG = {
-  FIRE_SAFETY_API:
-    process.env.NEXT_PUBLIC_API_BASE || "http://localhost:3000/api",
+  FIRE_SAFETY_API: process.env.NEXT_PUBLIC_API_BASE!,
   ENDPOINTS: {
     UPLOAD_BUILDING: "/building/upload",
     HEALTH: "/health",
