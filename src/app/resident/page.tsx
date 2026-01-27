@@ -1,10 +1,24 @@
-﻿'use client';
+'use client';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useEffect, useState } from 'react';
-import { formatDate } from 'date-fns';
+import {
+  ShieldCheck,
+  Bell,
+  CreditCard,
+  Truck,
+  LayoutGrid,
+  AlertTriangle,
+  Wrench,
+  DoorOpen,
+  MessageSquare,
+  Megaphone,
+  History,
+  Package,
+  UserCheck
+} from 'lucide-react';
 
 interface ApartmentInfo {
   id: number;
@@ -137,7 +151,7 @@ function ResidentDashboardContent() {
         <div className="bg-white/90 dark:bg-background-dark/95 backdrop-blur-md rounded-2xl p-6 border border-primary/10 shadow-sm flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="size-12 rounded-xl bg-green-100 dark:bg-green-900/20 flex items-center justify-center text-green-600">
-              <span className="material-symbols-outlined text-2xl">verified_user</span>
+              <ShieldCheck className="w-6 h-6" />
             </div>
             <div>
               <h2 className="text-xl font-bold text-primary dark:text-white">Safety Status: Secure</h2>
@@ -195,7 +209,7 @@ function ResidentDashboardContent() {
             <div className="flex-1 bg-white dark:bg-white/5 border border-primary/10 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all group cursor-pointer">
               <div className="flex justify-between items-start mb-2">
                 <div className="size-10 rounded-lg bg-orange-50 dark:bg-orange-900/20 text-orange-600 flex items-center justify-center group-hover:bg-orange-100 transition-colors">
-                  <span className="material-symbols-outlined">notifications_active</span>
+                  <Bell className="w-5 h-5" />
                 </div>
                 <span className="text-2xl font-bold text-primary dark:text-white">0</span>
               </div>
@@ -206,7 +220,7 @@ function ResidentDashboardContent() {
             <div className="flex-1 bg-white dark:bg-white/5 border border-primary/10 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all group cursor-pointer">
               <div className="flex justify-between items-start mb-2">
                 <div className="size-10 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 flex items-center justify-center group-hover:bg-blue-100 transition-colors">
-                  <span className="material-symbols-outlined">payments</span>
+                  <CreditCard className="w-5 h-5" />
                 </div>
                 <span className="text-2xl font-bold text-primary dark:text-white">Pd</span>
               </div>
@@ -217,7 +231,7 @@ function ResidentDashboardContent() {
             <div className="flex-1 bg-white dark:bg-white/5 border border-primary/10 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all group cursor-pointer">
               <div className="flex justify-between items-start mb-2">
                 <div className="size-10 rounded-lg bg-purple-50 dark:bg-purple-900/20 text-purple-600 flex items-center justify-center group-hover:bg-purple-100 transition-colors">
-                  <span className="material-symbols-outlined">local_shipping</span>
+                  <Truck className="w-5 h-5" />
                 </div>
                 <span className="text-2xl font-bold text-primary dark:text-white">2</span>
               </div>
@@ -230,7 +244,7 @@ function ResidentDashboardContent() {
         {/* Quick Actions Grid */}
         <div>
           <h3 className="text-primary dark:text-white font-bold text-lg mb-4 flex items-center gap-2">
-            <span className="material-symbols-outlined">apps</span>
+            <LayoutGrid className="w-5 h-5" />
             Quick Actions
           </h3>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -238,7 +252,7 @@ function ResidentDashboardContent() {
               onClick={() => router.push('/emergency')}
               className="p-6 bg-red-600 text-white rounded-2xl shadow-lg hover:shadow-red-600/30 hover:-translate-y-1 transition-all flex flex-col items-center gap-3 text-center"
             >
-              <span className="material-symbols-outlined text-3xl">sos</span>
+              <AlertTriangle className="w-8 h-8" />
               <div>
                 <p className="font-bold text-lg">Emergency</p>
                 <p className="text-white/80 text-xs">Trigger SOS Beacon</p>
@@ -247,7 +261,7 @@ function ResidentDashboardContent() {
 
             <button className="p-6 bg-white dark:bg-white/5 border border-primary/10 rounded-2xl hover:border-primary/30 hover:shadow-lg transition-all flex flex-col items-center gap-3 text-center group">
               <div className="size-12 rounded-full bg-primary/5 group-hover:bg-primary/10 text-primary flex items-center justify-center transition-colors">
-                <span className="material-symbols-outlined text-2xl">build</span>
+                <Wrench className="w-6 h-6" />
               </div>
               <div>
                 <p className="font-bold text-primary dark:text-white">Request Fix</p>
@@ -257,7 +271,7 @@ function ResidentDashboardContent() {
 
             <button className="p-6 bg-white dark:bg-white/5 border border-primary/10 rounded-2xl hover:border-primary/30 hover:shadow-lg transition-all flex flex-col items-center gap-3 text-center group">
               <div className="size-12 rounded-full bg-primary/5 group-hover:bg-primary/10 text-primary flex items-center justify-center transition-colors">
-                <span className="material-symbols-outlined text-2xl">meeting_room</span>
+                <DoorOpen className="w-6 h-6" />
               </div>
               <div>
                 <p className="font-bold text-primary dark:text-white">Visitor Pass</p>
@@ -267,7 +281,7 @@ function ResidentDashboardContent() {
 
             <button className="p-6 bg-white dark:bg-white/5 border border-primary/10 rounded-2xl hover:border-primary/30 hover:shadow-lg transition-all flex flex-col items-center gap-3 text-center group">
               <div className="size-12 rounded-full bg-primary/5 group-hover:bg-primary/10 text-primary flex items-center justify-center transition-colors">
-                <span className="material-symbols-outlined text-2xl">forum</span>
+                <MessageSquare className="w-6 h-6" />
               </div>
               <div>
                 <p className="font-bold text-primary dark:text-white">Community</p>
@@ -282,7 +296,7 @@ function ResidentDashboardContent() {
           <div className="bg-white dark:bg-white/5 border border-primary/10 rounded-2xl p-6">
             <div className="flex justify-between items-center mb-6">
               <h3 className="font-bold text-lg text-primary dark:text-white flex items-center gap-2">
-                <span className="material-symbols-outlined">campaign</span>
+                <Megaphone className="w-5 h-5" />
                 Official Notices
               </h3>
               <button className="text-xs font-bold text-primary/60 hover:text-primary transition-colors">View All</button>
@@ -314,7 +328,7 @@ function ResidentDashboardContent() {
           <div className="bg-white dark:bg-white/5 border border-primary/10 rounded-2xl p-6">
             <div className="flex justify-between items-center mb-6">
               <h3 className="font-bold text-lg text-primary dark:text-white flex items-center gap-2">
-                <span className="material-symbols-outlined">history</span>
+                <History className="w-5 h-5" />
                 Recent Activity
               </h3>
             </div>

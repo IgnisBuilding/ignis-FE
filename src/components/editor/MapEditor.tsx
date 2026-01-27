@@ -42,7 +42,12 @@ import {
   Shield,
   Target,
   Video,
+  Building2,
+  Database,
+  CloudUpload,
+  RefreshCw,
 } from "lucide-react";
+import { api, Building as APIBuilding, FloorPlanImportResult } from "@/lib/api";
 
 
 // Type definitions
@@ -519,6 +524,12 @@ export default function IGNISFloorPlanEditor() {
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
 
+  // Panel Resize State
+  const [leftPanelWidth, setLeftPanelWidth] = useState(256); // 16rem = 256px
+  const [rightPanelWidth, setRightPanelWidth] = useState(288); // 18rem = 288px
+  const [isResizingLeft, setIsResizingLeft] = useState(false);
+  const [isResizingRight, setIsResizingRight] = useState(false);
+
   // Scale Calibration State
   const [scaleCalibrated, setScaleCalibrated] = useState(false);
   const [pixelsPerMeter, setPixelsPerMeter] = useState(100); // Default assumption
@@ -565,6 +576,14 @@ export default function IGNISFloorPlanEditor() {
   const [cameras, setCameras] = useState<Camera[]>([]);
   const [selectedCamera, setSelectedCamera] = useState<string | null>(null);
 
+  // Building Selection & Database Integration State
+  const [buildings, setBuildings] = useState<APIBuilding[]>([]);
+  const [selectedBuildingId, setSelectedBuildingId] = useState<number | null>(null);
+  const [isSavingToDatabase, setIsSavingToDatabase] = useState(false);
+  const [isLoadingFromDatabase, setIsLoadingFromDatabase] = useState(false);
+  const [databaseSaveResult, setDatabaseSaveResult] = useState<FloorPlanImportResult | null>(null);
+  const [showDatabaseModal, setShowDatabaseModal] = useState(false);
+
   // Point-Level History for Drawing (Feature 4)
   const [pointHistory, setPointHistory] = useState([]);
   const [pointHistoryIndex, setPointHistoryIndex] = useState(-1);
@@ -583,6 +602,7 @@ export default function IGNISFloorPlanEditor() {
   // Refs
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
+  const editorContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef(null);
   const fileInputGeoJSONRef = useRef(null);
   // History Manager (Undo/Redo)
@@ -806,6 +826,20 @@ export default function IGNISFloorPlanEditor() {
   }, [errorHandler]);
 
   // ==================== EFFECTS ====================
+
+  // Load buildings from API on mount
+  useEffect(() => {
+    const loadBuildings = async () => {
+      try {
+        const buildingsData = await api.getBuildings();
+        setBuildings(buildingsData);
+      } catch (err) {
+        console.error('Failed to load buildings:', err);
+        errorHandler.warn('Could not connect to server. Working in offline mode.');
+      }
+    };
+    loadBuildings();
+  }, []);
 
   // Keyboard shortcuts for undo/redo/save (Feature 4: Enhanced with point-level undo)
   useEffect(() => {
@@ -1894,6 +1928,238 @@ export default function IGNISFloorPlanEditor() {
     }
   };
 
+  // Save floor plan to database
+  const saveToDatabase = async () => {
+    if (!selectedBuildingId) {
+      errorHandler.warn("Please select a building first before saving to database.");
+      setShowDatabaseModal(true);
+      return;
+    }
+
+    if (rooms.length === 0) {
+      errorHandler.warn("No rooms to save. Please draw some rooms first.");
+      return;
+    }
+
+    setIsSavingToDatabase(true);
+    setDatabaseSaveResult(null);
+
+    try {
+      // Generate GeoJSON
+      const features = [];
+
+      // Export rooms as polygons
+      rooms.forEach((room) => {
+        const coordinates = [
+          [
+            ...room.points.map((p) => {
+              const geo = pixelToGeo(p.x, p.y);
+              return [geo.lng, geo.lat];
+            }),
+            (() => {
+              const geo = pixelToGeo(room.points[0].x, room.points[0].y);
+              return [geo.lng, geo.lat];
+            })(),
+          ],
+        ];
+
+        features.push({
+          type: "Feature",
+          properties: {
+            id: room.id,
+            level: room.level,
+            name: room.name,
+            room_type: room.room_type,
+            type: "room",
+          },
+          geometry: {
+            type: "Polygon",
+            coordinates,
+          },
+        });
+      });
+
+      // Export openings
+      openings.forEach((op) => {
+        const startGeo = pixelToGeo(op.start.x, op.start.y);
+        const endGeo = pixelToGeo(op.end.x, op.end.y);
+
+        features.push({
+          type: "Feature",
+          properties: {
+            id: op.id,
+            level: op.level,
+            type: "opening",
+            opening_type: op.type,
+          },
+          geometry: {
+            type: "LineString",
+            coordinates: [
+              [startGeo.lng, startGeo.lat],
+              [endGeo.lng, endGeo.lat],
+            ],
+          },
+        });
+      });
+
+      // Export safe points
+      safePoints.forEach((sp) => {
+        const geo = pixelToGeo(sp.position.x, sp.position.y);
+
+        features.push({
+          type: "Feature",
+          properties: {
+            id: sp.id,
+            type: "safe_point",
+            is_safe_point: true,
+            level: sp.level,
+            name: sp.name,
+            capacity: sp.capacity,
+          },
+          geometry: {
+            type: "Point",
+            coordinates: [geo.lng, geo.lat],
+          },
+        });
+      });
+
+      // Export cameras
+      cameras.forEach((cam) => {
+        const geo = pixelToGeo(cam.position.x, cam.position.y);
+
+        features.push({
+          type: "Feature",
+          properties: {
+            id: cam.id,
+            type: "camera",
+            is_camera: true,
+            level: cam.level,
+            name: cam.name,
+            camera_id: cam.camera_id,
+          },
+          geometry: {
+            type: "Point",
+            coordinates: [geo.lng, geo.lat],
+          },
+        });
+      });
+
+      const geojson = {
+        type: "FeatureCollection",
+        properties: {
+          building_name: buildings.find(b => b.id === selectedBuildingId)?.name || "Unknown",
+          center_lat: buildingLocation.lat,
+          center_lng: buildingLocation.lng,
+          scale_pixels_per_meter: pixelsPerMeter,
+          levels: levels,
+        },
+        features,
+      };
+
+      const result = await api.importFloorPlan(selectedBuildingId, geojson);
+      setDatabaseSaveResult(result);
+
+      if (result.success) {
+        errorHandler.info(`Saved to database: ${result.message}`);
+      } else {
+        errorHandler.handle(new Error(result.error || "Unknown error"), "Save to Database");
+      }
+    } catch (err) {
+      errorHandler.handle(err, "Save to Database");
+      setDatabaseSaveResult({ success: false, error: err.message });
+    } finally {
+      setIsSavingToDatabase(false);
+    }
+  };
+
+  // Load floor plan from database
+  const loadFromDatabase = async () => {
+    if (!selectedBuildingId) {
+      errorHandler.warn("Please select a building first.");
+      setShowDatabaseModal(true);
+      return;
+    }
+
+    setIsLoadingFromDatabase(true);
+
+    try {
+      const geojson = await api.getBuildingFloorPlan(selectedBuildingId);
+
+      if (!geojson.features || geojson.features.length === 0) {
+        errorHandler.warn("No floor plan data found for this building.");
+        return;
+      }
+
+      // Clear current data
+      setRooms([]);
+      setOpenings([]);
+      setSafePoints([]);
+      setCameras([]);
+
+      // Parse features and convert back to editor format
+      const importedRooms = [];
+      const importedSafePoints = [];
+
+      // Get levels from properties
+      if (geojson.properties?.levels) {
+        setLevels(geojson.properties.levels);
+        const showLevelsObj = {};
+        geojson.properties.levels.forEach(l => { showLevelsObj[l] = true; });
+        setShowLevels(showLevelsObj);
+      }
+
+      for (const feature of geojson.features) {
+        const props = feature.properties;
+        const geom = feature.geometry;
+
+        if (props.type === "room" || props.room_type) {
+          // Room - convert polygon coordinates to pixel points
+          if (geom.type === "Polygon" && geom.coordinates[0]) {
+            const points = geom.coordinates[0].slice(0, -1).map(coord => {
+              return geoToPixel(coord[1], coord[0]);
+            });
+
+            if (points.length >= 3) {
+              const centroid = calculateCentroid(points);
+              const area = calculateRoomArea(points);
+
+              importedRooms.push({
+                id: props.id || `room_${Date.now()}_${Math.random()}`,
+                name: props.name || "Unnamed Room",
+                room_type: props.room_type || props.type || "room",
+                level: props.level || "1",
+                points,
+                centroid,
+                area_sqm: area,
+              });
+            }
+          }
+        } else if (props.type === "safe_point" || props.is_safe_point) {
+          // Safe point
+          if (geom.type === "Point") {
+            const position = geoToPixel(geom.coordinates[1], geom.coordinates[0]);
+            importedSafePoints.push({
+              id: props.id || `sp_${Date.now()}`,
+              position,
+              level: props.level || "1",
+              name: props.name || "Safe Point",
+              capacity: props.capacity || 50,
+            });
+          }
+        }
+      }
+
+      setRooms(importedRooms);
+      setSafePoints(importedSafePoints);
+
+      errorHandler.info(`Loaded ${importedRooms.length} rooms and ${importedSafePoints.length} safe points from database.`);
+    } catch (err) {
+      errorHandler.handle(err, "Load from Database");
+    } finally {
+      setIsLoadingFromDatabase(false);
+    }
+  };
+
   // Export routing graph for PgRouting
   const exportRoutingGraph = () => {
     try {
@@ -2446,152 +2712,179 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
     setPan({ x: 0, y: 0 });
   };
 
+  // Panel Resize Handlers
+  const handleResizeStart = (side: 'left' | 'right') => (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (side === 'left') {
+      setIsResizingLeft(true);
+    } else {
+      setIsResizingRight(true);
+    }
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      const container = editorContainerRef.current;
+      if (!container) return;
+
+      const rect = container.getBoundingClientRect();
+
+      if (isResizingLeft) {
+        // Calculate position relative to the editor container
+        const relativeX = e.clientX - rect.left;
+        const newWidth = Math.max(180, Math.min(350, relativeX));
+        setLeftPanelWidth(newWidth);
+      }
+      if (isResizingRight) {
+        // Calculate from the right edge of the container
+        const relativeX = rect.right - e.clientX;
+        const newWidth = Math.max(200, Math.min(400, relativeX));
+        setRightPanelWidth(newWidth);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsResizingLeft(false);
+      setIsResizingRight(false);
+    };
+
+    if (isResizingLeft || isResizingRight) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, [isResizingLeft, isResizingRight]);
+
   // ==================== RENDER ====================
 
   return (
-    <div className="h-full bg-cream-50 text-dark-green-800 font-['JetBrains_Mono',monospace] flex flex-col">
-      {/* Header */}
-      <header className="bg-white/90 backdrop-blur-sm border-b border-cream-200 px-4 py-3 flex-shrink-0">
-        <div className="flex items-center justify-between">
+    <div className="h-full bg-white text-dark-green-800 font-['JetBrains_Mono',monospace] flex flex-col">
+      {/* Toolbar */}
+      <div className="premium-card border-b border-gray-200 px-4 py-2.5 flex-shrink-0 rounded-none">
+        <div className="flex items-center justify-between gap-4">
+          {/* Left: Status & Settings */}
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-gradient-to-br from-dark-green-500 to-dark-green-600 rounded-lg flex items-center justify-center text-lg shadow-md">
-              🏠
-            </div>
-            <div>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-dark-green-600 to-dark-green-500 bg-clip-text text-transparent">
-                IGNIS Floor Plan Editor
-              </h1>
-              <p className="text-xs text-dark-green-500">
-                Fire Evacuation System - Building Digitization Tool
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {/* Scale indicator */}
+            {/* Scale Status */}
             <div
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm ${
+              className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium ${
                 scaleCalibrated
-                  ? "bg-green-100 border border-green-300 text-green-700"
-                  : "bg-yellow-100 border border-yellow-300 text-yellow-700"
+                  ? "bg-green-100 text-green-700 border border-green-200"
+                  : "bg-amber-100 text-amber-700 border border-amber-200"
               }`}
             >
-              <Ruler
-                size={16}
-                className={
-                  scaleCalibrated ? "text-green-600" : "text-yellow-600"
-                }
-              />
-              <span>
-                {scaleCalibrated
-                  ? `${Math.round(pixelsPerMeter)} px/m`
-                  : "Not Calibrated"}
-              </span>
+              <Ruler size={16} />
+              <span>{scaleCalibrated ? `${Math.round(pixelsPerMeter)} px/m` : "Not Calibrated"}</span>
             </div>
 
+            {/* Location */}
             <button
               onClick={() => setShowLocationModal(true)}
-              className="flex items-center gap-2 px-3 py-2 bg-cream-100 rounded-lg text-sm hover:bg-cream-200 transition-colors border border-cream-300"
+              className="flex items-center gap-2 px-3 py-2 bg-dark-green-50 rounded-xl text-sm font-medium hover:bg-dark-green-100 transition-all border border-dark-green-200 text-dark-green-700"
+              title="Set Building Location"
             >
-              <MapPin size={16} className="text-dark-green-600" />
-              <span className="text-dark-green-700">Location</span>
+              <MapPin size={16} />
+              <span>Location</span>
             </button>
 
+            {/* Preview Toggle */}
             <button
               onClick={() => setShowPreview(!showPreview)}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors border ${
+              className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all border ${
                 showPreview
-                  ? "bg-blue-100 border-blue-300 text-blue-700"
-                  : "bg-cream-100 border-cream-300 hover:bg-cream-200 text-dark-green-700"
+                  ? "green-gradient text-white border-transparent shadow-md"
+                  : "bg-dark-green-50 border-dark-green-200 hover:bg-dark-green-100 text-dark-green-700"
               }`}
+              title="Toggle Map Preview"
             >
               <MapIcon size={16} />
-              Preview
+              <span>Preview</span>
             </button>
+          </div>
 
-            {/* Undo/Redo/Save buttons */}
-            <div className="flex items-center gap-1 border-l border-cream-300 pl-3 ml-2">
-              <button
-                onClick={handleUndo}
-                disabled={!historyRef.current.canUndo()}
-                className="p-2 bg-cream-100 rounded-lg hover:bg-cream-200 transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-dark-green-700"
-                title="Undo (Ctrl+Z)"
-              >
-                <Undo2 size={16} />
-              </button>
-              <button
-                onClick={handleRedo}
-                disabled={!historyRef.current.canRedo()}
-                className="p-2 bg-cream-100 rounded-lg hover:bg-cream-200 transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-dark-green-700"
-                title="Redo (Ctrl+Y)"
-              >
-                <Redo2 size={16} />
-              </button>
-              <button
-                onClick={saveToLocalStorage}
-                className={`p-2 rounded-lg transition-colors ${
-                  hasUnsavedChanges
-                    ? "bg-amber-100 text-amber-700 hover:bg-amber-200"
-                    : "bg-cream-100 hover:bg-cream-200 text-dark-green-700"
-                }`}
-                title={`Save (Ctrl+S)${
-                  lastSaved
-                    ? ` - Last saved: ${lastSaved.toLocaleTimeString()}`
-                    : ""
-                }`}
-              >
-                <Save size={16} />
-              </button>
-            </div>
+          {/* Center: Edit Controls */}
+          <div className="flex items-center gap-1 premium-card rounded-xl p-1.5">
+            <button
+              onClick={handleUndo}
+              disabled={!historyRef.current.canUndo()}
+              className="p-2 rounded-lg hover:bg-dark-green-50 transition-all disabled:opacity-30 disabled:cursor-not-allowed text-dark-green-600"
+              title="Undo (Ctrl+Z)"
+            >
+              <Undo2 size={18} />
+            </button>
+            <button
+              onClick={handleRedo}
+              disabled={!historyRef.current.canRedo()}
+              className="p-2 rounded-lg hover:bg-dark-green-50 transition-all disabled:opacity-30 disabled:cursor-not-allowed text-dark-green-600"
+              title="Redo (Ctrl+Y)"
+            >
+              <Redo2 size={18} />
+            </button>
+            <div className="w-px h-6 bg-gray-200 mx-1" />
+            <button
+              onClick={saveToLocalStorage}
+              className={`p-2 rounded-lg transition-all ${
+                hasUnsavedChanges
+                  ? "bg-amber-100 text-amber-700 hover:bg-amber-200"
+                  : "hover:bg-dark-green-50 text-dark-green-600"
+              }`}
+              title={`Save (Ctrl+S)${lastSaved ? ` - Last saved: ${lastSaved.toLocaleTimeString()}` : ""}`}
+            >
+              <Save size={18} />
+            </button>
+          </div>
 
-            <div className="flex items-center gap-1">
+          {/* Right: Import/Export */}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 premium-card rounded-xl p-1.5">
               <button
                 onClick={() => fileInputGeoJSONRef.current?.click()}
-                className="flex items-center gap-2 px-3 py-2 bg-blue-100 hover:bg-blue-200 transition-colors border border-blue-300 rounded-lg text-blue-700"
+                className="p-2 rounded-lg hover:bg-dark-green-50 transition-all text-dark-green-600"
+                title="Import GeoJSON"
               >
-                <Upload size={16} />
-                Import GeoJSON
+                <Upload size={18} />
               </button>
               <button
                 onClick={exportGeoJSON}
                 disabled={rooms.length === 0}
-                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-dark-green-500 to-dark-green-600 text-white rounded-l-lg text-sm font-medium hover:from-dark-green-600 hover:to-dark-green-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+                className="p-2 rounded-lg hover:bg-dark-green-50 transition-all text-dark-green-600 disabled:opacity-30 disabled:cursor-not-allowed"
+                title="Export GeoJSON"
               >
-                <Download size={16} />
-                GeoJSON
-              </button>
-              <button
-                onClick={exportRoutingGraph}
-                disabled={rooms.length === 0 || openings.length === 0}
-                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-indigo-600 text-white text-sm font-medium hover:from-purple-600 hover:to-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
-                title="Export routing graph for PgRouting"
-              >
-                <Route size={16} />
-                Routing
-              </button>
-              {/* Feature 5: Upload to Emergency System */}
-              <button
-                onClick={uploadToEmergencySystem}
-                disabled={rooms.length === 0 || isUploading}
-                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-r-lg text-sm font-medium hover:from-red-600 hover:to-rose-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
-                title="Upload building data to Emergency Response System"
-              >
-                {isUploading ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Uploading...
-                  </>
-                ) : (
-                  <>
-                    <Target size={16} />
-                    To Emergency
-                  </>
-                )}
+                <Download size={18} />
               </button>
             </div>
+            <button
+              onClick={exportRoutingGraph}
+              disabled={rooms.length === 0 || openings.length === 0}
+              className="flex items-center gap-2 px-3 py-2 bg-dark-green-50 rounded-xl text-sm font-medium hover:bg-dark-green-100 transition-all border border-dark-green-200 text-dark-green-700 disabled:opacity-30 disabled:cursor-not-allowed"
+              title="Export Routing Graph"
+            >
+              <Route size={16} />
+              <span>Routing</span>
+            </button>
+            <button
+              onClick={uploadToEmergencySystem}
+              disabled={rooms.length === 0 || isUploading}
+              className="flex items-center gap-2 px-4 py-2 green-gradient text-white rounded-xl text-sm font-semibold hover:scale-105 hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+              title="Upload to Emergency System"
+            >
+              {isUploading ? (
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Target size={16} />
+              )}
+              <span>Emergency</span>
+            </button>
           </div>
         </div>
-      </header>
+      </div>
 
       {/* Error/Info Notification */}
       {error && (
@@ -2615,9 +2908,56 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
         </div>
       )}
 
-      <div className="flex flex-1 overflow-hidden">
+      <div ref={editorContainerRef} className="flex flex-1 overflow-hidden">
         {/* Left Sidebar */}
-        <aside className="w-64 bg-cream-100/80 border-r border-cream-300 p-4 flex flex-col gap-4 overflow-y-auto">
+        <aside
+          className="bg-gray-50/80 border-r border-gray-200 p-4 flex flex-col gap-4 overflow-y-auto flex-shrink-0"
+          style={{ width: leftPanelWidth }}
+        >
+          {/* Building Selection */}
+          <div className="space-y-2">
+            <h3 className="text-xs font-semibold text-dark-green-600 uppercase tracking-wider flex items-center gap-2">
+              <Building2 size={14} />
+              Target Building
+            </h3>
+            <select
+              value={selectedBuildingId || ''}
+              onChange={(e) => setSelectedBuildingId(e.target.value ? parseInt(e.target.value) : null)}
+              className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-dark-green-500"
+            >
+              <option value="">Select Building...</option>
+              {buildings.map(b => (
+                <option key={b.id} value={b.id}>{b.name}</option>
+              ))}
+            </select>
+            {selectedBuildingId && (
+              <div className="flex gap-2">
+                <button
+                  onClick={loadFromDatabase}
+                  disabled={isLoadingFromDatabase}
+                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-dark-green-50 hover:bg-dark-green-100 text-dark-green-700 rounded-xl text-xs font-medium transition-all border border-dark-green-200 disabled:opacity-50"
+                >
+                  {isLoadingFromDatabase ? <RefreshCw size={14} className="animate-spin" /> : <Database size={14} />}
+                  Load
+                </button>
+                <button
+                  onClick={saveToDatabase}
+                  disabled={isSavingToDatabase || rooms.length === 0}
+                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 green-gradient text-white rounded-xl text-xs font-semibold transition-all hover:shadow-md disabled:opacity-50"
+                >
+                  {isSavingToDatabase ? <RefreshCw size={14} className="animate-spin" /> : <CloudUpload size={14} />}
+                  Save
+                </button>
+              </div>
+            )}
+            {!selectedBuildingId && buildings.length > 0 && (
+              <p className="text-xs text-amber-600">Select a building to enable database sync</p>
+            )}
+            {buildings.length === 0 && (
+              <p className="text-xs text-gray-500">No buildings available. Server may be offline.</p>
+            )}
+          </div>
+
           {/* Upload */}
           <div className="space-y-2">
             <h3 className="text-xs font-semibold text-dark-green-600 uppercase tracking-wider">
@@ -2640,9 +2980,9 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
             />
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white rounded-lg text-sm hover:bg-cream-50 transition-colors border border-dashed border-cream-400 hover:border-dark-green-500"
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-dark-green-50 rounded-xl text-sm font-medium hover:bg-dark-green-100 transition-all border border-dashed border-dark-green-300 hover:border-dark-green-500 text-dark-green-700"
             >
-              <Upload size={18} className="text-dark-green-500" />
+              <Upload size={18} className="text-dark-green-600" />
               {image ? "Change Image" : "Upload Floor Plan"}
             </button>
           </div>
@@ -2689,11 +3029,11 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
             <div className="grid grid-cols-3 gap-2">
               <button
                 onClick={() => setMode("calibrate")}
-                className={`p-3 rounded-lg transition-all ${
+                className={`p-3 rounded-xl transition-all ${
                   mode === "calibrate"
-                    ? "bg-yellow-500/20 border-yellow-500 text-yellow-400"
-                    : "bg-white border-cream-300 text-dark-green-600 hover:bg-cream-50"
-                } border`}
+                    ? "green-gradient text-white shadow-md"
+                    : "bg-white border border-gray-200 text-dark-green-600 hover:bg-dark-green-50 hover:border-dark-green-300"
+                }`}
                 title="Calibrate Scale"
               >
                 <Ruler size={18} className="mx-auto" />
@@ -2704,11 +3044,11 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
                   setDefaultRoomType("common"); // Reset to common room type
                 }}
                 disabled={!scaleCalibrated}
-                className={`p-3 rounded-lg transition-all ${
+                className={`p-3 rounded-xl transition-all ${
                   mode === "draw" && defaultRoomType !== "corridor"
-                    ? "bg-dark-green-500/20 border-dark-green-500 text-dark-green-600"
-                    : "bg-white border-cream-300 text-dark-green-600 hover:bg-cream-50"
-                } border disabled:opacity-50`}
+                    ? "green-gradient text-white shadow-md"
+                    : "bg-white border border-gray-200 text-dark-green-600 hover:bg-dark-green-50 hover:border-dark-green-300"
+                } disabled:opacity-50`}
                 title="Draw Room"
               >
                 <Edit3 size={18} className="mx-auto" />
@@ -2716,33 +3056,33 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
               <button
                 onClick={() => setMode("door")}
                 disabled={!scaleCalibrated}
-                className={`p-3 rounded-lg transition-all ${
+                className={`p-3 rounded-xl transition-all ${
                   mode === "door"
-                    ? "bg-green-500/20 border-green-500 text-green-400"
-                    : "bg-white border-cream-300 text-dark-green-600 hover:bg-cream-50"
-                } border disabled:opacity-50`}
+                    ? "green-gradient text-white shadow-md"
+                    : "bg-white border border-gray-200 text-dark-green-600 hover:bg-dark-green-50 hover:border-dark-green-300"
+                } disabled:opacity-50`}
                 title="Add Door/Window"
               >
                 <DoorOpen size={18} className="mx-auto" />
               </button>
               <button
                 onClick={() => setMode("select")}
-                className={`p-3 rounded-lg transition-all ${
+                className={`p-3 rounded-xl transition-all ${
                   mode === "select"
-                    ? "bg-dark-green-500/20 border-dark-green-500 text-dark-green-600"
-                    : "bg-white border-cream-300 text-dark-green-600 hover:bg-cream-50"
-                } border`}
+                    ? "green-gradient text-white shadow-md"
+                    : "bg-white border border-gray-200 text-dark-green-600 hover:bg-dark-green-50 hover:border-dark-green-300"
+                }`}
                 title="Select"
               >
                 <Move size={18} className="mx-auto" />
               </button>
               <button
                 onClick={() => setMode("pan")}
-                className={`p-3 rounded-lg transition-all ${
+                className={`p-3 rounded-xl transition-all ${
                   mode === "pan"
-                    ? "bg-dark-green-500/20 border-dark-green-500 text-dark-green-600"
-                    : "bg-white border-cream-300 text-dark-green-600 hover:bg-cream-50"
-                } border`}
+                    ? "green-gradient text-white shadow-md"
+                    : "bg-white border border-gray-200 text-dark-green-600 hover:bg-dark-green-50 hover:border-dark-green-300"
+                }`}
                 title="Pan"
               >
                 <Move size={18} className="mx-auto rotate-45" />
@@ -2753,11 +3093,11 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
                   clearTestRoute();
                 }}
                 disabled={openings.length === 0}
-                className={`p-3 rounded-lg transition-all ${
+                className={`p-3 rounded-xl transition-all ${
                   mode === "route_test"
-                    ? "bg-purple-500/20 border-purple-500 text-purple-400"
-                    : "bg-white border-cream-300 text-dark-green-600 hover:bg-cream-50"
-                } border disabled:opacity-50`}
+                    ? "green-gradient text-white shadow-md"
+                    : "bg-white border border-gray-200 text-dark-green-600 hover:bg-dark-green-50 hover:border-dark-green-300"
+                } disabled:opacity-50`}
                 title="Test Route"
               >
                 <Route size={18} className="mx-auto" />
@@ -2765,11 +3105,11 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
               {/* Feature 2: Safe Point Mode */}
               <button
                 onClick={() => setMode("safe_point")}
-                className={`p-3 rounded-lg transition-all ${
+                className={`p-3 rounded-xl transition-all ${
                   mode === "safe_point"
-                    ? "bg-green-500/20 border-green-500 text-green-400"
-                    : "bg-white border-cream-300 text-dark-green-600 hover:bg-cream-50"
-                } border`}
+                    ? "green-gradient text-white shadow-md"
+                    : "bg-white border border-gray-200 text-dark-green-600 hover:bg-dark-green-50 hover:border-dark-green-300"
+                }`}
                 title="Place Safe Point"
               >
                 <Shield size={18} className="mx-auto" />
@@ -2777,11 +3117,11 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
               {/* Phase 6: Camera Mode */}
               <button
                 onClick={() => setMode("camera")}
-                className={`p-3 rounded-lg transition-all ${
+                className={`p-3 rounded-xl transition-all ${
                   mode === "camera"
-                    ? "bg-red-500/20 border-red-500 text-red-400"
-                    : "bg-white border-cream-300 text-dark-green-600 hover:bg-cream-50"
-                } border`}
+                    ? "green-gradient text-white shadow-md"
+                    : "bg-white border border-gray-200 text-dark-green-600 hover:bg-dark-green-50 hover:border-dark-green-300"
+                }`}
                 title="Place Camera"
               >
                 <Video size={18} className="mx-auto" />
@@ -2792,11 +3132,11 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
                   setMode("draw");
                   setDefaultRoomType("corridor");
                 }}
-                className={`p-3 rounded-lg transition-all ${
+                className={`p-3 rounded-xl transition-all ${
                   mode === "draw" && defaultRoomType === "corridor"
-                    ? "bg-blue-500/20 border-blue-500 text-blue-400"
-                    : "bg-white border-cream-300 text-dark-green-600 hover:bg-cream-50"
-                } border`}
+                    ? "green-gradient text-white shadow-md"
+                    : "bg-white border border-gray-200 text-dark-green-600 hover:bg-dark-green-50 hover:border-dark-green-300"
+                }`}
                 title="Draw Corridor"
               >
                 <Navigation size={18} className="mx-auto" />
@@ -2815,20 +3155,11 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
                   <button
                     key={key}
                     onClick={() => setCurrentOpeningType(key)}
-                    className={`p-2 rounded-lg text-xs transition-all ${
+                    className={`p-2 rounded-xl text-xs font-medium transition-all ${
                       currentOpeningType === key
-                        ? "border-2"
-                        : "border border-cream-300"
+                        ? "green-gradient text-white shadow-md"
+                        : "bg-white border border-gray-200 text-dark-green-600 hover:bg-dark-green-50"
                     }`}
-                    style={{
-                      backgroundColor:
-                        currentOpeningType === key
-                          ? `${val.color}30`
-                          : "rgb(30,41,59)",
-                      borderColor:
-                        currentOpeningType === key ? val.color : undefined,
-                      color: currentOpeningType === key ? val.color : undefined,
-                    }}
                   >
                     {val.label}
                   </button>
@@ -2845,22 +3176,22 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
             <div className="flex items-center gap-2">
               <button
                 onClick={() => handleZoom(-0.25)}
-                className="p-2 bg-white rounded-lg hover:bg-cream-100"
+                className="p-2 bg-white rounded-xl hover:bg-dark-green-50 border border-gray-200 text-dark-green-600 transition-all"
               >
                 <ZoomOut size={16} />
               </button>
-              <span className="flex-1 text-center text-sm text-dark-green-600">
+              <span className="flex-1 text-center text-sm font-medium text-dark-green-700">
                 {Math.round(zoom * 100)}%
               </span>
               <button
                 onClick={() => handleZoom(0.25)}
-                className="p-2 bg-white rounded-lg hover:bg-cream-100"
+                className="p-2 bg-white rounded-xl hover:bg-dark-green-50 border border-gray-200 text-dark-green-600 transition-all"
               >
                 <ZoomIn size={16} />
               </button>
               <button
                 onClick={resetView}
-                className="p-2 bg-white rounded-lg hover:bg-cream-100"
+                className="p-2 bg-white rounded-xl hover:bg-dark-green-50 border border-gray-200 text-dark-green-600 transition-all"
               >
                 <RotateCcw size={16} />
               </button>
@@ -2875,7 +3206,7 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
               </h3>
               <button
                 onClick={addLevel}
-                className="p-1 hover:bg-cream-100 rounded"
+                className="p-1 hover:bg-gray-50 rounded"
               >
                 <Plus size={14} className="text-dark-green-500" />
               </button>
@@ -2887,7 +3218,7 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
                   className={`flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer transition-all ${
                     currentLevel === level
                       ? "bg-orange-500/20 border border-orange-500/50"
-                      : "bg-white border border-transparent hover:bg-cream-100"
+                      : "bg-white border border-transparent hover:bg-gray-50"
                   }`}
                   onClick={() => setCurrentLevel(level)}
                 >
@@ -2910,7 +3241,7 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
                       e.stopPropagation();
                       toggleLevelVisibility(level);
                     }}
-                    className="p-1 hover:bg-cream-200 rounded"
+                    className="p-1 hover:bg-gray-100 rounded"
                   >
                     {showLevels[level] ? (
                       <Eye size={14} />
@@ -2937,7 +3268,7 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
                 <button
                   onClick={handleUndoPoint}
                   disabled={currentPoints.length === 0}
-                  className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-cream-100 rounded text-xs font-medium hover:bg-cream-200 disabled:opacity-50"
+                  className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-gray-50 rounded text-xs font-medium hover:bg-gray-100 disabled:opacity-50"
                   title="Undo last point (Ctrl+Z)"
                 >
                   <Undo2 size={12} /> Undo Point
@@ -2945,7 +3276,7 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
                 <button
                   onClick={handleRedoPoint}
                   disabled={pointHistoryIndex >= pointHistory.length - 1}
-                  className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-cream-100 rounded text-xs font-medium hover:bg-cream-200 disabled:opacity-50"
+                  className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-gray-50 rounded text-xs font-medium hover:bg-gray-100 disabled:opacity-50"
                   title="Redo point (Ctrl+Shift+Z)"
                 >
                   <Redo2 size={12} /> Redo Point
@@ -2961,7 +3292,7 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
                 </button>
                 <button
                   onClick={cancelDrawing}
-                  className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-cream-100 rounded text-xs font-medium hover:bg-cream-200"
+                  className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-gray-50 rounded text-xs font-medium hover:bg-gray-100"
                 >
                   <X size={14} /> Cancel
                 </button>
@@ -2978,7 +3309,7 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
               <p className="text-xs text-dark-green-600">Click to place end point</p>
               <button
                 onClick={() => setOpeningStart(null)}
-                className="w-full flex items-center justify-center gap-1 px-3 py-2 bg-cream-100 rounded text-xs font-medium hover:bg-cream-200"
+                className="w-full flex items-center justify-center gap-1 px-3 py-2 bg-gray-50 rounded text-xs font-medium hover:bg-gray-100"
               >
                 <X size={14} /> Cancel
               </button>
@@ -3016,7 +3347,7 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
               )}
               <button
                 onClick={clearTestRoute}
-                className="w-full flex items-center justify-center gap-1 px-3 py-2 bg-cream-100 rounded text-xs font-medium hover:bg-cream-200"
+                className="w-full flex items-center justify-center gap-1 px-3 py-2 bg-gray-50 rounded text-xs font-medium hover:bg-gray-100"
               >
                 <RotateCcw size={14} /> Reset
               </button>
@@ -3039,10 +3370,20 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
           </div>
         </aside>
 
+        {/* Left Resize Handle */}
+        <div
+          className="w-1 bg-gray-200 hover:bg-dark-green-400 cursor-col-resize transition-colors flex-shrink-0 group"
+          onMouseDown={handleResizeStart('left')}
+        >
+          <div className="w-full h-full flex items-center justify-center">
+            <div className="w-0.5 h-8 bg-gray-300 group-hover:bg-white rounded-full" />
+          </div>
+        </div>
+
         {/* Main Canvas */}
         <main
           ref={containerRef}
-          className="flex-1 overflow-hidden bg-cream-200 relative"
+          className="flex-1 overflow-hidden bg-gray-100 relative min-w-0"
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
@@ -3485,7 +3826,7 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
 
           {/* Scale bar */}
           {image && scaleCalibrated && (
-            <div className="absolute bottom-4 left-4 bg-cream-50/90 px-3 py-2 rounded-lg border border-cream-300">
+            <div className="absolute bottom-4 left-4 bg-white/90 px-3 py-2 rounded-lg border border-gray-200">
               <div className="flex items-center gap-2">
                 <div className="w-24 h-1 bg-white relative">
                   <div className="absolute -left-0.5 -top-1 w-0.5 h-3 bg-white" />
@@ -3499,8 +3840,21 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
           )}
         </main>
 
+        {/* Right Resize Handle */}
+        <div
+          className="w-1 bg-gray-200 hover:bg-dark-green-400 cursor-col-resize transition-colors flex-shrink-0 group"
+          onMouseDown={handleResizeStart('right')}
+        >
+          <div className="w-full h-full flex items-center justify-center">
+            <div className="w-0.5 h-8 bg-gray-300 group-hover:bg-white rounded-full" />
+          </div>
+        </div>
+
         {/* Right Sidebar */}
-        <aside className="w-72 bg-cream-50/50 border-l border-cream-200 p-4 overflow-y-auto">
+        <aside
+          className="bg-white/50 border-l border-gray-200 p-4 overflow-y-auto flex-shrink-0"
+          style={{ width: rightPanelWidth }}
+        >
           {showPreview ? (
             // Map Preview
             <div className="space-y-4">
@@ -3510,7 +3864,7 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
                 </h3>
                 <button
                   onClick={() => setShowPreview(false)}
-                  className="p-1 hover:bg-cream-100 rounded"
+                  className="p-1 hover:bg-gray-50 rounded"
                 >
                   <X size={14} />
                 </button>
@@ -3552,7 +3906,7 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
                 </svg>
 
                 {/* Overlay info */}
-                <div className="absolute bottom-2 left-2 right-2 bg-cream-50/80 rounded p-2 text-xs">
+                <div className="absolute bottom-2 left-2 right-2 bg-white/80 rounded p-2 text-xs">
                   <p className="text-dark-green-600">
                     Center: {buildingLocation.lat.toFixed(4)},{" "}
                     {buildingLocation.lng.toFixed(4)}
@@ -3569,13 +3923,13 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
                   Routing Graph
                 </h4>
                 <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="bg-cream-100/50 rounded p-2">
+                  <div className="bg-gray-50/50 rounded p-2">
                     <p className="text-dark-green-500">Nodes</p>
                     <p className="text-lg font-bold text-dark-green-500">
                       {buildRoutingGraph.nodes.length}
                     </p>
                   </div>
-                  <div className="bg-cream-100/50 rounded p-2">
+                  <div className="bg-gray-50/50 rounded p-2">
                     <p className="text-dark-green-500">Edges</p>
                     <p className="text-lg font-bold text-green-400">
                       {buildRoutingGraph.edges.length}
@@ -3678,7 +4032,7 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
                                 name: e.target.value,
                               })
                             }
-                            className="w-full bg-cream-100 border border-cream-300 rounded px-2 py-1.5 text-sm"
+                            className="w-full bg-gray-50 border border-gray-200 rounded px-2 py-1.5 text-sm"
                           />
                         </div>
 
@@ -3694,7 +4048,7 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
                                 camera_id: e.target.value,
                               })
                             }
-                            className="w-full bg-cream-100 border border-cream-300 rounded px-2 py-1.5 text-sm font-mono"
+                            className="w-full bg-gray-50 border border-gray-200 rounded px-2 py-1.5 text-sm font-mono"
                           />
                         </div>
 
@@ -3711,7 +4065,7 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
                                 rtsp_url: e.target.value,
                               })
                             }
-                            className="w-full bg-cream-100 border border-cream-300 rounded px-2 py-1.5 text-sm font-mono text-xs"
+                            className="w-full bg-gray-50 border border-gray-200 rounded px-2 py-1.5 text-sm font-mono text-xs"
                           />
                         </div>
 
@@ -3747,7 +4101,7 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
                                 linked_room_id: e.target.value || undefined,
                               })
                             }
-                            className="w-full bg-cream-100 border border-cream-300 rounded px-2 py-1.5 text-sm"
+                            className="w-full bg-gray-50 border border-gray-200 rounded px-2 py-1.5 text-sm"
                           >
                             <option value="">No linked room</option>
                             {rooms
@@ -3848,7 +4202,7 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
                                 name: e.target.value,
                               })
                             }
-                            className="w-full bg-cream-100 border border-cream-300 rounded px-2 py-1.5 text-sm"
+                            className="w-full bg-gray-50 border border-gray-200 rounded px-2 py-1.5 text-sm"
                           />
                         </div>
 
@@ -3865,7 +4219,7 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
                                 capacity: parseInt(e.target.value) || 1,
                               })
                             }
-                            className="w-full bg-cream-100 border border-cream-300 rounded px-2 py-1.5 text-sm"
+                            className="w-full bg-gray-50 border border-gray-200 rounded px-2 py-1.5 text-sm"
                           />
                         </div>
 
@@ -3927,7 +4281,7 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
                                 type: e.target.value,
                               })
                             }
-                            className="w-full bg-cream-100 border border-cream-300 rounded px-2 py-1.5 text-sm"
+                            className="w-full bg-gray-50 border border-gray-200 rounded px-2 py-1.5 text-sm"
                           >
                             {Object.entries(OPENING_TYPES).map(([key, val]) => (
                               <option key={key} value={key}>
@@ -3950,7 +4304,7 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
                                 width: parseFloat(e.target.value),
                               })
                             }
-                            className="w-full bg-cream-100 border border-cream-300 rounded px-2 py-1.5 text-sm"
+                            className="w-full bg-gray-50 border border-gray-200 rounded px-2 py-1.5 text-sm"
                           />
                         </div>
 
@@ -3990,7 +4344,7 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
                                 onKeyDown={(e) =>
                                   e.key === "Enter" && setEditingRoom(null)
                                 }
-                                className="bg-cream-100 px-2 py-1 rounded text-sm w-32"
+                                className="bg-gray-50 px-2 py-1 rounded text-sm w-32"
                                 autoFocus
                               />
                             ) : (
@@ -4000,7 +4354,7 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
                           <div className="flex items-center gap-1">
                             <button
                               onClick={() => setEditingRoom(room.id)}
-                              className="p-1 hover:bg-cream-200 rounded"
+                              className="p-1 hover:bg-gray-100 rounded"
                             >
                               <Edit3 size={12} />
                             </button>
@@ -4022,7 +4376,7 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
                             onChange={(e) =>
                               updateRoom(room.id, { room_type: e.target.value })
                             }
-                            className="w-full bg-cream-100 border border-cream-300 rounded px-2 py-1.5 text-sm"
+                            className="w-full bg-gray-50 border border-gray-200 rounded px-2 py-1.5 text-sm"
                           >
                             {Object.entries(ROOM_TYPES).map(([key, val]) => (
                               <option key={key} value={key}>
@@ -4033,13 +4387,13 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
                         </div>
 
                         <div className="grid grid-cols-2 gap-2 text-xs">
-                          <div className="bg-cream-100/50 rounded p-2">
+                          <div className="bg-gray-50/50 rounded p-2">
                             <p className="text-dark-green-500">Area</p>
                             <p className="font-bold">
                               {room.area_sqm.toFixed(2)} m²
                             </p>
                           </div>
-                          <div className="bg-cream-100/50 rounded p-2">
+                          <div className="bg-gray-50/50 rounded p-2">
                             <p className="text-dark-green-500">Points</p>
                             <p className="font-bold">{room.points.length}</p>
                           </div>
@@ -4073,7 +4427,7 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
                       .map((room) => (
                         <div
                           key={room.id}
-                          className="p-3 bg-white/50 rounded-lg border border-cream-300 hover:bg-white cursor-pointer transition-all"
+                          className="p-3 bg-white/50 rounded-lg border border-gray-200 hover:bg-white cursor-pointer transition-all"
                           onClick={() => setSelectedRoom(room.id)}
                         >
                           <div className="flex items-center gap-2">
@@ -4107,7 +4461,7 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
                         .map((op) => (
                           <div
                             key={op.id}
-                            className="p-2 bg-white/50 rounded-lg border border-cream-300 hover:bg-white cursor-pointer transition-all flex items-center gap-2"
+                            className="p-2 bg-white/50 rounded-lg border border-gray-200 hover:bg-white cursor-pointer transition-all flex items-center gap-2"
                             onClick={() => {
                               setSelectedOpening(op.id);
                               setSelectedRoom(null);
@@ -4139,7 +4493,7 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
       {/* Calibration Modal */}
       {showCalibrationModal && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-          <div className="bg-cream-50 rounded-xl p-6 w-96 border border-cream-300">
+          <div className="bg-white rounded-xl p-6 w-96 border border-gray-200">
             <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
               <Ruler className="text-yellow-400" size={20} />
               Calibrate Scale
@@ -4172,7 +4526,7 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
                   value={calibrationDistance}
                   onChange={(e) => setCalibrationDistance(e.target.value)}
                   placeholder="e.g., 5.0"
-                  className="w-full bg-white border border-cream-300 rounded px-3 py-2"
+                  className="w-full bg-white border border-gray-200 rounded px-3 py-2"
                   autoFocus
                 />
               </div>
@@ -4197,7 +4551,7 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
                   setShowCalibrationModal(false);
                   setCalibrationLine(null);
                 }}
-                className="flex-1 px-4 py-2 bg-cream-100 rounded-lg hover:bg-cream-200"
+                className="flex-1 px-4 py-2 bg-gray-50 rounded-lg hover:bg-gray-100"
               >
                 Cancel
               </button>
@@ -4218,7 +4572,7 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
       {/* Location Modal */}
       {showLocationModal && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-          <div className="bg-cream-50 rounded-xl p-6 w-96 border border-cream-300">
+          <div className="bg-white rounded-xl p-6 w-96 border border-gray-200">
             <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
               <MapPin className="text-dark-green-500" size={20} />
               Building Location
@@ -4242,7 +4596,7 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
                       lat: parseFloat(e.target.value),
                     })
                   }
-                  className="w-full bg-white border border-cream-300 rounded px-3 py-2"
+                  className="w-full bg-white border border-gray-200 rounded px-3 py-2"
                 />
               </div>
               <div>
@@ -4259,14 +4613,14 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
                       lng: parseFloat(e.target.value),
                     })
                   }
-                  className="w-full bg-white border border-cream-300 rounded px-3 py-2"
+                  className="w-full bg-white border border-gray-200 rounded px-3 py-2"
                 />
               </div>
             </div>
             <div className="flex gap-3 mt-6">
               <button
                 onClick={() => setShowLocationModal(false)}
-                className="flex-1 px-4 py-2 bg-cream-100 rounded-lg hover:bg-cream-200"
+                className="flex-1 px-4 py-2 bg-gray-50 rounded-lg hover:bg-gray-100"
               >
                 Cancel
               </button>

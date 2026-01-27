@@ -184,6 +184,33 @@ html[dir="ltr"] * {
   border: 1px solid rgba(26, 61, 53, 0.05);
 }
 
+/* Ignis Theme - Green Gradient */
+.green-gradient {
+  background: linear-gradient(135deg, #1a3d35 0%, #2d5a4e 100%);
+}
+
+/* Ignis Theme - Gradient Text */
+.gradient-text {
+  background: linear-gradient(135deg, #1a3d35 0%, #2d5a4e 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Ignis Theme - Premium Card */
+.premium-card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(26, 61, 53, 0.08);
+  box-shadow: 0 4px 6px -1px rgba(26, 61, 53, 0.05), 0 2px 4px -1px rgba(26, 61, 53, 0.03);
+}
+
+/* Ignis Theme - Cream Gradient Background */
+.cream-gradient {
+  background: linear-gradient(180deg, #FDFBF7 0%, #f5f0e8 100%);
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 8px;

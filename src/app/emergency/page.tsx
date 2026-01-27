@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -9,10 +8,6 @@ import {
   MessageCircle,
   X,
   AlertTriangle,
-  Users,
-  LayoutDashboard,
-  Box,
-  Grid3X3,
   Share2,
   Check,
   PersonStanding,
@@ -24,7 +19,8 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import DashboardLayout from '@/components/layout/DashboardLayout';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
 
 // Dynamically import EvacuationMap to avoid SSR issues with MapLibre
 const EvacuationMap = dynamic(
@@ -42,21 +38,13 @@ const EvacuationMap = dynamic(
   }
 );
 
-// Navigation items for sidebar
-const navItems = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
-  { id: '3d-map', label: '3D Isometric Map', icon: Box, href: '/emergency', active: true },
-  { id: 'grid', label: 'External Grid', icon: Grid3X3, href: '/admin/buildings' },
-  { id: 'personnel', label: 'Personnel', icon: Users, href: '/admin/residents' },
-];
-
 // Mock units for unit tracking
 const defaultUnits = [
   { id: 'SQ42', name: 'Squad 42', status: 'Entering Floor 07', active: true },
   { id: 'RE02', name: 'Rescue 02', status: 'Staging Floor 05', active: false },
 ];
 
-export default function EmergencyPage() {
+function EmergencyPageContent() {
   const { user } = useAuth();
 
   // Building & Floor State
@@ -214,49 +202,8 @@ export default function EmergencyPage() {
   };
 
   return (
-    <div className="fixed inset-0 flex bg-background">
-      {/* Left Sidebar */}
-      <aside className="flex-shrink-0 w-52 flex flex-col border-r border-border bg-card">
-        <div className="flex items-center gap-2 p-4">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-            <Flame className="h-4 w-4 text-primary-foreground" />
-          </div>
-          <div>
-            <h1 className="text-sm font-bold text-foreground">IGNIS COMMAND</h1>
-            <p className="text-[10px] text-muted-foreground">ELITE TACTICAL</p>
-          </div>
-        </div>
-
-        <nav className="flex-1 space-y-0.5 px-2 py-2">
-          {navItems.map((item) => (
-            <Link
-              key={item.id}
-              href={item.href}
-              className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
-                item.active
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-foreground hover:bg-muted'
-              }`}
-            >
-              <item.icon className="h-4 w-4" />
-              {item.label}
-            </Link>
-          ))}
-        </nav>
-
-        <div className="p-3">
-          <Button
-            variant="destructive"
-            className="w-full gap-2 py-4 text-sm font-semibold"
-          >
-            <AlertTriangle className="h-4 w-4" />
-            Evacuation Alert
-          </Button>
-        </div>
-      </aside>
-
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0">
+    <DashboardLayout role="admin" userName={user?.name || 'Admin'} userTitle="ADMINISTRATOR">
+      <div className="flex-1 flex flex-col h-full">
         {/* Header */}
         <header className="flex-shrink-0 flex h-14 items-center justify-between border-b border-border bg-card px-4">
           <div className="flex items-center gap-3">
@@ -290,18 +237,15 @@ export default function EmergencyPage() {
               </Button>
             </div>
 
-            {/* User Profile */}
-            <div className="flex items-center gap-2 border-l border-border pl-3">
-              <div className="text-right">
-                <p className="text-xs font-semibold text-foreground">{user?.name || 'Cmdr. Sterling'}</p>
-                <p className="text-[10px] text-muted-foreground">SENIOR DIRECTOR</p>
-              </div>
-              <Avatar className="h-8 w-8 border-2 border-primary">
-                <AvatarFallback className="bg-primary text-xs font-semibold text-primary-foreground">
-                  {user?.name?.split(' ').map(n => n[0]).join('') || 'CS'}
-                </AvatarFallback>
-              </Avatar>
-            </div>
+            {/* Evacuation Alert Button */}
+            <Button
+              variant="destructive"
+              size="sm"
+              className="gap-2"
+            >
+              <AlertTriangle className="h-4 w-4" />
+              Evacuation Alert
+            </Button>
           </div>
         </header>
 
@@ -486,7 +430,7 @@ export default function EmergencyPage() {
         </div>
       </div>
 
-      {/* AI Agent Button */}
+      {/* AI Agent Button - moved outside the layout flow */}
       <motion.button
         type="button"
         onClick={() => setIsAIOpen(!isAIOpen)}
@@ -539,6 +483,14 @@ export default function EmergencyPage() {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </DashboardLayout>
+  );
+}
+
+export default function EmergencyPage() {
+  return (
+    <ProtectedRoute allowedRoles={['management', 'building_authority', 'firefighter']}>
+      <EmergencyPageContent />
+    </ProtectedRoute>
   );
 }

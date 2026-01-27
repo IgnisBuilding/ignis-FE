@@ -75,6 +75,22 @@ export interface Room {
   type: string;
   floor_id: number;
   apartment_id?: number;
+  floor?: Floor;
+}
+
+export interface FloorPlanImportResult {
+  success: boolean;
+  imported?: {
+    floors: number;
+    rooms: number;
+    nodes: number;
+    edges: number;
+    exits: number;
+    cameras: number;
+  };
+  warnings?: string[];
+  error?: string;
+  message?: string;
 }
 
 export interface Camera {
@@ -445,9 +461,22 @@ class ApiService {
     });
   }
 
-  async getBuildingRooms(buildingId: number | string): Promise<any> {
-    return this.request<any>(`/buildings/${buildingId}/rooms`, {
+  async getBuildingRooms(buildingId: number | string): Promise<Room[]> {
+    return this.request<Room[]>(`/buildings/${buildingId}/rooms`, {
       method: 'GET',
+    });
+  }
+
+  async getFloorRooms(floorId: number): Promise<Room[]> {
+    return this.request<Room[]>(`/floors/${floorId}/rooms`, {
+      method: 'GET',
+    });
+  }
+
+  async importFloorPlan(buildingId: number, geojson: any): Promise<FloorPlanImportResult> {
+    return this.request<FloorPlanImportResult>(`/buildings/${buildingId}/import-floor-plan`, {
+      method: 'POST',
+      body: JSON.stringify(geojson),
     });
   }
 

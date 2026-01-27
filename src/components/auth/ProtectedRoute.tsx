@@ -33,10 +33,10 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center cream-gradient">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-white">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-dark-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-dark-green-700">Loading...</p>
+          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-700 font-medium">Loading...</p>
         </div>
       </div>
     );
@@ -44,10 +44,10 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center cream-gradient">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-white">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-dark-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-dark-green-700">Checking authentication...</p>
+          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-700 font-medium">Checking authentication...</p>
         </div>
       </div>
     );
@@ -55,10 +55,10 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
 
   if (allowedRoles && role && !allowedRoles.includes(role)) {
     return (
-      <div className="min-h-screen flex items-center justify-center cream-gradient">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-white">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-dark-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-dark-green-700">Redirecting...</p>
+          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-700 font-medium">Redirecting...</p>
         </div>
       </div>
     );

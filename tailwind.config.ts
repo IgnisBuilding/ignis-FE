@@ -72,7 +72,28 @@ const config: Config = {
         },
         // Legacy ignis colors
         forest: '#1a3d35',
-        cream: '#FDFBF7',
+        // Dark green palette
+        'dark-green': {
+          50: '#f0f5f4',
+          100: '#d9e5e2',
+          200: '#b3cbc5',
+          300: '#8db1a8',
+          400: '#67978b',
+          500: '#4a7d6e',
+          600: '#1a3d35',
+          700: '#163329',
+          800: '#12291f',
+          900: '#0e1f17',
+        },
+        // Cream palette
+        cream: {
+          DEFAULT: '#FDFBF7',
+          50: '#FDFBF7',
+          100: '#f9f5ed',
+          200: '#f5f0e8',
+          300: '#ebe5d9',
+          400: '#d9d0c0',
+        },
       },
       fontFamily: {
         display: ['Inter', 'sans-serif'],

@@ -1,9 +1,10 @@
-﻿'use client';
+'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Flame, MapPin, Users, Clock, AlertTriangle, CheckCircle, Building2, Filter } from 'lucide-react';
-import PageTransition from '@/components/shared/pageTransition';
+import DashboardLayout from '@/components/layout/DashboardLayout';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { fadeIn } from '@/lib/animations';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
@@ -33,7 +34,7 @@ interface Hazard {
   updated_at: string;
 }
 
-export default function FiresPage() {
+function FiresPage() {
   const router = useRouter();
   const { user, role } = useAuth();
   const [hazards, setHazards] = useState<Hazard[]>([]);
@@ -122,21 +123,20 @@ export default function FiresPage() {
 
   if (loading) {
     return (
-      <PageTransition>
-        <div className="min-h-screen cream-gradient flex items-center justify-center">
+      <DashboardLayout role="firefighter" userName={user?.name || 'Commander'} userTitle="FIREFIGHTER">
+        <div className="flex items-center justify-center h-[calc(100vh-100px)]">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
             <p className="text-dark-green-600">Loading hazards...</p>
           </div>
         </div>
-      </PageTransition>
+      </DashboardLayout>
     );
   }
 
   return (
-    <PageTransition>
-      <div className="min-h-screen cream-gradient py-8 px-4">
-        <div className="max-w-7xl mx-auto">
+    <DashboardLayout role="firefighter" userName={user?.name || 'Commander'} userTitle="FIREFIGHTER">
+      <div className="p-6 max-w-7xl mx-auto">
           <motion.div variants={fadeIn} initial="initial" animate="animate">
             <div className="mb-8">
               <h1 className="text-4xl font-bold gradient-text mb-2">Fire Incident Management</h1>
@@ -303,7 +303,17 @@ export default function FiresPage() {
           </motion.div>
         </div>
       </div>
-    </PageTransition>
+    </DashboardLayout>
   );
 }
+
+function FiresPageWrapper() {
+  return (
+    <ProtectedRoute allowedRoles={['firefighter']}>
+      <FiresPage />
+    </ProtectedRoute>
+  );
+}
+
+export default FiresPageWrapper;
 

@@ -1,49 +1,14 @@
 export default function Loading() {
   return (
-    <div className="min-h-screen cream-gradient py-8 px-4">
-      <div className="max-w-7xl mx-auto">
-        {/* Header skeleton */}
-        <div className="mb-10 animate-pulse">
-          <div className="h-6 bg-gray-200 rounded w-32 mb-4"></div>
-          <div className="h-12 bg-gray-300 rounded w-64 mb-2"></div>
-          <div className="h-6 bg-gray-200 rounded w-48"></div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-white">
+      <div className="text-center">
+        <div className="w-16 h-16 mx-auto mb-4 green-gradient rounded-2xl flex items-center justify-center shadow-lg">
+          <svg className="w-8 h-8 text-white animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+          </svg>
         </div>
-
-        {/* Stats grid skeleton */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="premium-card rounded-3xl p-7 animate-pulse">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <div className="h-4 bg-gray-200 rounded w-24 mb-3"></div>
-                  <div className="h-10 bg-gray-300 rounded w-16 mb-3"></div>
-                  <div className="h-1 bg-gray-200 rounded w-full"></div>
-                </div>
-                <div className="w-16 h-16 bg-gray-300 rounded-2xl"></div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Content skeleton */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="premium-card rounded-3xl p-8 animate-pulse">
-            <div className="h-8 bg-gray-300 rounded w-1/3 mb-6"></div>
-            <div className="space-y-4">
-              <div className="h-14 bg-gray-200 rounded-xl"></div>
-              <div className="h-14 bg-gray-200 rounded-xl"></div>
-              <div className="h-14 bg-gray-200 rounded-xl"></div>
-            </div>
-          </div>
-          <div className="premium-card rounded-3xl p-8 animate-pulse">
-            <div className="h-8 bg-gray-300 rounded w-1/3 mb-6"></div>
-            <div className="space-y-4">
-              <div className="h-14 bg-gray-200 rounded-xl"></div>
-              <div className="h-14 bg-gray-200 rounded-xl"></div>
-              <div className="h-14 bg-gray-200 rounded-xl"></div>
-            </div>
-          </div>
-        </div>
+        <div className="animate-spin rounded-full h-10 w-10 border-4 border-primary border-t-transparent mx-auto mb-4"></div>
+        <p className="text-gray-700 font-medium">Loading...</p>
       </div>
     </div>
   );

@@ -5,7 +5,7 @@ import { Plus, Edit2, Trash2, Search, Video, VideoOff, AlertCircle, Building2, L
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { fadeIn } from '@/lib/animations';
 import { useAuth } from '@/context/AuthContext';
-import { api, Camera, CameraStats, Building, Floor, FireAlertConfig } from '@/lib/api';
+import { api, Camera, CameraStats, Building, Floor, Room, FireAlertConfig } from '@/lib/api';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 
 function CamerasManagementContent() {
@@ -13,6 +13,7 @@ function CamerasManagementContent() {
   const [cameras, setCameras] = useState<Camera[]>([]);
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [floors, setFloors] = useState<Floor[]>([]);
+  const [rooms, setRooms] = useState<Room[]>([]);
   const [stats, setStats] = useState<CameraStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -54,8 +55,17 @@ function CamerasManagementContent() {
       loadFloors(formData.building_id);
     } else {
       setFloors([]);
+      setRooms([]);
     }
   }, [formData.building_id]);
+
+  useEffect(() => {
+    if (formData.floor_id) {
+      loadRooms(formData.floor_id);
+    } else {
+      setRooms([]);
+    }
+  }, [formData.floor_id]);
 
   const loadData = async () => {
     try {
@@ -84,6 +94,16 @@ function CamerasManagementContent() {
     } catch (err) {
       console.error('Failed to load floors:', err);
       setFloors([]);
+    }
+  };
+
+  const loadRooms = async (floorId: number) => {
+    try {
+      const roomsData = await api.getFloorRooms(floorId);
+      setRooms(roomsData);
+    } catch (err) {
+      console.error('Failed to load rooms:', err);
+      setRooms([]);
     }
   };
 
@@ -163,7 +183,7 @@ function CamerasManagementContent() {
     setShowModal(true);
   };
 
-  const handleEdit = (camera: Camera) => {
+  const handleEdit = async (camera: Camera) => {
     setEditingCamera(camera);
     setFormData({
       name: camera.name,
@@ -176,6 +196,13 @@ function CamerasManagementContent() {
       location_description: camera.location_description || '',
       is_fire_detection_enabled: camera.is_fire_detection_enabled,
     });
+    // Pre-load floors and rooms for the camera's building/floor
+    if (camera.building_id) {
+      await loadFloors(camera.building_id);
+    }
+    if (camera.floor_id) {
+      await loadRooms(camera.floor_id);
+    }
     setShowModal(true);
   };
 
@@ -644,7 +671,7 @@ function CamerasManagementContent() {
                         <label className="block text-sm font-semibold text-dark-green-700 mb-2">Floor (Optional)</label>
                         <select
                           value={formData.floor_id || ''}
-                          onChange={(e) => setFormData({...formData, floor_id: e.target.value ? parseInt(e.target.value) : undefined})}
+                          onChange={(e) => setFormData({...formData, floor_id: e.target.value ? parseInt(e.target.value) : undefined, room_id: undefined})}
                           className="w-full px-4 py-2 border-2 border-dark-green-200 rounded-xl focus:border-dark-green-500 focus:outline-none"
                           disabled={!formData.building_id}
                         >
@@ -655,14 +682,21 @@ function CamerasManagementContent() {
                         </select>
                       </div>
                       <div>
-                        <label className="block text-sm font-semibold text-dark-green-700 mb-2">Room ID (Optional)</label>
-                        <input
-                          type="number"
+                        <label className="block text-sm font-semibold text-dark-green-700 mb-2">Room (Optional)</label>
+                        <select
                           value={formData.room_id || ''}
                           onChange={(e) => setFormData({...formData, room_id: e.target.value ? parseInt(e.target.value) : undefined})}
-                          placeholder="Enter room ID"
                           className="w-full px-4 py-2 border-2 border-dark-green-200 rounded-xl focus:border-dark-green-500 focus:outline-none"
-                        />
+                          disabled={!formData.floor_id}
+                        >
+                          <option value="">Select Room</option>
+                          {rooms.map(r => (
+                            <option key={r.id} value={r.id}>{r.name} ({r.type})</option>
+                          ))}
+                        </select>
+                        {!formData.floor_id && (
+                          <p className="text-xs text-dark-green-500 mt-1">Select a floor first to see available rooms</p>
+                        )}
                       </div>
                       <div className="col-span-2">
                         <label className="block text-sm font-semibold text-dark-green-700 mb-2">Location Description (Optional)</label>
