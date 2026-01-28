@@ -56,8 +56,48 @@ export interface Building {
   address: string;
   geometry?: string;
   society_id: number;
+  total_floors?: number;
+  apartments_per_floor?: number;
+  has_floor_plan?: boolean;
+  floor_plan_updated_at?: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface BuildingWithStatus {
+  id: number;
+  name: string;
+  address: string;
+  type: string;
+  total_floors: number;
+  apartments_per_floor: number;
+  has_floor_plan: boolean;
+  floor_plan_updated_at: string | null;
+  created_at: string;
+}
+
+export interface BuildingFull {
+  id: number;
+  name: string;
+  address: string;
+  type: string;
+  total_floors: number;
+  apartments_per_floor: number;
+  has_floor_plan: boolean;
+  floor_plan_updated_at: string | null;
+  scale_pixels_per_meter: number | null;
+  center_lat: number | null;
+  center_lng: number | null;
+  floors: Array<{
+    id: number;
+    name: string;
+    level: number;
+    apartments: Array<{
+      id: number;
+      unit_number: string;
+      occupied: boolean;
+    }>;
+  }>;
 }
 
 export interface Floor {
@@ -369,7 +409,25 @@ class ApiService {
     });
   }
 
-  async createBuilding(data: { name: string; address: string; type?: string }): Promise<Building> {
+  async getBuildingsWithStatus(): Promise<BuildingWithStatus[]> {
+    return this.request<BuildingWithStatus[]>('/buildings/with-status', {
+      method: 'GET',
+    });
+  }
+
+  async getBuildingFull(id: number): Promise<BuildingFull> {
+    return this.request<BuildingFull>(`/buildings/${id}/full`, {
+      method: 'GET',
+    });
+  }
+
+  async createBuilding(data: {
+    name: string;
+    address: string;
+    type?: string;
+    total_floors?: number;
+    apartments_per_floor?: number;
+  }): Promise<Building> {
     return this.request<Building>('/buildings', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -581,9 +639,11 @@ export const api = new ApiService();
 // Export buildingApi for backwards compatibility
 export const buildingApi = {
   getBuildings: () => api.getBuildings(),
+  getBuildingsWithStatus: () => api.getBuildingsWithStatus(),
   getBuildingById: (id: number) => api.getBuildingById(id),
+  getBuildingFull: (id: number) => api.getBuildingFull(id),
   getBuildingStats: () => api.getBuildingStats(),
-  createBuilding: (data: { name: string; address: string; type?: string }) => api.createBuilding(data),
+  createBuilding: (data: { name: string; address: string; type?: string; total_floors?: number; apartments_per_floor?: number }) => api.createBuilding(data),
   updateBuilding: (id: number, data: { name?: string; address?: string; type?: string }) => api.updateBuilding(id, data),
   deleteBuilding: (id: number) => api.deleteBuilding(id),
 };

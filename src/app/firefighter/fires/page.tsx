@@ -301,7 +301,6 @@ function FiresPage() {
               )}
             </div>
           </motion.div>
-        </div>
       </div>
     </DashboardLayout>
   );

@@ -4,20 +4,24 @@ import { useAuth } from '@/context/AuthContext';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useEffect, useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import {
   ShieldCheck,
   Bell,
-  CreditCard,
-  Truck,
-  LayoutGrid,
+  Home,
   AlertTriangle,
   Wrench,
   DoorOpen,
   MessageSquare,
   Megaphone,
   History,
+  MapPin,
+  TrendingUp,
+  CheckCircle,
+  Calendar,
   Package,
-  UserCheck
 } from 'lucide-react';
 
 interface ApartmentInfo {
@@ -134,222 +138,308 @@ function ResidentDashboardContent() {
   if (authLoading || loading) {
     return (
       <DashboardLayout role="resident" userName={user?.name || 'Resident'} userTitle="RESIDENT">
-        <div className="flex items-center justify-center h-[calc(100vh-100px)]">
-          <div className="flex flex-col items-center gap-4">
-            <div className="size-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
-            <p className="text-primary/60 font-medium animate-pulse">Loading residence data...</p>
+        <div className="flex items-center justify-center h-full min-h-[60vh]">
+          <div className="text-center">
+            <div className="rounded-full h-12 w-12 border-4 border-[#1f3d2f] border-t-transparent mx-auto mb-4 animate-spin" />
+            <p className="text-muted-foreground">Loading residence data...</p>
           </div>
         </div>
       </DashboardLayout>
     );
   }
 
+  // Stats data for cards
+  const statsData = [
+    {
+      label: 'Active Alerts',
+      value: '0',
+      icon: Bell,
+      color: 'text-orange-600',
+      bgColor: 'bg-orange-100',
+      note: 'Community is safe',
+    },
+    {
+      label: 'Maintenance',
+      value: 'Paid',
+      icon: Calendar,
+      color: 'text-blue-600',
+      bgColor: 'bg-blue-100',
+      note: 'Next due: Feb 01',
+    },
+    {
+      label: 'Deliveries',
+      value: '2',
+      icon: Package,
+      color: 'text-purple-600',
+      bgColor: 'bg-purple-100',
+      note: 'At Front Desk',
+    },
+    {
+      label: 'Safety Status',
+      value: 'Secure',
+      icon: ShieldCheck,
+      color: 'text-green-600',
+      bgColor: 'bg-green-100',
+      note: 'No hazards detected',
+    },
+  ];
+
   return (
-    <DashboardLayout role="resident" userName={user?.name || 'Alex Chen'} userTitle="RESIDENT">
-      <div className="max-w-[1400px] mx-auto w-full space-y-8 pb-12">
-        {/* Status Banner */}
-        <div className="bg-white/90 dark:bg-background-dark/95 backdrop-blur-md rounded-2xl p-6 border border-primary/10 shadow-sm flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="size-12 rounded-xl bg-green-100 dark:bg-green-900/20 flex items-center justify-center text-green-600">
-              <ShieldCheck className="w-6 h-6" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-primary dark:text-white">Safety Status: Secure</h2>
-              <p className="text-primary/60 dark:text-white/60 text-sm">No active hazards detected in your sector.</p>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <button className="px-5 py-2.5 bg-primary/5 hover:bg-primary/10 text-primary dark:text-white rounded-lg text-sm font-bold transition-colors">
-              View Logs
-            </button>
-          </div>
-        </div>
-
-        {/* Hero Section: My Apartment & Quick Stats */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* My Apartment Card */}
-          <div className="lg:col-span-2 relative overflow-hidden rounded-2xl bg-primary text-white p-8 shadow-xl">
-            <div className="absolute top-0 right-0 p-32 bg-white/5 rounded-full blur-3xl -mr-16 -mt-16"></div>
-            <div className="absolute bottom-0 left-0 p-24 bg-black/10 rounded-full blur-2xl -ml-12 -mb-12"></div>
-
-            <div className="relative z-10 flex flex-col h-full justify-between">
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="text-white/60 text-sm font-bold uppercase tracking-widest mb-1">Current Residence</p>
-                  <h1 className="text-4xl font-black tracking-tight">{apartmentInfo?.building.name || '---'}</h1>
-                  <p className="text-white/80 text-lg mt-1">{apartmentInfo?.building.address}</p>
-                </div>
-                <div className="bg-white/20 backdrop-blur-md px-4 py-2 rounded-lg border border-white/10">
-                  <span className="font-mono text-xl font-bold">UNIT {apartmentInfo?.number}</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-6 mt-12">
-                <div className="flex flex-col">
-                  <span className="text-white/50 text-xs font-bold uppercase">Floor Level</span>
-                  <span className="text-2xl font-bold">{apartmentInfo?.floor.name}</span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-white/50 text-xs font-bold uppercase">Occupancy</span>
-                  <div className="flex items-center gap-2">
-                    <span className="size-2 bg-green-400 rounded-full animate-pulse"></span>
-                    <span className="text-xl font-bold">{apartmentInfo?.status}</span>
+    <DashboardLayout role="resident" userName={user?.name || 'Resident'} userTitle="RESIDENT">
+      <div className="flex-1 space-y-4 sm:space-y-6 overflow-auto p-3 sm:p-4 md:p-6 lg:p-8 w-full max-w-none">
+        {/* Stats Cards */}
+        <div className="grid gap-3 grid-cols-1 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {statsData.map((stat) => (
+            <Card key={stat.label} className="border border-border">
+              <CardContent className="p-3 sm:p-4 md:p-5">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground truncate">
+                      {stat.label}
+                    </p>
+                    <p className="mt-2 text-2xl sm:text-3xl font-bold text-[#1f3d2f]">
+                      {stat.value}
+                    </p>
+                    <div className="mt-2 flex items-center gap-1">
+                      <TrendingUp className="h-3 w-3 text-green-600" />
+                      <span className="text-xs font-medium text-muted-foreground truncate">
+                        {stat.note}
+                      </span>
+                    </div>
+                  </div>
+                  <div className={`rounded-lg ${stat.bgColor} p-2.5 flex-shrink-0 h-10 w-10 flex items-center justify-center`}>
+                    <stat.icon className={`h-5 w-5 ${stat.color}`} />
                   </div>
                 </div>
-                <div className="flex flex-col">
-                  <span className="text-white/50 text-xs font-bold uppercase">Access Code</span>
-                  <span className="text-xl font-bold font-mono">****</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Metrics */}
-          <div className="flex flex-col gap-4">
-            <div className="flex-1 bg-white dark:bg-white/5 border border-primary/10 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all group cursor-pointer">
-              <div className="flex justify-between items-start mb-2">
-                <div className="size-10 rounded-lg bg-orange-50 dark:bg-orange-900/20 text-orange-600 flex items-center justify-center group-hover:bg-orange-100 transition-colors">
-                  <Bell className="w-5 h-5" />
-                </div>
-                <span className="text-2xl font-bold text-primary dark:text-white">0</span>
-              </div>
-              <p className="text-sm font-bold text-primary dark:text-white">Active Alerts</p>
-              <p className="text-xs text-primary/60 dark:text-white/60">Community is safe</p>
-            </div>
-
-            <div className="flex-1 bg-white dark:bg-white/5 border border-primary/10 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all group cursor-pointer">
-              <div className="flex justify-between items-start mb-2">
-                <div className="size-10 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 flex items-center justify-center group-hover:bg-blue-100 transition-colors">
-                  <CreditCard className="w-5 h-5" />
-                </div>
-                <span className="text-2xl font-bold text-primary dark:text-white">Pd</span>
-              </div>
-              <p className="text-sm font-bold text-primary dark:text-white">Maintenance</p>
-              <p className="text-xs text-primary/60 dark:text-white/60">Next due: Feb 01</p>
-            </div>
-
-            <div className="flex-1 bg-white dark:bg-white/5 border border-primary/10 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all group cursor-pointer">
-              <div className="flex justify-between items-start mb-2">
-                <div className="size-10 rounded-lg bg-purple-50 dark:bg-purple-900/20 text-purple-600 flex items-center justify-center group-hover:bg-purple-100 transition-colors">
-                  <Truck className="w-5 h-5" />
-                </div>
-                <span className="text-2xl font-bold text-primary dark:text-white">2</span>
-              </div>
-              <p className="text-sm font-bold text-primary dark:text-white">Deliveries</p>
-              <p className="text-xs text-primary/60 dark:text-white/60">At Front Desk</p>
-            </div>
-          </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
 
-        {/* Quick Actions Grid */}
-        <div>
-          <h3 className="text-primary dark:text-white font-bold text-lg mb-4 flex items-center gap-2">
-            <LayoutGrid className="w-5 h-5" />
-            Quick Actions
-          </h3>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <button
-              onClick={() => router.push('/emergency')}
-              className="p-6 bg-red-600 text-white rounded-2xl shadow-lg hover:shadow-red-600/30 hover:-translate-y-1 transition-all flex flex-col items-center gap-3 text-center"
-            >
-              <AlertTriangle className="w-8 h-8" />
-              <div>
-                <p className="font-bold text-lg">Emergency</p>
-                <p className="text-white/80 text-xs">Trigger SOS Beacon</p>
-              </div>
-            </button>
-
-            <button className="p-6 bg-white dark:bg-white/5 border border-primary/10 rounded-2xl hover:border-primary/30 hover:shadow-lg transition-all flex flex-col items-center gap-3 text-center group">
-              <div className="size-12 rounded-full bg-primary/5 group-hover:bg-primary/10 text-primary flex items-center justify-center transition-colors">
-                <Wrench className="w-6 h-6" />
-              </div>
-              <div>
-                <p className="font-bold text-primary dark:text-white">Request Fix</p>
-                <p className="text-primary/60 dark:text-white/60 text-xs">Report Issue</p>
-              </div>
-            </button>
-
-            <button className="p-6 bg-white dark:bg-white/5 border border-primary/10 rounded-2xl hover:border-primary/30 hover:shadow-lg transition-all flex flex-col items-center gap-3 text-center group">
-              <div className="size-12 rounded-full bg-primary/5 group-hover:bg-primary/10 text-primary flex items-center justify-center transition-colors">
-                <DoorOpen className="w-6 h-6" />
-              </div>
-              <div>
-                <p className="font-bold text-primary dark:text-white">Visitor Pass</p>
-                <p className="text-primary/60 dark:text-white/60 text-xs">Generate QR</p>
-              </div>
-            </button>
-
-            <button className="p-6 bg-white dark:bg-white/5 border border-primary/10 rounded-2xl hover:border-primary/30 hover:shadow-lg transition-all flex flex-col items-center gap-3 text-center group">
-              <div className="size-12 rounded-full bg-primary/5 group-hover:bg-primary/10 text-primary flex items-center justify-center transition-colors">
-                <MessageSquare className="w-6 h-6" />
-              </div>
-              <div>
-                <p className="font-bold text-primary dark:text-white">Community</p>
-                <p className="text-primary/60 dark:text-white/60 text-xs">View Notice Board</p>
-              </div>
-            </button>
+        {/* My Residence Card */}
+        <section>
+          <div className="mb-3 sm:mb-4 flex items-center gap-2">
+            <span className="h-2.5 w-2.5 rounded-full bg-green-500" />
+            <h2 className="text-base sm:text-lg font-bold text-foreground">My Residence</h2>
           </div>
-        </div>
 
-        {/* Notices Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div className="bg-white dark:bg-white/5 border border-primary/10 rounded-2xl p-6">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="font-bold text-lg text-primary dark:text-white flex items-center gap-2">
-                <Megaphone className="w-5 h-5" />
+          <Card className="overflow-hidden">
+            <CardContent className="p-0">
+              <div className="flex flex-col lg:flex-row">
+                <div className="relative h-48 w-full flex-shrink-0 bg-[#1f3d2f] sm:h-56 lg:h-auto lg:w-80">
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Home className="h-16 w-16 text-white/20" />
+                  </div>
+                  <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4">
+                    <Badge
+                      variant="secondary"
+                      className="gap-1.5 bg-white px-3 py-1.5 text-sm font-medium text-foreground shadow-sm rounded-full"
+                    >
+                      <MapPin className="h-3.5 w-3.5 text-[#1f3d2f]" />
+                      <span>{apartmentInfo?.building.address || 'Loading...'}</span>
+                    </Badge>
+                  </div>
+                </div>
+
+                <div className="flex flex-1 flex-col p-4 sm:p-5 md:p-6">
+                  <div className="flex flex-wrap gap-2">
+                    <Badge className="bg-green-500 px-2.5 py-0.5 text-xs font-semibold text-white hover:bg-green-500 rounded">
+                      {apartmentInfo?.status?.toUpperCase() || 'OCCUPIED'}
+                    </Badge>
+                    <Badge
+                      variant="outline"
+                      className="border-[#1f3d2f] bg-[#1f3d2f]/5 px-2.5 py-0.5 text-xs font-semibold text-[#1f3d2f] rounded"
+                    >
+                      UNIT {apartmentInfo?.number || '---'}
+                    </Badge>
+                  </div>
+
+                  <h3 className="mt-4 text-xl sm:text-2xl font-bold text-foreground">
+                    {apartmentInfo?.building.name || 'Loading...'}
+                  </h3>
+                  <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                    {apartmentInfo?.floor.name || 'Floor'} • {apartmentInfo?.building.type || 'Residential'} Building
+                  </p>
+
+                  <div className="mt-6 flex flex-col gap-4 border-t border-border pt-4">
+                    <div className="flex gap-8">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                          Floor Level
+                        </p>
+                        <p className="mt-0.5 text-xl font-bold text-foreground">
+                          {apartmentInfo?.floor.level || '-'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                          Building Type
+                        </p>
+                        <p className="mt-0.5 text-xl font-bold text-foreground capitalize">
+                          {apartmentInfo?.building.type || 'Residential'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                      <Button
+                        onClick={() => router.push('/resident/apartment')}
+                        className="gap-2 bg-[#1f3d2f] px-6 text-sm text-white hover:bg-[#2a4f3d]"
+                      >
+                        <Home className="h-4 w-4" />
+                        View Apartment Details
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => router.push('/resident/map')}
+                      >
+                        <MapPin className="h-4 w-4 mr-2" />
+                        View on Map
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+
+        {/* Quick Actions */}
+        <section>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-bold uppercase tracking-wider text-foreground">
+                Quick Actions
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <Button
+                  onClick={() => router.push('/emergency')}
+                  className="h-auto flex-col gap-2 p-4 bg-red-500 hover:bg-red-600 text-white"
+                >
+                  <AlertTriangle className="h-6 w-6" />
+                  <div className="text-center">
+                    <p className="font-semibold text-sm">Emergency</p>
+                    <p className="text-xs opacity-80">Trigger SOS</p>
+                  </div>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="h-auto flex-col gap-2 p-4"
+                >
+                  <Wrench className="h-6 w-6 text-muted-foreground" />
+                  <div className="text-center">
+                    <p className="font-semibold text-sm text-foreground">Request Fix</p>
+                    <p className="text-xs text-muted-foreground">Report Issue</p>
+                  </div>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="h-auto flex-col gap-2 p-4"
+                >
+                  <DoorOpen className="h-6 w-6 text-muted-foreground" />
+                  <div className="text-center">
+                    <p className="font-semibold text-sm text-foreground">Visitor Pass</p>
+                    <p className="text-xs text-muted-foreground">Generate QR</p>
+                  </div>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="h-auto flex-col gap-2 p-4"
+                >
+                  <MessageSquare className="h-6 w-6 text-muted-foreground" />
+                  <div className="text-center">
+                    <p className="font-semibold text-sm text-foreground">Community</p>
+                    <p className="text-xs text-muted-foreground">Notice Board</p>
+                  </div>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+
+        {/* Notices & Activity */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Official Notices */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-3">
+              <CardTitle className="text-sm font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
+                <Megaphone className="h-4 w-4" />
                 Official Notices
-              </h3>
-              <button className="text-xs font-bold text-primary/60 hover:text-primary transition-colors">View All</button>
-            </div>
-            <div className="space-y-4">
-              <div className="flex gap-4 p-3 rounded-xl hover:bg-primary/5 transition-colors cursor-pointer">
-                <div className="flex-col items-center justify-center text-center min-w-[50px]">
-                  <span className="block text-xs font-bold text-primary/60 uppercase">Jan</span>
-                  <span className="block text-xl font-bold text-primary">18</span>
+              </CardTitle>
+              <Button variant="link" className="text-xs p-0 h-auto">
+                View All
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer border border-border">
+                <div className="text-center min-w-[50px]">
+                  <span className="block text-xs font-semibold text-muted-foreground uppercase">Jan</span>
+                  <span className="block text-xl font-bold text-foreground">18</span>
                 </div>
-                <div>
-                  <h4 className="font-bold text-primary dark:text-white text-sm">Annual Fire Safety Drill</h4>
-                  <p className="text-xs text-primary/60 mt-1 line-clamp-2">Mandatory evacuation drill scheduled for tomorrow at 10:00 AM. Please proceed to the assembly point.</p>
-                </div>
-              </div>
-              <div className="flex gap-4 p-3 rounded-xl hover:bg-primary/5 transition-colors cursor-pointer">
-                <div className="flex-col items-center justify-center text-center min-w-[50px]">
-                  <span className="block text-xs font-bold text-primary/60 uppercase">Jan</span>
-                  <span className="block text-xl font-bold text-primary">15</span>
-                </div>
-                <div>
-                  <h4 className="font-bold text-primary dark:text-white text-sm">Elevator Maintenance Complete</h4>
-                  <p className="text-xs text-primary/60 mt-1 line-clamp-2">Service elevator B is now fully operational following scheduled repairs.</p>
+                <div className="flex-1">
+                  <h4 className="font-semibold text-foreground text-sm">Annual Fire Safety Drill</h4>
+                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                    Mandatory evacuation drill scheduled for tomorrow at 10:00 AM. Please proceed to the assembly point.
+                  </p>
                 </div>
               </div>
-            </div>
-          </div>
+              <div className="flex gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer border border-border">
+                <div className="text-center min-w-[50px]">
+                  <span className="block text-xs font-semibold text-muted-foreground uppercase">Jan</span>
+                  <span className="block text-xl font-bold text-foreground">15</span>
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-semibold text-foreground text-sm">Elevator Maintenance Complete</h4>
+                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                    Service elevator B is now fully operational following scheduled repairs.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-          <div className="bg-white dark:bg-white/5 border border-primary/10 rounded-2xl p-6">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="font-bold text-lg text-primary dark:text-white flex items-center gap-2">
-                <History className="w-5 h-5" />
+          {/* Recent Activity */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
+                <History className="h-4 w-4" />
                 Recent Activity
-              </h3>
-            </div>
-            <div className="relative pl-4 border-l border-primary/10 space-y-6">
-              <div className="relative">
-                <div className="absolute -left-[21px] top-1 size-3 rounded-full bg-green-500 border-2 border-white dark:border-background-dark"></div>
-                <p className="text-sm font-bold text-primary dark:text-white">Package Delivered</p>
-                <p className="text-xs text-primary/60">2 hours ago • Front Desk</p>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="h-2 w-2 mt-2 rounded-full bg-green-500 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-foreground">Package Delivered</p>
+                    <p className="text-xs text-muted-foreground">2 hours ago • Front Desk</p>
+                  </div>
+                  <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="h-2 w-2 mt-2 rounded-full bg-blue-500 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-foreground">Maintenance Request #402</p>
+                    <p className="text-xs text-muted-foreground">Yesterday • Status: In Progress</p>
+                  </div>
+                  <Badge variant="outline" className="text-xs">In Progress</Badge>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="h-2 w-2 mt-2 rounded-full bg-gray-300 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-foreground">Guest Entry: John Doe</p>
+                    <p className="text-xs text-muted-foreground">2 days ago • Approved</p>
+                  </div>
+                  <CheckCircle className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                </div>
               </div>
-              <div className="relative">
-                <div className="absolute -left-[21px] top-1 size-3 rounded-full bg-blue-500 border-2 border-white dark:border-background-dark"></div>
-                <p className="text-sm font-bold text-primary dark:text-white">Maintenance Request #402</p>
-                <p className="text-xs text-primary/60">Yesterday • Status: In Progress</p>
-              </div>
-              <div className="relative">
-                <div className="absolute -left-[21px] top-1 size-3 rounded-full bg-primary/20 border-2 border-white dark:border-background-dark"></div>
-                <p className="text-sm font-bold text-primary dark:text-white">Guest Entry: John Doe</p>
-                <p className="text-xs text-primary/60">2 days ago • Approved</p>
-              </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </DashboardLayout>

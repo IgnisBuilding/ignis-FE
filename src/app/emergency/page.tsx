@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, Suspense } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Flame,
@@ -46,12 +47,18 @@ const defaultUnits = [
 
 function EmergencyPageContent() {
   const { user } = useAuth();
+  const searchParams = useSearchParams();
+
+  // Get building ID and name from URL params
+  const buildingIdParam = searchParams.get('id');
+  const buildingName = searchParams.get('building') || 'Building';
+  const buildingId = buildingIdParam ? parseInt(buildingIdParam, 10) : 1;
 
   // Building & Floor State
-  const [buildingId] = useState(1); // Default building ID - can be made dynamic later
   const [floors, setFloors] = useState<Floor[]>([]);
   const [activeFloor, setActiveFloor] = useState<Floor | null>(null);
   const [isLoadingFloors, setIsLoadingFloors] = useState(true);
+  const [floorPlanData, setFloorPlanData] = useState<any>(null);
 
   // UI State
   const [viewMode, setViewMode] = useState<'2d' | '3d'>('3d');
@@ -63,11 +70,13 @@ function EmergencyPageContent() {
   const [emergencyState, setEmergencyState] = useState<EmergencyState | null>(null);
   const [units, setUnits] = useState(defaultUnits);
 
-  // Fetch floors from API
+  // Fetch floors and floor plan from API
   useEffect(() => {
-    const fetchFloors = async () => {
+    const fetchBuildingData = async () => {
       try {
         setIsLoadingFloors(true);
+
+        // Fetch floors
         const buildingFloors = await api.getBuildingFloors(buildingId);
         // Sort by level descending (highest floor first)
         const sortedFloors = buildingFloors.sort((a, b) => b.level - a.level);
@@ -75,6 +84,14 @@ function EmergencyPageContent() {
         // Set the first floor as active by default
         if (sortedFloors.length > 0) {
           setActiveFloor(sortedFloors[0]);
+        }
+
+        // Fetch floor plan GeoJSON data
+        try {
+          const floorPlan = await api.getBuildingFloorPlan(buildingId);
+          setFloorPlanData(floorPlan);
+        } catch (fpError) {
+          console.error('Failed to fetch floor plan:', fpError);
         }
       } catch (error) {
         console.error('Failed to fetch floors:', error);
@@ -89,7 +106,7 @@ function EmergencyPageContent() {
       }
     };
 
-    fetchFloors();
+    fetchBuildingData();
   }, [buildingId]);
   const [criticalAlert, setCriticalAlert] = useState<{
     title: string;
@@ -209,10 +226,10 @@ function EmergencyPageContent() {
           <div className="flex items-center gap-3">
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-base font-bold text-foreground">CENTRAL PLAZA COMPLEX</h1>
-                <Badge variant="secondary" className="text-[10px] font-semibold">HIGH RISE</Badge>
+                <h1 className="text-base font-bold text-foreground">{buildingName.toUpperCase()}</h1>
+                <Badge variant="secondary" className="text-[10px] font-semibold">BUILDING #{buildingId}</Badge>
               </div>
-              <p className="text-xs text-muted-foreground">1248 North Ave, Metropolis Sector 4</p>
+              <p className="text-xs text-muted-foreground">{floors.length} Floors • Emergency View</p>
             </div>
           </div>
 
@@ -326,6 +343,9 @@ function EmergencyPageContent() {
               floor={activeFloor ? `floor${activeFloor.level}` as 'floor1' | 'floor2' : 'floor1'}
               onRoomClick={handleRoomClick}
               onEmergencyStateChange={handleEmergencyStateChange}
+              buildingId={buildingId}
+              floorPlanData={floorPlanData}
+              activeFloorLevel={activeFloor?.level}
             />
 
             {/* Tactical Overlay Legend */}
@@ -490,7 +510,16 @@ function EmergencyPageContent() {
 export default function EmergencyPage() {
   return (
     <ProtectedRoute allowedRoles={['management', 'building_authority', 'firefighter']}>
-      <EmergencyPageContent />
+      <Suspense fallback={
+        <div className="w-full h-screen flex items-center justify-center bg-muted/20">
+          <div className="flex flex-col items-center gap-3">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#1f3d2f]"></div>
+            <p className="text-sm text-muted-foreground">Loading emergency view...</p>
+          </div>
+        </div>
+      }>
+        <EmergencyPageContent />
+      </Suspense>
     </ProtectedRoute>
   );
 }

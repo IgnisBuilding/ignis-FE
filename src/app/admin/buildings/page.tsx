@@ -20,15 +20,21 @@ interface Building {
   name: string
   type: string
   address: string
-  society_id: number
-  created_at: string
-  updated_at: string
+  society_id?: number
+  total_floors?: number
+  apartments_per_floor?: number
+  has_floor_plan?: boolean
+  floor_plan_updated_at?: string | null
+  created_at?: string
+  updated_at?: string
 }
 
 interface BuildingFormData {
   name: string
   address: string
   type: string
+  total_floors: number
+  apartments_per_floor: number
 }
 
 interface DeleteState {
@@ -50,6 +56,8 @@ function BuildingsManagementContent() {
     name: "",
     address: "",
     type: "residential",
+    total_floors: 1,
+    apartments_per_floor: 1,
   })
   const [deleteState, setDeleteState] = useState<DeleteState>({
     isOpen: false,
@@ -88,9 +96,9 @@ function BuildingsManagementContent() {
   const fetchBuildings = async () => {
     try {
       setLoading(true)
-      const data = await buildingApi.getBuildings()
-      setBuildings(data)
-      setFilteredBuildings(data)
+      const data = await buildingApi.getBuildingsWithStatus()
+      setBuildings(data as any)
+      setFilteredBuildings(data as any)
     } catch (err: any) {
       console.error("Error fetching buildings:", err)
       toast({
@@ -110,6 +118,8 @@ function BuildingsManagementContent() {
         name: building.name,
         address: building.address,
         type: building.type,
+        total_floors: (building as any).total_floors || 1,
+        apartments_per_floor: (building as any).apartments_per_floor || 1,
       })
     } else {
       setEditingBuilding(null)
@@ -117,6 +127,8 @@ function BuildingsManagementContent() {
         name: "",
         address: "",
         type: "residential",
+        total_floors: 1,
+        apartments_per_floor: 1,
       })
     }
     setIsModalOpen(true)
@@ -129,6 +141,8 @@ function BuildingsManagementContent() {
       name: "",
       address: "",
       type: "residential",
+      total_floors: 1,
+      apartments_per_floor: 1,
     })
   }
 
@@ -472,6 +486,35 @@ function BuildingsManagementContent() {
                 <option value="industrial">Industrial</option>
                 <option value="mixed">Mixed Use</option>
               </select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Number of Floors
+                </label>
+                <Input
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={formData.total_floors}
+                  onChange={(e) => setFormData({ ...formData, total_floors: parseInt(e.target.value) || 1 })}
+                  placeholder="e.g., 3"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Portions per Floor
+                </label>
+                <Input
+                  type="number"
+                  min="1"
+                  max="50"
+                  value={formData.apartments_per_floor}
+                  onChange={(e) => setFormData({ ...formData, apartments_per_floor: parseInt(e.target.value) || 1 })}
+                  placeholder="e.g., 4"
+                />
+              </div>
             </div>
 
             <DialogFooter className="gap-2">

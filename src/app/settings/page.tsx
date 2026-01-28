@@ -3,13 +3,30 @@ import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import { Settings as SettingsIcon, Bell, Users, Wifi, Shield, Monitor, Megaphone, Gauge, Thermometer, Wind, ChevronDown } from 'lucide-react';
+import { Settings as SettingsIcon, Bell, Users, Wifi, Shield, Monitor, Megaphone, Gauge, Thermometer, Wind, ChevronDown, User, Lock, Eye, Moon, Sun } from 'lucide-react';
 
-type SettingsTab = 'system' | 'notifications' | 'users' | 'sensors' | 'security';
+type SettingsTab = 'profile' | 'notifications' | 'security' | 'appearance' | 'system' | 'users' | 'sensors';
 
 function SettingsContent() {
-    const { user } = useAuth();
-    const [activeTab, setActiveTab] = useState<SettingsTab>('system');
+    const { user, role } = useAuth();
+
+    // Determine dashboard role based on user's actual role
+    const getDashboardRole = () => {
+        if (role === 'firefighter') return 'firefighter';
+        if (role === 'resident') return 'resident';
+        return 'admin';
+    };
+
+    // Determine user title based on role
+    const getUserTitle = () => {
+        if (role === 'firefighter') return 'FIREFIGHTER';
+        if (role === 'resident') return 'RESIDENT';
+        return 'ADMINISTRATOR';
+    };
+
+    // Check if user is admin (management or building_authority)
+    const isAdmin = role === 'management' || role === 'building_authority';
+    const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
 
     // Custom switch styles
     const switchStyles = `
@@ -51,23 +68,37 @@ function SettingsContent() {
     }
   `;
 
-    const tabs = [
-        { id: 'system' as SettingsTab, label: 'System', icon: SettingsIcon },
+    // Common tabs for all users
+    const commonTabs = [
+        { id: 'profile' as SettingsTab, label: 'Profile', icon: User },
         { id: 'notifications' as SettingsTab, label: 'Notifications', icon: Bell },
-        { id: 'users' as SettingsTab, label: 'Users', icon: Users },
-        { id: 'sensors' as SettingsTab, label: 'IoT Sensors', icon: Wifi },
-        { id: 'security' as SettingsTab, label: 'Security', icon: Shield },
+        { id: 'security' as SettingsTab, label: 'Security', icon: Lock },
+        { id: 'appearance' as SettingsTab, label: 'Appearance', icon: Eye },
     ];
 
+    // Admin-only tabs
+    const adminTabs = [
+        { id: 'system' as SettingsTab, label: 'System', icon: SettingsIcon },
+        { id: 'users' as SettingsTab, label: 'Users', icon: Users },
+        { id: 'sensors' as SettingsTab, label: 'IoT Sensors', icon: Wifi },
+    ];
+
+    const tabs = isAdmin ? [...commonTabs, ...adminTabs] : commonTabs;
+
     return (
-        <DashboardLayout role="admin" userName={user?.name || 'Admin'} userTitle="ADMINISTRATOR">
+        <DashboardLayout role={getDashboardRole()} userName={user?.name || 'User'} userTitle={getUserTitle()}>
             <style jsx global>{switchStyles}</style>
             <div className="flex-1 p-6">
                 {/* Page Header */}
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                     <div>
-                        <h1 className="text-4xl font-bold gradient-text mb-2">System Settings</h1>
-                        <p className="text-gray-600">Configure your IGNIS building management system and sensor networks.</p>
+                        <h1 className="text-4xl font-bold gradient-text mb-2">Settings</h1>
+                        <p className="text-gray-600">
+                            {isAdmin
+                                ? 'Configure your IGNIS system, notifications, and account preferences.'
+                                : 'Manage your account preferences and notification settings.'
+                            }
+                        </p>
                     </div>
                     <div className="flex gap-3">
                         <button className="px-6 py-2 rounded-lg bg-white border border-gray-200 text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors">
@@ -104,8 +135,96 @@ function SettingsContent() {
                 <div className="premium-card rounded-xl overflow-hidden">
                     <div className="p-6 md:p-10 space-y-12">
 
+                        {/* Profile Tab Content */}
+                        {activeTab === 'profile' && (
+                            <section>
+                                <h3 className="text-xl font-bold mb-6 text-primary flex items-center gap-2">
+                                    <User className="w-5 h-5" />
+                                    Profile Information
+                                </h3>
+                                <div className="space-y-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="flex flex-col gap-2">
+                                            <label className="text-sm font-semibold text-primary">Full Name</label>
+                                            <input className="w-full px-4 py-3 rounded-lg border border-[#d6e1de] bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-sm" type="text" defaultValue={user?.name || ''} />
+                                        </div>
+                                        <div className="flex flex-col gap-2">
+                                            <label className="text-sm font-semibold text-primary">Email Address</label>
+                                            <input className="w-full px-4 py-3 rounded-lg border border-[#d6e1de] bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-sm" type="email" defaultValue={user?.email || ''} />
+                                        </div>
+                                        <div className="flex flex-col gap-2">
+                                            <label className="text-sm font-semibold text-primary">Phone Number</label>
+                                            <input className="w-full px-4 py-3 rounded-lg border border-[#d6e1de] bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-sm" type="tel" placeholder="+1 (555) 000-0000" />
+                                        </div>
+                                        <div className="flex flex-col gap-2">
+                                            <label className="text-sm font-semibold text-primary">Role</label>
+                                            <input className="w-full px-4 py-3 rounded-lg border border-[#d6e1de] bg-gray-50 text-sm cursor-not-allowed" type="text" value={role || 'User'} disabled />
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-col gap-2">
+                                        <label className="text-sm font-semibold text-primary">Emergency Contact</label>
+                                        <input className="w-full px-4 py-3 rounded-lg border border-[#d6e1de] bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-sm" type="text" placeholder="Name and phone number" />
+                                    </div>
+                                </div>
+                            </section>
+                        )}
+
+                        {/* Appearance Tab Content */}
+                        {activeTab === 'appearance' && (
+                            <section>
+                                <h3 className="text-xl font-bold mb-6 text-primary flex items-center gap-2">
+                                    <Eye className="w-5 h-5" />
+                                    Appearance Settings
+                                </h3>
+                                <div className="space-y-6">
+                                    <div className="flex items-center justify-between p-4 rounded-xl bg-white border border-[#d6e1de]">
+                                        <div className="flex flex-col">
+                                            <p className="text-sm font-bold text-primary">Dark Mode</p>
+                                            <p className="text-xs text-[#60857d]">Switch between light and dark themes for better visibility.</p>
+                                        </div>
+                                        <label className="switch">
+                                            <input type="checkbox" />
+                                            <span className="slider-round"></span>
+                                        </label>
+                                    </div>
+                                    <div className="flex items-center justify-between p-4 rounded-xl bg-white border border-[#d6e1de]">
+                                        <div className="flex flex-col">
+                                            <p className="text-sm font-bold text-primary">Compact Mode</p>
+                                            <p className="text-xs text-[#60857d]">Reduce spacing and padding for a more compact interface.</p>
+                                        </div>
+                                        <label className="switch">
+                                            <input type="checkbox" />
+                                            <span className="slider-round"></span>
+                                        </label>
+                                    </div>
+                                    <div className="flex items-center justify-between p-4 rounded-xl bg-white border border-[#d6e1de]">
+                                        <div className="flex flex-col">
+                                            <p className="text-sm font-bold text-primary">High Contrast</p>
+                                            <p className="text-xs text-[#60857d]">Increase contrast for better accessibility.</p>
+                                        </div>
+                                        <label className="switch">
+                                            <input type="checkbox" />
+                                            <span className="slider-round"></span>
+                                        </label>
+                                    </div>
+                                    <div className="flex flex-col gap-2">
+                                        <label className="text-sm font-semibold text-primary">Language</label>
+                                        <div className="relative">
+                                            <select className="w-full appearance-none px-4 py-3 rounded-lg border border-[#d6e1de] bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-sm">
+                                                <option>English (US)</option>
+                                                <option>English (UK)</option>
+                                                <option>Spanish</option>
+                                                <option>French</option>
+                                            </select>
+                                            <ChevronDown className="w-5 h-5 absolute right-3 top-1/2 -translate-y-1/2 text-[#60857d] pointer-events-none" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
+                        )}
+
                         {/* System Tab Content */}
-                        {activeTab === 'system' && (
+                        {activeTab === 'system' && isAdmin && (
                             <>
                                 <section>
                                     <h3 className="text-xl font-bold mb-6 text-primary flex items-center gap-2">
@@ -155,49 +274,69 @@ function SettingsContent() {
                         {activeTab === 'notifications' && (
                             <section>
                                 <h3 className="text-xl font-bold mb-6 text-primary flex items-center gap-2">
-                                    <Megaphone className="w-5 h-5" />
-                                    Alerting & Notifications
+                                    <Bell className="w-5 h-5" />
+                                    Notification Preferences
                                 </h3>
                                 <div className="space-y-6">
                                     <div className="flex items-center justify-between p-4 rounded-xl bg-white border border-[#d6e1de]">
                                         <div className="flex flex-col">
-                                            <p className="text-sm font-bold text-primary">Critical Priority Radio Dispatch</p>
-                                            <p className="text-xs text-[#60857d]">Automatically broadcast high-priority fire alerts to field units via digital radio.</p>
+                                            <p className="text-sm font-bold text-primary">Push Notifications</p>
+                                            <p className="text-xs text-[#60857d]">Receive push notifications for important alerts and updates.</p>
                                         </div>
                                         <label className="switch">
                                             <input defaultChecked type="checkbox" />
-                                            <span className="slider-round"></span>
-                                        </label>
-                                    </div>
-                                    <div className="flex items-center justify-between p-4 rounded-xl bg-white border border-[#d6e1de]">
-                                        <div className="flex flex-col">
-                                            <p className="text-sm font-bold text-primary">SMS Emergency Escalation</p>
-                                            <p className="text-xs text-[#60857d]">Notify all off-duty personnel when containment falls below 30%.</p>
-                                        </div>
-                                        <label className="switch">
-                                            <input type="checkbox" />
                                             <span className="slider-round"></span>
                                         </label>
                                     </div>
                                     <div className="flex items-center justify-between p-4 rounded-xl bg-white border border-[#d6e1de]">
                                         <div className="flex flex-col">
                                             <p className="text-sm font-bold text-primary">Email Notifications</p>
-                                            <p className="text-xs text-[#60857d]">Send email alerts to building management for all incidents.</p>
+                                            <p className="text-xs text-[#60857d]">Receive email notifications for alerts and system updates.</p>
                                         </div>
                                         <label className="switch">
                                             <input defaultChecked type="checkbox" />
                                             <span className="slider-round"></span>
                                         </label>
                                     </div>
-                                    <div className="flex flex-col gap-4 p-4 rounded-xl bg-white border border-[#d6e1de]">
-                                        <div className="flex justify-between items-center">
-                                            <div className="flex flex-col">
-                                                <p className="text-sm font-bold text-primary">Alert Volume Threshold</p>
-                                                <p className="text-xs text-[#60857d]">The decibel level for high-intensity siren hardware.</p>
-                                            </div>
-                                            <span className="text-sm font-black text-primary">85%</span>
+                                    <div className="flex items-center justify-between p-4 rounded-xl bg-white border border-[#d6e1de]">
+                                        <div className="flex flex-col">
+                                            <p className="text-sm font-bold text-primary">SMS Alerts</p>
+                                            <p className="text-xs text-[#60857d]">Receive text messages for critical emergency alerts only.</p>
                                         </div>
-                                        <input className="w-full h-2 bg-[#d6e1de] rounded-lg appearance-none cursor-pointer accent-primary" max="100" min="0" type="range" defaultValue="85" />
+                                        <label className="switch">
+                                            <input defaultChecked type="checkbox" />
+                                            <span className="slider-round"></span>
+                                        </label>
+                                    </div>
+                                    <div className="flex items-center justify-between p-4 rounded-xl bg-white border border-[#d6e1de]">
+                                        <div className="flex flex-col">
+                                            <p className="text-sm font-bold text-primary">Emergency Alerts</p>
+                                            <p className="text-xs text-[#60857d]">Always receive critical fire and safety emergency alerts.</p>
+                                        </div>
+                                        <label className="switch">
+                                            <input defaultChecked type="checkbox" disabled />
+                                            <span className="slider-round"></span>
+                                        </label>
+                                    </div>
+                                    <div className="flex items-center justify-between p-4 rounded-xl bg-white border border-[#d6e1de]">
+                                        <div className="flex flex-col">
+                                            <p className="text-sm font-bold text-primary">Maintenance Updates</p>
+                                            <p className="text-xs text-[#60857d]">Receive notifications about scheduled maintenance in your building.</p>
+                                        </div>
+                                        <label className="switch">
+                                            <input defaultChecked type="checkbox" />
+                                            <span className="slider-round"></span>
+                                        </label>
+                                    </div>
+                                    <div className="flex items-center justify-between p-4 rounded-xl bg-white border border-[#d6e1de]">
+                                        <div className="flex flex-col">
+                                            <p className="text-sm font-bold text-primary">Community Announcements</p>
+                                            <p className="text-xs text-[#60857d]">Receive notifications about community news and events.</p>
+                                        </div>
+                                        <label className="switch">
+                                            <input type="checkbox" />
+                                            <span className="slider-round"></span>
+                                        </label>
                                     </div>
                                 </div>
                             </section>
@@ -306,47 +445,62 @@ function SettingsContent() {
                             </section>
                         )}
 
-                        {/* Security Tab Content */}
+                        {/* Security Tab Content - User focused */}
                         {activeTab === 'security' && (
                             <section>
                                 <h3 className="text-xl font-bold mb-6 text-primary flex items-center gap-2">
-                                    <Shield className="w-5 h-5" />
-                                    Security & Privacy
+                                    <Lock className="w-5 h-5" />
+                                    Account Security
                                 </h3>
                                 <div className="space-y-6">
-                                    <div className="flex items-center justify-between p-4 rounded-xl bg-white border border-[#d6e1de]">
-                                        <div className="flex flex-col">
-                                            <p className="text-sm font-bold text-primary">Data Encryption</p>
-                                            <p className="text-xs text-[#60857d]">Encrypt all sensitive data at rest using AES-256.</p>
+                                    <div className="p-4 rounded-xl bg-white border border-[#d6e1de]">
+                                        <p className="text-sm font-bold text-primary mb-4">Change Password</p>
+                                        <div className="space-y-4">
+                                            <div className="flex flex-col gap-2">
+                                                <label className="text-sm font-semibold text-primary">Current Password</label>
+                                                <input className="w-full px-4 py-3 rounded-lg border border-[#d6e1de] bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-sm" type="password" placeholder="Enter current password" />
+                                            </div>
+                                            <div className="flex flex-col gap-2">
+                                                <label className="text-sm font-semibold text-primary">New Password</label>
+                                                <input className="w-full px-4 py-3 rounded-lg border border-[#d6e1de] bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-sm" type="password" placeholder="Enter new password" />
+                                            </div>
+                                            <div className="flex flex-col gap-2">
+                                                <label className="text-sm font-semibold text-primary">Confirm New Password</label>
+                                                <input className="w-full px-4 py-3 rounded-lg border border-[#d6e1de] bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-sm" type="password" placeholder="Confirm new password" />
+                                            </div>
+                                            <button className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-bold hover:opacity-90 transition-colors">
+                                                Update Password
+                                            </button>
                                         </div>
-                                        <label className="switch">
-                                            <input defaultChecked type="checkbox" />
-                                            <span className="slider-round"></span>
-                                        </label>
                                     </div>
                                     <div className="flex items-center justify-between p-4 rounded-xl bg-white border border-[#d6e1de]">
                                         <div className="flex flex-col">
-                                            <p className="text-sm font-bold text-primary">Audit Logging</p>
-                                            <p className="text-xs text-[#60857d]">Log all user actions and system events for compliance.</p>
-                                        </div>
-                                        <label className="switch">
-                                            <input defaultChecked type="checkbox" />
-                                            <span className="slider-round"></span>
-                                        </label>
-                                    </div>
-                                    <div className="flex items-center justify-between p-4 rounded-xl bg-white border border-[#d6e1de]">
-                                        <div className="flex flex-col">
-                                            <p className="text-sm font-bold text-primary">IP Whitelisting</p>
-                                            <p className="text-xs text-[#60857d]">Restrict admin access to approved IP addresses only.</p>
+                                            <p className="text-sm font-bold text-primary">Two-Factor Authentication</p>
+                                            <p className="text-xs text-[#60857d]">Add an extra layer of security to your account with 2FA.</p>
                                         </div>
                                         <label className="switch">
                                             <input type="checkbox" />
                                             <span className="slider-round"></span>
                                         </label>
                                     </div>
-                                    <div className="flex flex-col gap-2">
-                                        <label className="text-sm font-semibold text-primary">Data Retention Period (days)</label>
-                                        <input className="w-full px-4 py-3 rounded-lg border border-[#d6e1de] bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-sm" type="number" defaultValue="365" />
+                                    <div className="flex items-center justify-between p-4 rounded-xl bg-white border border-[#d6e1de]">
+                                        <div className="flex flex-col">
+                                            <p className="text-sm font-bold text-primary">Login Alerts</p>
+                                            <p className="text-xs text-[#60857d]">Receive notifications when someone logs into your account from a new device.</p>
+                                        </div>
+                                        <label className="switch">
+                                            <input defaultChecked type="checkbox" />
+                                            <span className="slider-round"></span>
+                                        </label>
+                                    </div>
+                                    <div className="flex items-center justify-between p-4 rounded-xl bg-white border border-[#d6e1de]">
+                                        <div className="flex flex-col">
+                                            <p className="text-sm font-bold text-primary">Session Management</p>
+                                            <p className="text-xs text-[#60857d]">View and manage your active sessions on other devices.</p>
+                                        </div>
+                                        <button className="px-4 py-2 bg-white border border-[#d6e1de] text-primary rounded-lg text-xs font-bold hover:bg-primary/5 transition-all">
+                                            Manage Sessions
+                                        </button>
                                     </div>
                                 </div>
                             </section>
@@ -361,7 +515,7 @@ function SettingsContent() {
 
 export default function Settings() {
     return (
-        <ProtectedRoute allowedRoles={['management', 'building_authority']}>
+        <ProtectedRoute allowedRoles={['management', 'building_authority', 'firefighter', 'resident']}>
             <SettingsContent />
         </ProtectedRoute>
     );

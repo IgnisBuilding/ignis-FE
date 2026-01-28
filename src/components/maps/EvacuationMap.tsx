@@ -44,6 +44,9 @@ interface EvacuationMapProps {
   showFloorSelector?: boolean; // Whether to show internal floor tabs
   onRoomClick?: (room: GeoJSON.Feature) => void;
   onEmergencyStateChange?: (state: EmergencyState) => void;
+  buildingId?: number; // Building ID from database
+  floorPlanData?: any; // Floor plan GeoJSON data from database
+  activeFloorLevel?: number; // Active floor level from parent
 }
 
 // Notification component
@@ -73,6 +76,9 @@ const EvacuationMap = memo(({
   showFloorSelector = true,
   onRoomClick,
   onEmergencyStateChange,
+  buildingId,
+  floorPlanData,
+  activeFloorLevel,
 }: EvacuationMapProps) => {
   // Refs
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -101,7 +107,7 @@ const EvacuationMap = memo(({
 
   // Fire zone management state
   const [selectedFireZones, setSelectedFireZones] = useState<string[]>([]);
-  const [fireSeverity, setFireSeverity] = useState<'HIGH' | 'CRITICAL'>('HIGH');
+  const [fireSeverity, setFireSeverity] = useState<'high' | 'critical'>('high');
   const [activeFireZones, setActiveFireZones] = useState<Array<{ roomId: string; roomName: string; severity: string }>>([]);
 
   // Automatic fire detection state
@@ -193,64 +199,164 @@ const EvacuationMap = memo(({
 
     map.on('load', async () => {
       try {
-        // First, check for imported building data from Map Editor
-        const importedBuilding = await loadImportedBuilding();
-
         let roomsData: GeoJSON.FeatureCollection;
         let featuresData: GeoJSON.FeatureCollection;
         let detailsData: GeoJSON.FeatureCollection;
         let nodesData: GeoJSON.FeatureCollection;
+        let camerasData: GeoJSON.FeatureCollection = { type: 'FeatureCollection', features: [] };
         let roomNodesMappingData: any[] = [];
         let sensors: GeoJSON.FeatureCollection | null = null;
         let occupancy: any = null;
         let buildingCenter: [number, number] | null = null;
 
-        if (importedBuilding) {
-          // Use imported building data from Map Editor
-          console.log('[EvacuationMap] Using imported building data:', importedBuilding.buildingId);
-          const convertedData = convertImportedToMapData(importedBuilding);
+        // Priority 1: Use floorPlanData from props (passed from parent component)
+        if (floorPlanData && floorPlanData.features && floorPlanData.features.length > 0) {
+          console.log('[EvacuationMap] Using floor plan data from props, buildingId:', buildingId);
 
-          roomsData = convertedData.rooms;
-          featuresData = convertedData.features;
-          detailsData = convertedData.details;
-          nodesData = convertedData.nodes;
-          sensors = convertedData.sensors;
-          occupancy = convertedData.occupancy;
-          buildingCenter = convertedData.buildingCenter;
+          // Filter features by type and active floor level
+          const filterByFloor = (features: any[]) => {
+            if (!activeFloorLevel) return features;
+            return features.filter((f: any) =>
+              !f.properties?.level || String(f.properties.level) === String(activeFloorLevel)
+            );
+          };
 
-          setIsUsingImportedData(true);
-          setImportedBuildingName(importedBuilding.building?.name || 'Imported Building');
+          const roomFeatures = filterByFloor(floorPlanData.features.filter((f: any) =>
+            f.properties?.room_type || (f.geometry?.type === 'Polygon' && !f.properties?.type)
+          ));
 
-          showNotification(`Loaded imported building: ${importedBuilding.building?.name || 'Custom Floor Plan'}`, 'success');
-        } else {
-          // Fall back to loading from backend API
-          console.log('[EvacuationMap] No imported building, loading from backend API...');
-          const backendData = await loadMapData();
+          const openingFeatures = filterByFloor(floorPlanData.features.filter((f: any) =>
+            f.properties?.type === 'opening' || f.properties?.opening_type
+          ));
 
-          // Check if rooms data was loaded successfully
-          if (!backendData.rooms || !backendData.rooms.features || backendData.rooms.features.length === 0) {
-            console.error('Rooms data not loaded - backend may be unavailable');
-            showNotification('Backend server not available. Please ensure the backend is running.', 'error');
-            setIsMapLoaded(true); // Still mark as loaded to show error state
-            return;
+          const nodeFeatures = filterByFloor(floorPlanData.features.filter((f: any) =>
+            f.properties?.type === 'node'
+          ));
+
+          const cameraFeatures = filterByFloor(floorPlanData.features.filter((f: any) =>
+            f.properties?.type === 'camera' || f.properties?.is_camera
+          ));
+
+          roomsData = {
+            type: 'FeatureCollection',
+            features: roomFeatures.map((f: any) => ({
+              ...f,
+              properties: {
+                ...f.properties,
+                room_type: f.properties?.room_type || f.properties?.type || 'other',
+              }
+            }))
+          };
+
+          // Convert LineString openings to Points at their midpoints for circle rendering
+          featuresData = {
+            type: 'FeatureCollection',
+            features: openingFeatures.map((f: any) => {
+              // If it's a LineString (opening), convert to Point at midpoint
+              if (f.geometry?.type === 'LineString' && f.geometry.coordinates?.length >= 2) {
+                const coords = f.geometry.coordinates;
+                const midLng = (coords[0][0] + coords[1][0]) / 2;
+                const midLat = (coords[0][1] + coords[1][1]) / 2;
+                return {
+                  ...f,
+                  geometry: {
+                    type: 'Point',
+                    coordinates: [midLng, midLat]
+                  }
+                };
+              }
+              return f;
+            })
+          };
+
+          detailsData = { type: 'FeatureCollection', features: [] };
+
+          nodesData = {
+            type: 'FeatureCollection',
+            features: nodeFeatures
+          };
+
+          // Create cameras data
+          camerasData = {
+            type: 'FeatureCollection',
+            features: cameraFeatures
+          };
+
+          // Log cameras found
+          if (cameraFeatures.length > 0) {
+            console.log('[EvacuationMap] Found', cameraFeatures.length, 'cameras in floor plan data');
           }
 
-          // Normalize and add sources
-          roomsData = normalizeGeoJSON(backendData.rooms);
-          featuresData = normalizeGeoJSON(backendData.features);
-          detailsData = normalizeGeoJSON(backendData.details);
-          nodesData = normalizeGeoJSON(backendData.nodes);
-          roomNodesMappingData = backendData.roomNodes || [];
-          sensors = backendData.sensors;
-          occupancy = backendData.occupancy;
+          // Get building center from properties
+          if (floorPlanData.properties?.center_lat && floorPlanData.properties?.center_lng) {
+            buildingCenter = [floorPlanData.properties.center_lng, floorPlanData.properties.center_lat];
+          }
+
+          setIsUsingImportedData(true);
+          setImportedBuildingName(floorPlanData.properties?.building_name || `Building #${buildingId}`);
+
+          showNotification(`Loaded building floor plan from database`, 'success');
+        } else {
+          // Priority 2: Check for imported building data from Map Editor (localStorage)
+          const importedBuilding = await loadImportedBuilding();
+
+          if (importedBuilding) {
+            // Use imported building data from Map Editor
+            console.log('[EvacuationMap] Using imported building data:', importedBuilding.buildingId);
+            const convertedData = convertImportedToMapData(importedBuilding);
+
+            roomsData = convertedData.rooms;
+            featuresData = convertedData.features;
+            detailsData = convertedData.details;
+            nodesData = convertedData.nodes;
+            sensors = convertedData.sensors;
+            occupancy = convertedData.occupancy;
+            buildingCenter = convertedData.buildingCenter;
+
+            setIsUsingImportedData(true);
+            setImportedBuildingName(importedBuilding.building?.name || 'Imported Building');
+
+            showNotification(`Loaded imported building: ${importedBuilding.building?.name || 'Custom Floor Plan'}`, 'success');
+          } else {
+            // Priority 3: Fall back to loading from backend API
+            console.log('[EvacuationMap] No imported building, loading from backend API...');
+            const backendData = await loadMapData();
+
+            // Check if rooms data was loaded successfully
+            if (!backendData.rooms || !backendData.rooms.features || backendData.rooms.features.length === 0) {
+              console.error('Rooms data not loaded - backend may be unavailable');
+              showNotification('Backend server not available. Please ensure the backend is running.', 'error');
+              setIsMapLoaded(true); // Still mark as loaded to show error state
+              return;
+            }
+
+            // Normalize and add sources
+            roomsData = normalizeGeoJSON(backendData.rooms);
+            featuresData = normalizeGeoJSON(backendData.features);
+            detailsData = normalizeGeoJSON(backendData.details);
+            nodesData = normalizeGeoJSON(backendData.nodes);
+            roomNodesMappingData = backendData.roomNodes || [];
+            sensors = backendData.sensors;
+            occupancy = backendData.occupancy;
+          }
         }
 
-        // Check if rooms data was loaded successfully (for imported data)
+        // Check if rooms data was loaded successfully
+        // If buildingId prop is provided, we expect floorPlanData to arrive later via useEffect
         if (!roomsData || !roomsData.features || roomsData.features.length === 0) {
-          console.error('No room data available');
-          showNotification('No building data available. Please import a floor plan from Map Editor.', 'error');
-          setIsMapLoaded(true);
-          return;
+          if (buildingId) {
+            // We're waiting for floorPlanData from props - create empty sources
+            console.log('[EvacuationMap] Waiting for floor plan data from database for building', buildingId);
+            roomsData = { type: 'FeatureCollection', features: [] };
+            featuresData = { type: 'FeatureCollection', features: [] };
+            detailsData = { type: 'FeatureCollection', features: [] };
+            nodesData = { type: 'FeatureCollection', features: [] };
+          } else {
+            console.error('No room data available');
+            showNotification('No building data available. Please import a floor plan from Map Editor.', 'error');
+            setIsMapLoaded(true);
+            return;
+          }
         }
 
         // Store rooms data in ref for later use (fire zone visualization)
@@ -265,6 +371,7 @@ const EvacuationMap = memo(({
         map.addSource('building-features', { type: 'geojson', data: featuresData });
         map.addSource('building-details', { type: 'geojson', data: detailsData });
         map.addSource('navigation-nodes', { type: 'geojson', data: nodesData });
+        map.addSource('cameras', { type: 'geojson', data: camerasData });
 
         // Add all layers
         addMapLayers(map);
@@ -375,10 +482,6 @@ const EvacuationMap = memo(({
         setupRoomInteractions(map);
 
         setIsMapLoaded(true);
-        // Show success notification only if not using imported data (already shown earlier)
-        if (!importedBuilding) {
-          showNotification('Map loaded successfully from backend', 'success');
-        }
       } catch (error) {
         console.error('Failed to initialize map:', error);
         showNotification('Failed to load map data. Please check if the backend server is running.', 'error');
@@ -399,6 +502,200 @@ const EvacuationMap = memo(({
     };
   }, [showControls, showNotification]);
 
+  // Update map data when floorPlanData or activeFloorLevel changes
+  useEffect(() => {
+    if (!mapRef.current || !isMapLoaded || !floorPlanData?.features?.length) return;
+
+    const map = mapRef.current;
+
+    try {
+      // Filter features by active floor level
+      const filterByFloor = (features: any[]) => {
+        if (!activeFloorLevel) return features;
+        return features.filter((f: any) =>
+          !f.properties?.level || String(f.properties.level) === String(activeFloorLevel)
+        );
+      };
+
+      const roomFeatures = filterByFloor(floorPlanData.features.filter((f: any) =>
+        f.properties?.room_type || (f.geometry?.type === 'Polygon' && !f.properties?.type)
+      ));
+
+      const openingFeatures = filterByFloor(floorPlanData.features.filter((f: any) =>
+        f.properties?.type === 'opening' || f.properties?.opening_type
+      ));
+
+      const nodeFeatures = filterByFloor(floorPlanData.features.filter((f: any) =>
+        f.properties?.type === 'node'
+      ));
+
+      const edgeFeatures = filterByFloor(floorPlanData.features.filter((f: any) =>
+        f.properties?.type === 'edge'
+      ));
+
+      console.log('[EvacuationMap] Floor', activeFloorLevel, '- Rooms:', roomFeatures.length, 'Openings:', openingFeatures.length, 'Nodes:', nodeFeatures.length, 'Edges:', edgeFeatures.length);
+
+      const roomsData: GeoJSON.FeatureCollection = {
+        type: 'FeatureCollection',
+        features: roomFeatures.map((f: any) => ({
+          ...f,
+          properties: {
+            ...f.properties,
+            room_type: f.properties?.room_type || f.properties?.type || 'other',
+          }
+        }))
+      };
+
+      // Convert LineString openings to Points at their midpoints for circle rendering
+      const featuresData: GeoJSON.FeatureCollection = {
+        type: 'FeatureCollection',
+        features: openingFeatures.map((f: any) => {
+          // If it's a LineString (opening), convert to Point at midpoint
+          if (f.geometry?.type === 'LineString' && f.geometry.coordinates?.length >= 2) {
+            const coords = f.geometry.coordinates;
+            const midLng = (coords[0][0] + coords[1][0]) / 2;
+            const midLat = (coords[0][1] + coords[1][1]) / 2;
+            return {
+              ...f,
+              geometry: {
+                type: 'Point',
+                coordinates: [midLng, midLat]
+              }
+            };
+          }
+          return f;
+        })
+      };
+
+      const nodesData: GeoJSON.FeatureCollection = {
+        type: 'FeatureCollection',
+        features: nodeFeatures
+      };
+
+      // Update or create sources
+      let buildingSource = map.getSource('building') as maplibregl.GeoJSONSource;
+      let featuresSource = map.getSource('building-features') as maplibregl.GeoJSONSource;
+      let nodesSource = map.getSource('navigation-nodes') as maplibregl.GeoJSONSource;
+
+      if (buildingSource) {
+        buildingSource.setData(roomsData);
+      } else {
+        map.addSource('building', { type: 'geojson', data: roomsData, generateId: true });
+      }
+      roomsDataRef.current = roomsData;
+
+      if (featuresSource) {
+        featuresSource.setData(featuresData);
+      } else {
+        map.addSource('building-features', { type: 'geojson', data: featuresData });
+      }
+
+      if (nodesSource) {
+        nodesSource.setData(nodesData);
+      } else {
+        map.addSource('navigation-nodes', { type: 'geojson', data: nodesData });
+      }
+
+      // Update cameras source
+      const cameraFeatures = filterByFloor(floorPlanData.features.filter((f: any) =>
+        f.properties?.type === 'camera' || f.properties?.is_camera
+      ));
+      const camerasData: GeoJSON.FeatureCollection = {
+        type: 'FeatureCollection',
+        features: cameraFeatures
+      };
+      let camerasSource = map.getSource('cameras') as maplibregl.GeoJSONSource;
+      if (camerasSource) {
+        camerasSource.setData(camerasData);
+      } else {
+        map.addSource('cameras', { type: 'geojson', data: camerasData });
+      }
+      if (cameraFeatures.length > 0) {
+        console.log('[EvacuationMap] Updated cameras source with', cameraFeatures.length, 'cameras');
+      }
+
+      // Update building center and fly to it
+      if (floorPlanData.properties?.center_lat && floorPlanData.properties?.center_lng) {
+        map.flyTo({
+          center: [floorPlanData.properties.center_lng, floorPlanData.properties.center_lat],
+          zoom: 19,
+          duration: 500,
+        });
+      } else if (roomFeatures.length > 0) {
+        // Calculate bounds from room features and fit to them
+        const bounds = calculateBounds(roomsData);
+        if (bounds) {
+          map.fitBounds(bounds, { padding: 50, duration: 500 });
+        }
+      }
+
+      // Update the building name display
+      setImportedBuildingName(floorPlanData.properties?.building_name || `Building #${buildingId}`);
+      setIsUsingImportedData(true);
+
+      // Populate route nodes from the floor plan data for route calculation
+      const roomNodesForRoute = roomFeatures
+        .filter((f: any) => f.properties?.name)
+        .map((f: any) => {
+          const roomId = f.properties?.db_id || f.properties?.id || f.id;
+          // Find the corresponding node for this room
+          const roomNode = nodeFeatures.find((n: any) =>
+            n.properties?.room_id === roomId ||
+            String(n.properties?.room_id) === String(roomId)
+          );
+
+          // Get centroid from room properties or calculate from geometry
+          let coordinates: [number, number] | undefined;
+          if (f.properties?.centroid_lng && f.properties?.centroid_lat) {
+            coordinates = [f.properties.centroid_lng, f.properties.centroid_lat];
+          } else if (f.geometry && f.geometry.type === 'Polygon') {
+            const ring = f.geometry.coordinates[0];
+            let cx = 0, cy = 0;
+            ring.forEach(([lng, lat]: [number, number]) => { cx += lng; cy += lat; });
+            coordinates = [cx / ring.length, cy / ring.length];
+          }
+
+          return {
+            id: String(roomId),
+            name: f.properties?.name || 'Unknown',
+            // Use the database node ID if available
+            nodeId: roomNode ? String(roomNode.properties?.db_id || roomNode.properties?.id) : String(roomId),
+            roomId: String(roomId),
+            coordinates,
+          };
+        });
+
+      // Add navigation nodes (doorways, exits, etc.)
+      const navNodesForRoute = nodeFeatures
+        .filter((f: any) => {
+          const nodeType = f.properties?.node_type;
+          return nodeType === 'door' || nodeType === 'exit' || nodeType === 'staircase' || nodeType === 'entrance';
+        })
+        .map((f: any) => {
+          let coordinates: [number, number] | undefined;
+          if (f.geometry && f.geometry.type === 'Point') {
+            coordinates = f.geometry.coordinates as [number, number];
+          }
+          const nodeType = f.properties?.node_type || 'node';
+          const nodeId = f.properties?.db_id || f.properties?.id || f.id;
+          return {
+            id: `nav-${nodeId}`,
+            name: `${nodeType.charAt(0).toUpperCase() + nodeType.slice(1)} ${nodeId}`,
+            nodeId: String(nodeId),
+            roomId: `nav-${nodeId}`,
+            coordinates,
+          };
+        });
+
+      setRouteNodes([...roomNodesForRoute, ...navNodesForRoute]);
+      console.log('[EvacuationMap] Route nodes populated:', roomNodesForRoute.length, 'rooms,', navNodesForRoute.length, 'nav nodes');
+
+      console.log('[EvacuationMap] Updated map with floor', activeFloorLevel, '- rooms:', roomFeatures.length);
+    } catch (err) {
+      console.error('[EvacuationMap] Error updating map data:', err);
+    }
+  }, [floorPlanData, activeFloorLevel, isMapLoaded, buildingId]);
+
   // Add map layers
   const addMapLayers = (map: maplibregl.Map) => {
     // Background layers
@@ -418,44 +715,33 @@ const EvacuationMap = memo(({
       paint: { 'line-color': '#90a4ae', 'line-width': 2, 'line-dasharray': [4, 2] },
     });
 
-    // Building shadow
+    // Building shadow - show for all rooms (data is pre-filtered by floor)
     map.addLayer({
       id: 'building-shadow',
       type: 'fill',
       source: 'building',
-      filter: [
-        'all',
-        ['==', ['get', 'level'], '0'],
-        ['!=', ['geometry-type'], 'LineString'],
-      ],
+      filter: ['!=', ['geometry-type'], 'LineString'],
       paint: LAYER_STYLES.buildingShadow as any,
     });
 
-    // Floor 1 layers (level '0' = ground floor) - White/simple theme
+    // Room fill layer - show all rooms (data is pre-filtered by floor level)
     map.addLayer({
       id: 'floor1-fill',
       type: 'fill',
       source: 'building',
-      filter: [
-        'all',
-        ['==', ['get', 'level'], '0'],
-        ['!=', ['geometry-type'], 'LineString'],
-      ],
+      filter: ['!=', ['geometry-type'], 'LineString'],
       paint: {
         'fill-color': '#f5f5f5',  // White/light gray for all rooms
         'fill-opacity': 0.9,
       },
     });
 
+    // Room outline layer
     map.addLayer({
       id: 'floor1-outline',
       type: 'line',
       source: 'building',
-      filter: [
-        'all',
-        ['==', ['get', 'level'], '0'],
-        ['!=', ['geometry-type'], 'LineString'],
-      ],
+      filter: ['!=', ['geometry-type'], 'LineString'],
       layout: {
         'line-join': 'round',
         'line-cap': 'round',
@@ -480,12 +766,11 @@ const EvacuationMap = memo(({
       layout: { 'text-field': '🚶', 'text-size': 20, 'text-anchor': 'center' },
     });
 
-    // Room labels
+    // Room labels - show for all rooms (data is pre-filtered by floor level)
     map.addLayer({
       id: 'floor1-labels',
       type: 'symbol',
       source: 'building',
-      filter: ['==', ['get', 'level'], '0'],
       layout: {
         'text-field': ['get', 'name'],
         'text-size': 11,
@@ -528,13 +813,40 @@ const EvacuationMap = memo(({
       paint: LAYER_STYLES.exteriorWalls as any,
     });
 
-    // Windows
+    // Windows (rendered as circles from opening data)
     map.addLayer({
       id: 'windows',
-      type: 'line',
+      type: 'circle',
       source: 'building-features',
-      filter: ['==', ['get', 'feature_type'], 'window'],
-      paint: LAYER_STYLES.windows as any,
+      filter: [
+        'all',
+        ['==', ['get', 'type'], 'opening'],
+        ['==', ['get', 'opening_type'], 'window'],
+      ],
+      paint: {
+        'circle-radius': 5,
+        'circle-color': '#2196F3', // Blue for windows
+        'circle-stroke-color': '#ffffff',
+        'circle-stroke-width': 1.5,
+      },
+    });
+
+    // Archways (rendered as circles)
+    map.addLayer({
+      id: 'archways',
+      type: 'circle',
+      source: 'building-features',
+      filter: [
+        'all',
+        ['==', ['get', 'type'], 'opening'],
+        ['==', ['get', 'opening_type'], 'arch'],
+      ],
+      paint: {
+        'circle-radius': 6,
+        'circle-color': '#9C27B0', // Purple for archways
+        'circle-stroke-color': '#ffffff',
+        'circle-stroke-width': 2,
+      },
     });
 
     // Evacuation routes
@@ -546,16 +858,15 @@ const EvacuationMap = memo(({
       paint: LAYER_STYLES.evacuationRoutes as any,
     });
 
-    // Interior doors (blue circles)
+    // Interior doors (blue circles) - uses opening_type from database
     map.addLayer({
       id: 'doors',
       type: 'circle',
       source: 'building-features',
       filter: [
         'all',
-        ['==', ['get', 'feature_type'], 'door'],
-        ['!=', ['get', 'door_type'], 'main'],
-        ['!=', ['get', 'door_type'], 'garage'],
+        ['==', ['get', 'type'], 'opening'],
+        ['==', ['get', 'opening_type'], 'door'],
       ],
       paint: {
         'circle-radius': 6,
@@ -565,21 +876,49 @@ const EvacuationMap = memo(({
       },
     });
 
-    // Main entry doors (green circles)
+    // Main entry doors (orange circles) - main entrance and garage doors
     map.addLayer({
       id: 'main-entry-doors',
       type: 'circle',
       source: 'building-features',
       filter: [
-        'any',
-        ['==', ['get', 'door_type'], 'main'],
-        ['==', ['get', 'door_type'], 'garage'],
+        'all',
+        ['==', ['get', 'type'], 'opening'],
+        ['any',
+          ['==', ['get', 'opening_type'], 'main'],
+          ['==', ['get', 'opening_type'], 'main_entrance'],
+          ['==', ['get', 'opening_type'], 'garage'],
+        ],
       ],
       paint: {
-        'circle-radius': 8,
-        'circle-color': '#22c55e', // Green for main entry
+        'circle-radius': 10,
+        'circle-color': '#FF9800', // Orange for main entrance
         'circle-stroke-color': '#ffffff',
         'circle-stroke-width': 2,
+      },
+    });
+
+    // Main entrance labels
+    map.addLayer({
+      id: 'main-entrance-labels',
+      type: 'symbol',
+      source: 'building-features',
+      filter: [
+        'all',
+        ['==', ['get', 'type'], 'opening'],
+        ['==', ['get', 'opening_type'], 'main_entrance'],
+      ],
+      layout: {
+        'text-field': 'ENTRANCE',
+        'text-size': 9,
+        'text-offset': [0, -1.5],
+        'text-anchor': 'center',
+        'text-font': ['Open Sans Bold'],
+      },
+      paint: {
+        'text-color': '#FF9800',
+        'text-halo-color': '#ffffff',
+        'text-halo-width': 1,
       },
     });
 
@@ -588,7 +927,11 @@ const EvacuationMap = memo(({
       id: 'emergency-exits',
       type: 'circle',
       source: 'building-features',
-      filter: ['==', ['get', 'feature_type'], 'emergency_exit'],
+      filter: [
+        'all',
+        ['==', ['get', 'type'], 'opening'],
+        ['==', ['get', 'opening_type'], 'emergency_exit'],
+      ],
       paint: {
         'circle-radius': 8,
         'circle-color': '#ef4444', // Red for emergency exits
@@ -602,7 +945,11 @@ const EvacuationMap = memo(({
       id: 'emergency-exit-labels',
       type: 'symbol',
       source: 'building-features',
-      filter: ['==', ['get', 'feature_type'], 'emergency_exit'],
+      filter: [
+        'all',
+        ['==', ['get', 'type'], 'opening'],
+        ['==', ['get', 'opening_type'], 'emergency_exit'],
+      ],
       layout: {
         'text-field': 'EXIT',
         'text-size': 10,
@@ -642,6 +989,66 @@ const EvacuationMap = memo(({
         'text-size': 12,
         'text-offset': [0, -1.2],
         'text-anchor': 'center',
+      },
+    });
+
+    // Cameras (from floor plan data)
+    map.addLayer({
+      id: 'cameras',
+      type: 'circle',
+      source: 'cameras',
+      paint: {
+        'circle-radius': 8,
+        'circle-color': [
+          'case',
+          ['==', ['get', 'is_fire_detection_enabled'], true],
+          '#dc2626', // Red for fire detection enabled
+          '#6b7280', // Gray for disabled
+        ],
+        'circle-stroke-color': '#ffffff',
+        'circle-stroke-width': 2,
+      },
+    });
+
+    // Camera field of view (cone visualization)
+    map.addLayer({
+      id: 'camera-fov',
+      type: 'circle',
+      source: 'cameras',
+      paint: {
+        'circle-radius': 20,
+        'circle-color': [
+          'case',
+          ['==', ['get', 'is_fire_detection_enabled'], true],
+          'rgba(220, 38, 38, 0.15)', // Red transparent for fire detection
+          'rgba(107, 114, 128, 0.1)', // Gray transparent
+        ],
+        'circle-stroke-color': [
+          'case',
+          ['==', ['get', 'is_fire_detection_enabled'], true],
+          'rgba(220, 38, 38, 0.3)',
+          'rgba(107, 114, 128, 0.2)',
+        ],
+        'circle-stroke-width': 1,
+      },
+    }, 'cameras'); // Place below camera markers
+
+    // Camera labels
+    map.addLayer({
+      id: 'camera-labels',
+      type: 'symbol',
+      source: 'cameras',
+      layout: {
+        'text-field': ['get', 'camera_id'],
+        'text-size': 10,
+        'text-offset': [0, 1.5],
+        'text-anchor': 'top',
+        'text-font': ['Open Sans Bold'],
+      },
+      paint: {
+        'text-color': '#dc2626',
+        'text-halo-color': '#ffffff',
+        'text-halo-width': 1,
       },
     });
 
@@ -1215,8 +1622,8 @@ const EvacuationMap = memo(({
     try {
       // Use local fire placement for imported buildings, backend API otherwise
       const result = isUsingImportedRouting()
-        ? placeLocalFires([fireZone], 'CRITICAL')
-        : await placeFires([fireZone], 'CRITICAL');
+        ? placeLocalFires([fireZone], 'critical')
+        : await placeFires([fireZone], 'critical');
 
       if (result.success) {
         // Add fire marker
@@ -1269,7 +1676,7 @@ const EvacuationMap = memo(({
         setActiveFireZones(prev => [...prev, {
           roomId: String(roomId),
           roomName: room.name,
-          severity: 'CRITICAL',
+          severity: 'critical',
         }]);
 
         updateEmergencyState({
@@ -2007,13 +2414,13 @@ const EvacuationMap = memo(({
                     <select
                       id="fire-severity-select"
                       value={fireSeverity}
-                      onChange={(e) => setFireSeverity(e.target.value as 'HIGH' | 'CRITICAL')}
+                      onChange={(e) => setFireSeverity(e.target.value as 'high' | 'critical')}
                       disabled={autoFireEnabled}
                       className="w-full px-2 py-1.5 text-xs border rounded focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                       title="Select fire severity level"
                     >
-                      <option value="HIGH">High (Dangerous - Avoid)</option>
-                      <option value="CRITICAL">Critical (Life Threatening)</option>
+                      <option value="high">High (Dangerous - Avoid)</option>
+                      <option value="critical">Critical (Life Threatening)</option>
                     </select>
                   </div>
 

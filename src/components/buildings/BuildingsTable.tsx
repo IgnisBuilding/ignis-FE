@@ -1,13 +1,19 @@
 "use client"
 
-import { Building2, Edit, Trash2 } from "lucide-react"
+import { Building2, Edit, Trash2, Map } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 
 interface Building {
   id: number
   name: string
   address: string
   type: string
+  total_floors?: number
+  apartments_per_floor?: number
+  has_floor_plan?: boolean
+  floor_plan_updated_at?: string | null
   occupancy?: number
   lastInspection?: string
   safetyScore?: number
@@ -23,6 +29,8 @@ interface BuildingsTableProps {
 }
 
 export function BuildingsTable({ buildings, onBuildingClick, onEdit, onDelete }: BuildingsTableProps) {
+  const router = useRouter()
+
   const getStatusBadge = (status?: string) => {
     if (!status) return ""
 
@@ -66,6 +74,9 @@ export function BuildingsTable({ buildings, onBuildingClick, onEdit, onDelete }:
             <tr>
               <th className="px-6 py-4 text-left font-bold text-foreground">BUILDING NAME</th>
               <th className="px-6 py-4 text-left font-bold text-foreground">TYPE</th>
+              <th className="px-6 py-4 text-left font-bold text-foreground">FLOORS</th>
+              <th className="px-6 py-4 text-left font-bold text-foreground">PORTIONS</th>
+              <th className="px-6 py-4 text-left font-bold text-foreground">FLOOR PLAN</th>
               {buildings.some(b => b.occupancy) && (
                 <th className="px-6 py-4 text-left font-bold text-foreground">OCCUPANCY</th>
               )}
@@ -102,6 +113,21 @@ export function BuildingsTable({ buildings, onBuildingClick, onEdit, onDelete }:
                   <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${getTypeColor(building.type)}`}>
                     {building.type}
                   </span>
+                </td>
+                <td className="px-6 py-4 text-center">
+                  <span className="font-semibold text-foreground">{building.total_floors || 1}</span>
+                </td>
+                <td className="px-6 py-4 text-center">
+                  <span className="font-semibold text-foreground">{building.apartments_per_floor || 1}</span>
+                </td>
+                <td className="px-6 py-4">
+                  {building.has_floor_plan ? (
+                    <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
+                      Configured
+                    </Badge>
+                  ) : (
+                    <Badge variant="secondary">Not Set</Badge>
+                  )}
                 </td>
                 {buildings.some(b => b.occupancy) && (
                   <td className="px-6 py-4">
@@ -151,6 +177,15 @@ export function BuildingsTable({ buildings, onBuildingClick, onEdit, onDelete }:
                 {(onEdit || onDelete) && (
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-xs"
+                        onClick={() => router.push(`/editor?building=${building.id}`)}
+                      >
+                        <Map className="h-3 w-3 mr-1" />
+                        {building.has_floor_plan ? 'Edit Map' : 'Create Map'}
+                      </Button>
                       {onEdit && (
                         <Button
                           variant="ghost"

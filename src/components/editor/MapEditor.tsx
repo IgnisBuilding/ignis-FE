@@ -202,6 +202,7 @@ const OPENING_TYPES = {
   door: { label: "Door", color: "#4CAF50", width: 0.9 }, // 90cm standard door
   window: { label: "Window", color: "#2196F3", width: 1.2 },
   emergency_exit: { label: "Emergency Exit", color: "#f44336", width: 1.2 },
+  main_entrance: { label: "Main Entrance", color: "#FF9800", width: 1.5 }, // Main building entrance
   arch: { label: "Archway", color: "#9C27B0", width: 1.5 },
 };
 
@@ -513,7 +514,11 @@ const validators = {
   },
 };
 
-export default function IGNISFloorPlanEditor() {
+interface IGNISFloorPlanEditorProps {
+  initialBuildingId?: number;
+}
+
+export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPlanEditorProps) {
   // ==================== STATE ====================
 
   // Image & Canvas State
@@ -840,6 +845,16 @@ export default function IGNISFloorPlanEditor() {
     };
     loadBuildings();
   }, []);
+
+  // Auto-select building if initialBuildingId is provided (from URL query param)
+  useEffect(() => {
+    if (initialBuildingId && buildings.length > 0 && !selectedBuildingId) {
+      const building = buildings.find(b => b.id === initialBuildingId);
+      if (building) {
+        setSelectedBuildingId(initialBuildingId);
+      }
+    }
+  }, [initialBuildingId, buildings, selectedBuildingId]);
 
   // Keyboard shortcuts for undo/redo/save (Feature 4: Enhanced with point-level undo)
   useEffect(() => {
@@ -2023,9 +2038,11 @@ export default function IGNISFloorPlanEditor() {
         });
       });
 
-      // Export cameras
+      // Export cameras with all properties for database storage
+      console.log(`[SaveToDatabase] Exporting ${cameras.length} cameras`);
       cameras.forEach((cam) => {
         const geo = pixelToGeo(cam.position.x, cam.position.y);
+        console.log(`[SaveToDatabase] Adding camera: ${cam.name}, level: ${cam.level}, camera_id: ${cam.camera_id}`);
 
         features.push({
           type: "Feature",
@@ -2036,12 +2053,70 @@ export default function IGNISFloorPlanEditor() {
             level: cam.level,
             name: cam.name,
             camera_id: cam.camera_id,
+            rtsp_url: cam.rtsp_url,
+            is_fire_detection_enabled: cam.is_fire_detection_enabled,
+            linked_room_id: cam.linked_room_id,
+            rotation: cam.rotation,
           },
           geometry: {
             type: "Point",
             coordinates: [geo.lng, geo.lat],
           },
         });
+      });
+
+      // Export nodes from routing graph
+      const { nodes: graphNodes, edges: graphEdges } = buildRoutingGraph;
+
+      graphNodes.forEach((node) => {
+        features.push({
+          type: "Feature",
+          id: node.id,
+          properties: {
+            id: node.id,
+            type: "node",
+            node_type: node.type === "exit" || node.type === "outdoor" ? "exit" :
+                       node.id.startsWith("opening_") ? "opening_midpoint" : "room_centroid",
+            level: node.level,
+            name: node.name,
+            is_exit: node.is_exit,
+            room_id: node.id.startsWith("opening_") ? null : node.id,
+          },
+          geometry: {
+            type: "Point",
+            coordinates: [node.lng, node.lat],
+          },
+        });
+      });
+
+      // Export edges from routing graph
+      graphEdges.forEach((edge, index) => {
+        const sourceNode = graphNodes.find(n => n.id === edge.source);
+        const targetNode = graphNodes.find(n => n.id === edge.target);
+
+        if (sourceNode && targetNode) {
+          features.push({
+            type: "Feature",
+            id: `edge_${index}`,
+            properties: {
+              id: `edge_${index}`,
+              type: "edge",
+              edge_type: edge.type || "corridor",
+              source_id: edge.source,
+              target_id: edge.target,
+              cost: Math.round(edge.distance * 100) / 100,
+              is_emergency_route: edge.type === "vertical_connection" ||
+                                  sourceNode.is_exit || targetNode.is_exit,
+            },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [sourceNode.lng, sourceNode.lat],
+                [targetNode.lng, targetNode.lat],
+              ],
+            },
+          });
+        }
       });
 
       const geojson = {
@@ -2056,7 +2131,11 @@ export default function IGNISFloorPlanEditor() {
         features,
       };
 
+      console.log(`[SaveToDatabase] Sending GeoJSON with ${features.length} total features (including ${cameras.length} cameras)`);
+      console.log(`[SaveToDatabase] GeoJSON levels:`, geojson.properties.levels);
+      console.log(`[SaveToDatabase] Camera levels:`, cameras.map(c => c.level));
       const result = await api.importFloorPlan(selectedBuildingId, geojson);
+      console.log(`[SaveToDatabase] Backend response:`, result);
       setDatabaseSaveResult(result);
 
       if (result.success) {
@@ -2766,7 +2845,7 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
   // ==================== RENDER ====================
 
   return (
-    <div className="h-full bg-white text-dark-green-800 font-['JetBrains_Mono',monospace] flex flex-col">
+    <div className="h-screen w-screen bg-white text-dark-green-800 font-['JetBrains_Mono',monospace] flex flex-col overflow-hidden">
       {/* Toolbar */}
       <div className="premium-card border-b border-gray-200 px-4 py-2.5 flex-shrink-0 rounded-none">
         <div className="flex items-center justify-between gap-4">
