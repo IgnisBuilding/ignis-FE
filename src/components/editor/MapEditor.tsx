@@ -60,6 +60,7 @@ interface Point {
 
 interface Room {
   id: string;
+  db_id?: number; // Database primary key (set after save)
   name: string;
   room_type: string;
   level: string;
@@ -70,6 +71,7 @@ interface Room {
 
 interface Opening {
   id: string;
+  db_id?: number; // Database primary key (set after save)
   type: string;
   level: string;
   start: Point;
@@ -80,6 +82,7 @@ interface Opening {
 
 interface SafePoint {
   id: string;
+  db_id?: number; // Database primary key (set after save)
   position: Point;
   level: string;
   name: string;
@@ -88,6 +91,7 @@ interface SafePoint {
 
 interface Camera {
   id: string;
+  db_id?: number; // Database primary key (set after save)
   position: Point;
   level: string;
   name: string;
@@ -610,6 +614,20 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
   const [databaseSaveResult, setDatabaseSaveResult] = useState<FloorPlanImportResult | null>(null);
   const [showDatabaseModal, setShowDatabaseModal] = useState(false);
 
+  // Change Tracking State (for differential saves)
+  const originalStateRef = useRef<{
+    rooms: any[];
+    openings: any[];
+    cameras: any[];
+    safePoints: any[];
+  } | null>(null);
+  const [deletedItems, setDeletedItems] = useState<{
+    rooms: string[];
+    openings: string[];
+    cameras: string[];
+    safePoints: string[];
+  }>({ rooms: [], openings: [], cameras: [], safePoints: [] });
+
   // Point-Level History for Drawing (Feature 4)
   const [pointHistory, setPointHistory] = useState([]);
   const [pointHistoryIndex, setPointHistoryIndex] = useState(-1);
@@ -1082,6 +1100,18 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
                 }
               };
               img.src = editorData.floorPlanImage;
+            }
+
+            // Set original state for change tracking (so first save doesn't re-save everything)
+            if (editorData.editorState) {
+              const state = editorData.editorState;
+              originalStateRef.current = {
+                rooms: JSON.parse(JSON.stringify(state.rooms || [])),
+                openings: JSON.parse(JSON.stringify(state.openings || [])),
+                cameras: JSON.parse(JSON.stringify(state.cameras || [])),
+                safePoints: JSON.parse(JSON.stringify(state.safePoints || [])),
+              };
+              setDeletedItems({ rooms: [], openings: [], cameras: [], safePoints: [] });
             }
 
             setHasUnsavedChanges(false);
@@ -1666,6 +1696,14 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
   const deleteRoom = (id) => {
     try {
       pushToHistory(); // Save state before modification
+      // Track deletion if this room exists in database (has db_id)
+      const roomToDelete = rooms.find(r => r.id === id);
+      if (roomToDelete?.db_id) {
+        setDeletedItems(prev => ({
+          ...prev,
+          rooms: [...prev.rooms, String(roomToDelete.db_id)]
+        }));
+      }
       setRooms(rooms.filter((r) => r.id !== id));
       // Also remove openings connected to this room
       setOpenings(
@@ -1685,6 +1723,14 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
   const deleteOpening = (id) => {
     try {
       pushToHistory(); // Save state before modification
+      // Track deletion if this opening exists in database (has db_id)
+      const openingToDelete = openings.find(o => o.id === id);
+      if (openingToDelete?.db_id) {
+        setDeletedItems(prev => ({
+          ...prev,
+          openings: [...prev.openings, String(openingToDelete.db_id)]
+        }));
+      }
       setOpenings(openings.filter((op) => op.id !== id));
       if (selectedOpening === id) setSelectedOpening(null);
       setHasUnsavedChanges(true);
@@ -1710,6 +1756,14 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
   const deleteSafePoint = (id) => {
     try {
       pushToHistory();
+      // Track deletion if this safe point exists in database (has db_id)
+      const spToDelete = safePoints.find(sp => sp.id === id);
+      if (spToDelete?.db_id) {
+        setDeletedItems(prev => ({
+          ...prev,
+          safePoints: [...prev.safePoints, String(spToDelete.db_id)]
+        }));
+      }
       setSafePoints(safePoints.filter((sp) => sp.id !== id));
       if (selectedSafePoint === id) setSelectedSafePoint(null);
       setHasUnsavedChanges(true);
@@ -1735,6 +1789,14 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
   const deleteCamera = (id: string) => {
     try {
       pushToHistory();
+      // Track deletion if this camera exists in database (has db_id)
+      const camToDelete = cameras.find(c => c.id === id);
+      if (camToDelete?.db_id) {
+        setDeletedItems(prev => ({
+          ...prev,
+          cameras: [...prev.cameras, String(camToDelete.db_id)]
+        }));
+      }
       setCameras(cameras.filter((cam) => cam.id !== id));
       if (selectedCamera === id) setSelectedCamera(null);
       setHasUnsavedChanges(true);
@@ -2137,7 +2199,87 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
     }
   };
 
-  // Save floor plan to database
+  // Helper function to check if two items are different (for change detection)
+  const itemsAreDifferent = (item1: any, item2: any): boolean => {
+    return JSON.stringify(item1) !== JSON.stringify(item2);
+  };
+
+  // Helper function to compute diff between original and current state
+  // Uses db_id for items that have been saved to database
+  const computeChanges = () => {
+    const original = originalStateRef.current;
+    const isFirstSave = !original;
+
+    const changes = {
+      rooms: { added: [] as any[], modified: [] as any[], deleted: deletedItems.rooms },
+      openings: { added: [] as any[], modified: [] as any[], deleted: deletedItems.openings },
+      cameras: { added: [] as any[], modified: [] as any[], deleted: deletedItems.cameras },
+      safePoints: { added: [] as any[], modified: [] as any[], deleted: deletedItems.safePoints },
+    };
+
+    // If first save (no original), all items are "added"
+    if (isFirstSave) {
+      changes.rooms.added = rooms;
+      changes.openings.added = openings;
+      changes.cameras.added = cameras;
+      changes.safePoints.added = safePoints;
+      return changes;
+    }
+
+    // Compute room changes - use db_id for existing items, id for matching
+    rooms.forEach(room => {
+      if (!room.db_id) {
+        // No db_id means it's a new item
+        changes.rooms.added.push(room);
+      } else {
+        // Has db_id, check if modified
+        const originalRoom = original.rooms.find(r => r.db_id === room.db_id);
+        if (originalRoom && itemsAreDifferent(room, originalRoom)) {
+          changes.rooms.modified.push(room);
+        }
+      }
+    });
+
+    // Compute opening changes
+    openings.forEach(opening => {
+      if (!opening.db_id) {
+        changes.openings.added.push(opening);
+      } else {
+        const originalOpening = original.openings.find(o => o.db_id === opening.db_id);
+        if (originalOpening && itemsAreDifferent(opening, originalOpening)) {
+          changes.openings.modified.push(opening);
+        }
+      }
+    });
+
+    // Compute camera changes
+    cameras.forEach(camera => {
+      if (!camera.db_id) {
+        changes.cameras.added.push(camera);
+      } else {
+        const originalCamera = original.cameras.find(c => c.db_id === camera.db_id);
+        if (originalCamera && itemsAreDifferent(camera, originalCamera)) {
+          changes.cameras.modified.push(camera);
+        }
+      }
+    });
+
+    // Compute safe point changes
+    safePoints.forEach(sp => {
+      if (!sp.db_id) {
+        changes.safePoints.added.push(sp);
+      } else {
+        const originalSp = original.safePoints.find(s => s.db_id === sp.db_id);
+        if (originalSp && itemsAreDifferent(sp, originalSp)) {
+          changes.safePoints.modified.push(sp);
+        }
+      }
+    });
+
+    return changes;
+  };
+
+  // Save floor plan to database (differential save)
   const saveToDatabase = async () => {
     if (!selectedBuildingId) {
       errorHandler.warn("Please select a building first before saving to database.");
@@ -2154,94 +2296,72 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
     setDatabaseSaveResult(null);
 
     try {
-      // Generate GeoJSON
-      const features = [];
+      // Compute what changed since last load/save
+      const changes = computeChanges();
+      const isFirstSave = !originalStateRef.current;
 
-      // Export rooms as polygons
-      rooms.forEach((room) => {
-        const coordinates = [
-          [
-            ...room.points.map((p) => {
-              const geo = pixelToGeo(p.x, p.y);
-              return [geo.lng, geo.lat];
-            }),
-            (() => {
-              const geo = pixelToGeo(room.points[0].x, room.points[0].y);
-              return [geo.lng, geo.lat];
-            })(),
-          ],
-        ];
+      const totalChanges =
+        changes.rooms.added.length + changes.rooms.modified.length + changes.rooms.deleted.length +
+        changes.openings.added.length + changes.openings.modified.length + changes.openings.deleted.length +
+        changes.cameras.added.length + changes.cameras.modified.length + changes.cameras.deleted.length +
+        changes.safePoints.added.length + changes.safePoints.modified.length + changes.safePoints.deleted.length;
 
-        features.push({
+      console.log(`[SaveToDatabase] Changes detected:`, {
+        rooms: { added: changes.rooms.added.length, modified: changes.rooms.modified.length, deleted: changes.rooms.deleted.length },
+        openings: { added: changes.openings.added.length, modified: changes.openings.modified.length, deleted: changes.openings.deleted.length },
+        cameras: { added: changes.cameras.added.length, modified: changes.cameras.modified.length, deleted: changes.cameras.deleted.length },
+        safePoints: { added: changes.safePoints.added.length, modified: changes.safePoints.modified.length, deleted: changes.safePoints.deleted.length },
+      });
+
+      // Helper to convert item to GeoJSON feature (includes db_id for existing items)
+      const roomToFeature = (room: any) => {
+        const coordinates = [[
+          ...room.points.map((p: any) => {
+            const geo = pixelToGeo(p.x, p.y);
+            return [geo.lng, geo.lat];
+          }),
+          (() => {
+            const geo = pixelToGeo(room.points[0].x, room.points[0].y);
+            return [geo.lng, geo.lat];
+          })(),
+        ]];
+        return {
           type: "Feature",
           properties: {
             id: room.id,
+            db_id: room.db_id, // Include database ID if exists
             level: room.level,
             name: room.name,
             room_type: room.room_type,
-            type: "room",
+            type: "room"
           },
-          geometry: {
-            type: "Polygon",
-            coordinates,
-          },
-        });
-      });
+          geometry: { type: "Polygon", coordinates },
+        };
+      };
 
-      // Export openings
-      openings.forEach((op) => {
+      const openingToFeature = (op: any) => {
         const startGeo = pixelToGeo(op.start.x, op.start.y);
         const endGeo = pixelToGeo(op.end.x, op.end.y);
-
-        features.push({
+        return {
           type: "Feature",
           properties: {
             id: op.id,
+            db_id: op.db_id, // Include database ID if exists
             level: op.level,
             type: "opening",
-            opening_type: op.type,
+            opening_type: op.type
           },
-          geometry: {
-            type: "LineString",
-            coordinates: [
-              [startGeo.lng, startGeo.lat],
-              [endGeo.lng, endGeo.lat],
-            ],
-          },
-        });
-      });
+          geometry: { type: "LineString", coordinates: [[startGeo.lng, startGeo.lat], [endGeo.lng, endGeo.lat]] },
+        };
+      };
 
-      // Export safe points
-      safePoints.forEach((sp) => {
-        const geo = pixelToGeo(sp.position.x, sp.position.y);
-
-        features.push({
-          type: "Feature",
-          properties: {
-            id: sp.id,
-            type: "safe_point",
-            is_safe_point: true,
-            level: sp.level,
-            name: sp.name,
-            capacity: sp.capacity,
-          },
-          geometry: {
-            type: "Point",
-            coordinates: [geo.lng, geo.lat],
-          },
-        });
-      });
-
-      // Export cameras with all properties for database storage
-      console.log(`[SaveToDatabase] Exporting ${cameras.length} cameras`);
-      cameras.forEach((cam) => {
+      const cameraToFeature = (cam: any) => {
         const geo = pixelToGeo(cam.position.x, cam.position.y);
-        console.log(`[SaveToDatabase] Adding camera: ${cam.name}, level: ${cam.level}, camera_id: ${cam.camera_id}`);
-
-        features.push({
+        return {
           type: "Feature",
           properties: {
             id: cam.id,
+            db_id: cam.db_id, // Include database ID if exists
             type: "camera",
             is_camera: true,
             level: cam.level,
@@ -2252,69 +2372,55 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
             linked_room_id: cam.linked_room_id,
             rotation: cam.rotation,
           },
-          geometry: {
-            type: "Point",
-            coordinates: [geo.lng, geo.lat],
-          },
-        });
-      });
+          geometry: { type: "Point", coordinates: [geo.lng, geo.lat] },
+        };
+      };
 
-      // Export nodes from routing graph
-      const { nodes: graphNodes, edges: graphEdges } = buildRoutingGraph;
-
-      graphNodes.forEach((node) => {
-        features.push({
+      const safePointToFeature = (sp: any) => {
+        const geo = pixelToGeo(sp.position.x, sp.position.y);
+        return {
           type: "Feature",
-          id: node.id,
           properties: {
-            id: node.id,
-            type: "node",
-            node_type: node.type === "exit" || node.type === "outdoor" ? "exit" :
-                       node.id.startsWith("opening_") ? "opening_midpoint" : "room_centroid",
-            level: node.level,
-            name: node.name,
-            is_exit: node.is_exit,
-            room_id: node.id.startsWith("opening_") ? null : node.id,
+            id: sp.id,
+            db_id: sp.db_id, // Include database ID if exists
+            type: "safe_point",
+            is_safe_point: true,
+            level: sp.level,
+            name: sp.name,
+            capacity: sp.capacity
           },
-          geometry: {
-            type: "Point",
-            coordinates: [node.lng, node.lat],
+          geometry: { type: "Point", coordinates: [geo.lng, geo.lat] },
+        };
+      };
+
+      // Build the differential payload
+      const differentialData = {
+        isFirstSave,
+        changes: {
+          rooms: {
+            added: changes.rooms.added.map(roomToFeature),
+            modified: changes.rooms.modified.map(roomToFeature),
+            deleted: changes.rooms.deleted,
           },
-        });
-      });
-
-      // Export edges from routing graph
-      graphEdges.forEach((edge, index) => {
-        const sourceNode = graphNodes.find(n => n.id === edge.source);
-        const targetNode = graphNodes.find(n => n.id === edge.target);
-
-        if (sourceNode && targetNode) {
-          features.push({
-            type: "Feature",
-            id: `edge_${index}`,
-            properties: {
-              id: `edge_${index}`,
-              type: "edge",
-              edge_type: edge.type || "corridor",
-              source_id: edge.source,
-              target_id: edge.target,
-              cost: Math.round(edge.distance * 100) / 100,
-              is_emergency_route: edge.type === "vertical_connection" ||
-                                  sourceNode.is_exit || targetNode.is_exit,
-            },
-            geometry: {
-              type: "LineString",
-              coordinates: [
-                [sourceNode.lng, sourceNode.lat],
-                [targetNode.lng, targetNode.lat],
-              ],
-            },
-          });
-        }
-      });
-
-      const geojson = {
-        type: "FeatureCollection",
+          openings: {
+            added: changes.openings.added.map(openingToFeature),
+            modified: changes.openings.modified.map(openingToFeature),
+            deleted: changes.openings.deleted,
+          },
+          cameras: {
+            added: changes.cameras.added.map(cameraToFeature),
+            modified: changes.cameras.modified.map(cameraToFeature),
+            deleted: changes.cameras.deleted,
+          },
+          safePoints: {
+            added: changes.safePoints.added.map(safePointToFeature),
+            modified: changes.safePoints.modified.map(safePointToFeature),
+            deleted: changes.safePoints.deleted,
+          },
+        },
+        // Include routing graph (nodes/edges are always regenerated from rooms/openings)
+        routingGraph: buildRoutingGraph,
+        // Building properties
         properties: {
           building_name: buildings.find(b => b.id === selectedBuildingId)?.name || "Unknown",
           center_lat: buildingLocation.lat,
@@ -2322,14 +2428,9 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
           scale_pixels_per_meter: pixelsPerMeter,
           levels: levels,
         },
-        features,
       };
 
-      console.log(`[SaveToDatabase] Sending GeoJSON with ${features.length} total features (including ${cameras.length} cameras)`);
-      console.log(`[SaveToDatabase] GeoJSON levels:`, geojson.properties.levels);
-      console.log(`[SaveToDatabase] Camera levels:`, cameras.map(c => c.level));
-
-      // Prepare complete editor state for restoration
+      // Prepare complete editor state for restoration (always save full state for editor restoration)
       const editorState = {
         rooms,
         openings,
@@ -2345,16 +2446,66 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
         scaleCalibrated,
       };
 
-      // Send GeoJSON, floor plan image, and editor state to database
+      // Send differential changes to database
       const result = await api.importFloorPlan(selectedBuildingId, {
-        geojson,
-        floorPlanImage: image || undefined, // Base64 encoded floor plan image
+        differential: differentialData,
+        floorPlanImage: image || undefined,
         editorState,
       });
+
       console.log(`[SaveToDatabase] Backend response:`, result);
       setDatabaseSaveResult(result);
 
       if (result.success) {
+        // Apply returned ID mappings to update frontend items with database IDs
+        const idMappings = result.idMappings || {};
+
+        // Update rooms with database IDs
+        if (idMappings.rooms && Object.keys(idMappings.rooms).length > 0) {
+          setRooms(prevRooms => prevRooms.map(room => {
+            const dbId = idMappings.rooms[room.id];
+            return dbId ? { ...room, db_id: dbId } : room;
+          }));
+        }
+
+        // Update openings with database IDs
+        if (idMappings.openings && Object.keys(idMappings.openings).length > 0) {
+          setOpenings(prevOpenings => prevOpenings.map(opening => {
+            const dbId = idMappings.openings[opening.id];
+            return dbId ? { ...opening, db_id: dbId } : opening;
+          }));
+        }
+
+        // Update cameras with database IDs
+        if (idMappings.cameras && Object.keys(idMappings.cameras).length > 0) {
+          setCameras(prevCameras => prevCameras.map(camera => {
+            const dbId = idMappings.cameras[camera.id];
+            return dbId ? { ...camera, db_id: dbId } : camera;
+          }));
+        }
+
+        // Update safe points with database IDs (stored as nodes)
+        if (idMappings.safePoints && Object.keys(idMappings.safePoints).length > 0) {
+          setSafePoints(prevSafePoints => prevSafePoints.map(sp => {
+            const dbId = idMappings.safePoints[sp.id];
+            return dbId ? { ...sp, db_id: dbId } : sp;
+          }));
+        }
+
+        // Update original state to current state after successful save
+        // Need to use updated state with db_ids
+        setTimeout(() => {
+          originalStateRef.current = {
+            rooms: JSON.parse(JSON.stringify(rooms.map(r => idMappings.rooms?.[r.id] ? { ...r, db_id: idMappings.rooms[r.id] } : r))),
+            openings: JSON.parse(JSON.stringify(openings.map(o => idMappings.openings?.[o.id] ? { ...o, db_id: idMappings.openings[o.id] } : o))),
+            cameras: JSON.parse(JSON.stringify(cameras.map(c => idMappings.cameras?.[c.id] ? { ...c, db_id: idMappings.cameras[c.id] } : c))),
+            safePoints: JSON.parse(JSON.stringify(safePoints.map(sp => idMappings.safePoints?.[sp.id] ? { ...sp, db_id: idMappings.safePoints[sp.id] } : sp))),
+          };
+        }, 0);
+
+        // Clear deleted items tracker
+        setDeletedItems({ rooms: [], openings: [], cameras: [], safePoints: [] });
+        setHasUnsavedChanges(false);
         errorHandler.info(`Saved to database: ${result.message}`);
       } else {
         errorHandler.handle(new Error(result.error || "Unknown error"), "Save to Database");
@@ -2424,6 +2575,16 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
           errorHandler.info(`Loaded ${state.rooms?.length || 0} rooms, ${state.openings?.length || 0} openings, ${state.cameras?.length || 0} cameras from database (no image).`);
         }
 
+        // Save original state for change tracking (deep clone)
+        originalStateRef.current = {
+          rooms: JSON.parse(JSON.stringify(state.rooms || [])),
+          openings: JSON.parse(JSON.stringify(state.openings || [])),
+          cameras: JSON.parse(JSON.stringify(state.cameras || [])),
+          safePoints: JSON.parse(JSON.stringify(state.safePoints || [])),
+        };
+        // Clear deleted items tracker
+        setDeletedItems({ rooms: [], openings: [], cameras: [], safePoints: [] });
+
         setHasUnsavedChanges(false);
         return;
       }
@@ -2472,6 +2633,7 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
 
               importedRooms.push({
                 id: props.id || `room_${Date.now()}_${Math.random()}`,
+                db_id: props.db_id, // Preserve database ID if available
                 name: props.name || "Unnamed Room",
                 room_type: props.room_type || props.type || "room",
                 level: props.level || "1",
@@ -2487,6 +2649,7 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
             const position = geoToPixel(geom.coordinates[1], geom.coordinates[0]);
             importedSafePoints.push({
               id: props.id || `sp_${Date.now()}`,
+              db_id: props.db_id, // Preserve database ID if available
               position,
               level: props.level || "1",
               name: props.name || "Safe Point",
@@ -2498,6 +2661,16 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
 
       setRooms(importedRooms);
       setSafePoints(importedSafePoints);
+
+      // Set original state for change tracking (so first save doesn't re-save everything)
+      originalStateRef.current = {
+        rooms: JSON.parse(JSON.stringify(importedRooms)),
+        openings: [],
+        cameras: [],
+        safePoints: JSON.parse(JSON.stringify(importedSafePoints)),
+      };
+      setDeletedItems({ rooms: [], openings: [], cameras: [], safePoints: [] });
+      setHasUnsavedChanges(false);
 
       errorHandler.info(`Loaded ${importedRooms.length} rooms and ${importedSafePoints.length} safe points from database.`);
     } catch (err) {
