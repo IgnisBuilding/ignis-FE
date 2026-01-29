@@ -42,7 +42,6 @@ import {
   PanelLeftClose,
   PanelLeft,
   Video,
-  PenTool,
 } from "lucide-react";
 
 interface NavItem {
@@ -97,7 +96,6 @@ const roleConfig: Record<string, {
     navItems: [
       { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
       { label: "Buildings", href: "/admin/buildings", icon: Building2 },
-      { label: "Floor Plan Editor", href: "/editor", icon: PenTool },
       { label: "Cameras", href: "/admin/cameras", icon: Video },
       { label: "Residents", href: "/admin/residents", icon: Users },
       { label: "Sensors", href: "/admin/sensors", icon: Radio },
@@ -112,7 +110,6 @@ const roleConfig: Record<string, {
       { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
       { label: "Live Map", href: "/admin/map", icon: Map },
       { label: "Buildings", href: "/admin/buildings", icon: Building2 },
-      { label: "Floor Plan Editor", href: "/editor", icon: PenTool },
       { label: "Cameras", href: "/admin/cameras", icon: Video },
       { label: "Residents", href: "/admin/residents", icon: Users },
       { label: "Sensors", href: "/admin/sensors", icon: Radio },

@@ -531,10 +531,34 @@ class ApiService {
     });
   }
 
-  async importFloorPlan(buildingId: number, geojson: any): Promise<FloorPlanImportResult> {
+  async importFloorPlan(
+    buildingId: number,
+    data: {
+      geojson: any;
+      floorPlanImage?: string; // Base64 encoded image
+      editorState?: any; // Complete editor state for restoration
+    }
+  ): Promise<FloorPlanImportResult> {
     return this.request<FloorPlanImportResult>(`/buildings/${buildingId}/import-floor-plan`, {
       method: 'POST',
-      body: JSON.stringify(geojson),
+      body: JSON.stringify(data),
+    });
+  }
+
+  // Get editor state for a building (for loading floor plan editor)
+  async getEditorState(buildingId: number): Promise<{
+    buildingId: number;
+    buildingName: string;
+    hasFloorPlan: boolean;
+    floorPlanUpdatedAt: string | null;
+    centerLat: number | null;
+    centerLng: number | null;
+    scalePixelsPerMeter: number | null;
+    floorPlanImage: string | null;
+    editorState: any | null;
+  }> {
+    return this.request(`/buildings/${buildingId}/editor-state`, {
+      method: 'GET',
     });
   }
 

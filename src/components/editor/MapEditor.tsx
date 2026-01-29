@@ -46,6 +46,8 @@ import {
   Database,
   CloudUpload,
   RefreshCw,
+  ArrowLeft,
+  Maximize2,
 } from "lucide-react";
 import { api, Building as APIBuilding, FloorPlanImportResult } from "@/lib/api";
 
@@ -528,6 +530,25 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+  const [isSpaceHeld, setIsSpaceHeld] = useState(false); // For space+drag panning
+
+  // Refs to track current values for smooth pan/zoom (avoids stale closures and React re-renders)
+  const zoomRef = useRef(zoom);
+  const panRef = useRef(pan);
+  const transformGroupRef = useRef<HTMLDivElement>(null);
+
+  // Update refs when state changes (but not during active interactions)
+  useEffect(() => { zoomRef.current = zoom; }, [zoom]);
+  useEffect(() => { panRef.current = pan; }, [pan]);
+
+  // Helper to update transform directly on DOM for smooth interactions (GPU-accelerated CSS transform)
+  const updateTransformDirect = useCallback((newPan: {x: number, y: number}, newZoom: number) => {
+    if (transformGroupRef.current) {
+      transformGroupRef.current.style.transform = `translate(${newPan.x}px, ${newPan.y}px) scale(${newZoom})`;
+    }
+    panRef.current = newPan;
+    zoomRef.current = newZoom;
+  }, []);
 
   // Panel Resize State
   const [leftPanelWidth, setLeftPanelWidth] = useState(256); // 16rem = 256px
@@ -856,9 +877,37 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
     }
   }, [initialBuildingId, buildings, selectedBuildingId]);
 
+  // Fit the floor plan image to the viewport with some padding
+  const fitToView = useCallback(() => {
+    if (!containerRef.current || !imageSize.width || !imageSize.height) return;
+
+    const container = containerRef.current;
+    const rect = container.getBoundingClientRect();
+    const padding = 40; // Padding around the image
+
+    const availableWidth = rect.width - padding * 2;
+    const availableHeight = rect.height - padding * 2;
+
+    const scaleX = availableWidth / imageSize.width;
+    const scaleY = availableHeight / imageSize.height;
+    const newZoom = Math.min(scaleX, scaleY, 2); // Cap at 2x zoom
+
+    // Center the image
+    const newPanX = (rect.width - imageSize.width * newZoom) / 2;
+    const newPanY = (rect.height - imageSize.height * newZoom) / 2;
+
+    setZoom(newZoom);
+    setPan({ x: newPanX, y: newPanY });
+  }, [imageSize]);
+
   // Keyboard shortcuts for undo/redo/save (Feature 4: Enhanced with point-level undo)
   useEffect(() => {
     const handleKeyDown = (e) => {
+      // Space key for temporary pan mode (like Figma/Photoshop)
+      if (e.code === "Space" && !e.repeat) {
+        e.preventDefault();
+        setIsSpaceHeld(true);
+      }
       if ((e.ctrlKey || e.metaKey) && e.key === "z") {
         e.preventDefault();
         if (e.shiftKey) {
@@ -893,10 +942,41 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
       if (e.key === "Escape" && mode === "draw" && currentPoints.length > 0) {
         cancelDrawing();
       }
+      // Zoom shortcuts: + and - keys (also = for + without shift)
+      if ((e.key === "+" || e.key === "=") && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        setZoom((prev) => Math.min(5, prev * 1.25));
+      }
+      if (e.key === "-" && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        setZoom((prev) => Math.max(0.1, prev * 0.8));
+      }
+      // Fit to view with F key
+      if (e.key === "f" && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        fitToView();
+      }
+      // Reset view with 0 key
+      if (e.key === "0" && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        setZoom(1);
+        setPan({ x: 0, y: 0 });
+      }
+    };
+
+    const handleKeyUp = (e) => {
+      if (e.code === "Space") {
+        setIsSpaceHeld(false);
+        setIsPanning(false); // Stop panning when space is released
+      }
     };
 
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
   }, [
     handleUndo,
     handleRedo,
@@ -906,36 +986,128 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
     mode,
     currentPoints.length,
     cancelDrawing,
+    fitToView,
   ]);
 
   // Wheel event listener with passive: false to allow preventDefault
+  // Zooms toward cursor position for a natural feel
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
-    const wheelHandler = (e) => {
+    const wheelHandler = (e: WheelEvent) => {
       e.preventDefault();
-      const delta = e.deltaY > 0 ? -0.1 : 0.1;
-      setZoom((prevZoom) => Math.max(0.25, Math.min(4, prevZoom + delta)));
+
+      // Get container bounds to calculate mouse position relative to container
+      const rect = container.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      // Use exponential zoom for smoother feel
+      const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+
+      // Use refs to get current values (avoids stale closure)
+      const currentZoom = zoomRef.current;
+      const currentPan = panRef.current;
+
+      const newZoom = Math.max(0.1, Math.min(5, currentZoom * zoomFactor));
+
+      // Calculate the point under the mouse in world coordinates (before zoom)
+      const worldX = (mouseX - currentPan.x) / currentZoom;
+      const worldY = (mouseY - currentPan.y) / currentZoom;
+
+      // Calculate where that point would be after zooming
+      const newWorldX = worldX * newZoom;
+      const newWorldY = worldY * newZoom;
+
+      // Adjust pan so the point under mouse stays in place
+      const newPan = { x: mouseX - newWorldX, y: mouseY - newWorldY };
+
+      // Update DOM directly for smooth visual (bypasses React re-render)
+      updateTransformDirect(newPan, newZoom);
+
+      // Debounced sync to React state (for UI elements like zoom percentage display)
+      setZoom(newZoom);
+      setPan(newPan);
     };
 
     container.addEventListener("wheel", wheelHandler, { passive: false });
     return () => container.removeEventListener("wheel", wheelHandler);
-  }, []);
+  }, [updateTransformDirect]);
 
-  // Auto-load on mount
+  // Auto-load from database on mount if building is specified
   useEffect(() => {
-    if (storage.exists(STORAGE_KEY)) {
-      const shouldLoad = window.confirm(
-        "Found saved project. Would you like to restore it?"
-      );
-      if (shouldLoad) {
-        loadFromLocalStorage();
+    const autoLoadFromDatabase = async () => {
+      // If a building ID is provided, try to load from database first
+      if (initialBuildingId) {
+        setSelectedBuildingId(initialBuildingId);
+        try {
+          const editorData = await api.getEditorState(initialBuildingId);
+
+          // If building has floor plan data in database, load it automatically
+          if (editorData.hasFloorPlan && (editorData.editorState || editorData.floorPlanImage)) {
+            console.log("[AutoLoad] Building has floor plan data, loading from database...");
+
+            // Load the data
+            if (editorData.editorState) {
+              const state = editorData.editorState;
+              if (state.rooms) setRooms(state.rooms);
+              if (state.openings) setOpenings(state.openings);
+              if (state.cameras) setCameras(state.cameras);
+              if (state.safePoints) setSafePoints(state.safePoints);
+              if (state.levels) {
+                setLevels(state.levels);
+                const showLevelsObj = {};
+                state.levels.forEach(l => { showLevelsObj[l] = true; });
+                setShowLevels(showLevelsObj);
+              }
+              if (state.currentLevel) setCurrentLevel(state.currentLevel);
+              if (state.imageSize) setImageSize(state.imageSize);
+              if (state.buildingLocation) setBuildingLocation(state.buildingLocation);
+              if (state.pixelsPerMeter) setPixelsPerMeter(state.pixelsPerMeter);
+              if (state.calibrationLine) setCalibrationLine(state.calibrationLine);
+              if (state.calibrationDistance) setCalibrationDistance(state.calibrationDistance);
+              if (state.scaleCalibrated !== undefined) setScaleCalibrated(state.scaleCalibrated);
+            }
+
+            // Load floor plan image
+            if (editorData.floorPlanImage) {
+              const img = new Image();
+              img.onload = () => {
+                setImage(editorData.floorPlanImage);
+                if (editorData.editorState?.imageSize) {
+                  setImageSize(editorData.editorState.imageSize);
+                } else {
+                  setImageSize({ width: img.width, height: img.height });
+                }
+              };
+              img.src = editorData.floorPlanImage;
+            }
+
+            setHasUnsavedChanges(false);
+            errorHandler.info("Floor plan loaded from database");
+            return; // Don't check localStorage if we loaded from database
+          }
+        } catch (err) {
+          console.log("[AutoLoad] Could not load from database:", err.message);
+        }
       }
-    }
+
+      // Only offer localStorage restore if no building specified or no database data
+      if (!initialBuildingId && storage.exists(STORAGE_KEY)) {
+        const shouldLoad = window.confirm(
+          "Found saved project in browser cache. Would you like to restore it?"
+        );
+        if (shouldLoad) {
+          loadFromLocalStorage();
+        }
+      }
+    };
+
+    autoLoadFromDatabase();
     // Initialize history with empty state
     historyRef.current.push(getStateSnapShot());
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [initialBuildingId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-save on significant changes (debounced)
   useEffect(() => {
@@ -1122,10 +1294,13 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
   // ==================== MOUSE HANDLERS ====================
 
   const getMousePos = (e) => {
+    // With CSS transform on parent div, getBoundingClientRect already includes transform
+    // So we just need to convert screen coords to image coords
     const rect = canvasRef.current.getBoundingClientRect();
+    const currentZoom = zoomRef.current;
     return {
-      x: (e.clientX - rect.left - pan.x) / zoom,
-      y: (e.clientY - rect.top - pan.y) / zoom,
+      x: (e.clientX - rect.left) / currentZoom,
+      y: (e.clientY - rect.top) / currentZoom,
     };
   };
 
@@ -1345,21 +1520,40 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
   };
 
   // Pan and zoom handlers
+  // Supports: pan mode, middle mouse button, and space+drag
+  // Uses direct DOM manipulation for smooth 60fps panning
+  const panStartRef = useRef({ x: 0, y: 0 });
+  const isPanningRef = useRef(false);
+
   const handleMouseDown = (e) => {
-    if (mode === "pan" || e.button === 1) {
+    if (mode === "pan" || e.button === 1 || isSpaceHeld) {
+      isPanningRef.current = true;
       setIsPanning(true);
-      setPanStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+      panStartRef.current = { x: e.clientX - panRef.current.x, y: e.clientY - panRef.current.y };
     }
   };
 
   const handleMouseMove = (e) => {
-    if (isPanning) {
-      setPan({ x: e.clientX - panStart.x, y: e.clientY - panStart.y });
+    if (isPanningRef.current) {
+      const newPan = {
+        x: e.clientX - panStartRef.current.x,
+        y: e.clientY - panStartRef.current.y
+      };
+      // Update DOM directly for smooth 60fps panning (bypasses React re-render)
+      updateTransformDirect(newPan, zoomRef.current);
     }
   };
 
   const handleMouseUp = () => {
-    setIsPanning(false);
+    if (isPanningRef.current) {
+      // Sync final position to React state
+      setPan(panRef.current);
+    }
+    // Only stop panning if space is not held (space+drag continues until space released)
+    if (!isSpaceHeld) {
+      isPanningRef.current = false;
+      setIsPanning(false);
+    }
   };
 
   // ==================== CALIBRATION ====================
@@ -2134,7 +2328,29 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
       console.log(`[SaveToDatabase] Sending GeoJSON with ${features.length} total features (including ${cameras.length} cameras)`);
       console.log(`[SaveToDatabase] GeoJSON levels:`, geojson.properties.levels);
       console.log(`[SaveToDatabase] Camera levels:`, cameras.map(c => c.level));
-      const result = await api.importFloorPlan(selectedBuildingId, geojson);
+
+      // Prepare complete editor state for restoration
+      const editorState = {
+        rooms,
+        openings,
+        cameras,
+        safePoints,
+        levels,
+        currentLevel,
+        imageSize,
+        buildingLocation,
+        pixelsPerMeter,
+        calibrationLine,
+        calibrationDistance,
+        scaleCalibrated,
+      };
+
+      // Send GeoJSON, floor plan image, and editor state to database
+      const result = await api.importFloorPlan(selectedBuildingId, {
+        geojson,
+        floorPlanImage: image || undefined, // Base64 encoded floor plan image
+        editorState,
+      });
       console.log(`[SaveToDatabase] Backend response:`, result);
       setDatabaseSaveResult(result);
 
@@ -2162,6 +2378,58 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
     setIsLoadingFromDatabase(true);
 
     try {
+      // First try to get the editor state (includes image and complete state)
+      const editorData = await api.getEditorState(selectedBuildingId);
+
+      // If we have a saved editor state, restore it completely
+      if (editorData.editorState) {
+        console.log("[LoadFromDatabase] Found saved editor state, restoring...");
+        const state = editorData.editorState;
+
+        // Restore all editor state
+        if (state.rooms) setRooms(state.rooms);
+        if (state.openings) setOpenings(state.openings);
+        if (state.cameras) setCameras(state.cameras);
+        if (state.safePoints) setSafePoints(state.safePoints);
+        if (state.levels) {
+          setLevels(state.levels);
+          const showLevelsObj = {};
+          state.levels.forEach(l => { showLevelsObj[l] = true; });
+          setShowLevels(showLevelsObj);
+        }
+        if (state.currentLevel) setCurrentLevel(state.currentLevel);
+        if (state.imageSize) setImageSize(state.imageSize);
+        if (state.buildingLocation) setBuildingLocation(state.buildingLocation);
+        if (state.pixelsPerMeter) setPixelsPerMeter(state.pixelsPerMeter);
+        if (state.calibrationLine) setCalibrationLine(state.calibrationLine);
+        if (state.calibrationDistance) setCalibrationDistance(state.calibrationDistance);
+        if (state.scaleCalibrated !== undefined) setScaleCalibrated(state.scaleCalibrated);
+
+        // Restore floor plan image
+        if (editorData.floorPlanImage) {
+          console.log("[LoadFromDatabase] Restoring floor plan image...");
+          const img = new Image();
+          img.onload = () => {
+            setImage(editorData.floorPlanImage);
+            if (!state.imageSize) {
+              setImageSize({ width: img.width, height: img.height });
+            }
+            errorHandler.info(`Loaded floor plan with ${state.rooms?.length || 0} rooms, ${state.openings?.length || 0} openings, ${state.cameras?.length || 0} cameras from database.`);
+          };
+          img.onerror = () => {
+            errorHandler.warn("Failed to load floor plan image, but other data was restored.");
+          };
+          img.src = editorData.floorPlanImage;
+        } else {
+          errorHandler.info(`Loaded ${state.rooms?.length || 0} rooms, ${state.openings?.length || 0} openings, ${state.cameras?.length || 0} cameras from database (no image).`);
+        }
+
+        setHasUnsavedChanges(false);
+        return;
+      }
+
+      // Fall back to loading from GeoJSON if no editor state
+      console.log("[LoadFromDatabase] No editor state found, loading from GeoJSON...");
       const geojson = await api.getBuildingFloorPlan(selectedBuildingId);
 
       if (!geojson.features || geojson.features.length === 0) {
@@ -2783,7 +3051,9 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
   };
 
   const handleZoom = (delta) => {
-    setZoom(Math.max(0.25, Math.min(4, zoom + delta)));
+    // Use exponential zoom for more natural feel
+    const factor = delta > 0 ? 1.25 : 0.8;
+    setZoom((prev) => Math.max(0.1, Math.min(5, prev * factor)));
   };
 
   const resetView = () => {
@@ -2849,8 +3119,18 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
       {/* Toolbar */}
       <div className="premium-card border-b border-gray-200 px-4 py-2.5 flex-shrink-0 rounded-none">
         <div className="flex items-center justify-between gap-4">
-          {/* Left: Status & Settings */}
+          {/* Left: Back Button & Status */}
           <div className="flex items-center gap-3">
+            {/* Back Button */}
+            <button
+              onClick={() => window.history.back()}
+              className="flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-xl text-sm font-medium transition-all border border-gray-200 text-gray-700"
+              title="Go Back"
+            >
+              <ArrowLeft size={16} />
+              <span>Back</span>
+            </button>
+
             {/* Scale Status */}
             <div
               className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium ${
@@ -3254,8 +3534,9 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
             </h3>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => handleZoom(-0.25)}
+                onClick={() => handleZoom(-1)}
                 className="p-2 bg-white rounded-xl hover:bg-dark-green-50 border border-gray-200 text-dark-green-600 transition-all"
+                title="Zoom Out"
               >
                 <ZoomOut size={16} />
               </button>
@@ -3263,18 +3544,30 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
                 {Math.round(zoom * 100)}%
               </span>
               <button
-                onClick={() => handleZoom(0.25)}
+                onClick={() => handleZoom(1)}
                 className="p-2 bg-white rounded-xl hover:bg-dark-green-50 border border-gray-200 text-dark-green-600 transition-all"
+                title="Zoom In"
               >
                 <ZoomIn size={16} />
               </button>
               <button
+                onClick={fitToView}
+                className="p-2 bg-white rounded-xl hover:bg-dark-green-50 border border-gray-200 text-dark-green-600 transition-all"
+                title="Fit to View"
+              >
+                <Maximize2 size={16} />
+              </button>
+              <button
                 onClick={resetView}
                 className="p-2 bg-white rounded-xl hover:bg-dark-green-50 border border-gray-200 text-dark-green-600 transition-all"
+                title="Reset View (100%)"
               >
                 <RotateCcw size={16} />
               </button>
             </div>
+            <p className="text-xs text-gray-500 mt-1">
+              Hold Space + drag to pan
+            </p>
           </div>
 
           {/* Levels */}
@@ -3491,24 +3784,41 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
               </div>
             </div>
           ) : (
-            <svg
-              ref={canvasRef}
-              className="w-full h-full"
+            <div
+              ref={transformGroupRef}
               style={{
-                cursor:
-                  mode === "pan" || isPanning
-                    ? "grabbing"
-                    : mode === "calibrate"
-                    ? "crosshair"
-                    : mode === "draw"
-                    ? "crosshair"
-                    : mode === "door"
-                    ? "crosshair"
-                    : "pointer",
+                transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+                transformOrigin: '0 0',
+                willChange: 'transform',
+                position: 'absolute',
+                top: 0,
+                left: 0,
               }}
-              onClick={handleCanvasClick}
             >
-              <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
+              <svg
+                ref={canvasRef}
+                width={imageSize.width}
+                height={imageSize.height}
+                viewBox={`0 0 ${imageSize.width} ${imageSize.height}`}
+                style={{
+                  cursor:
+                    isPanning
+                      ? "grabbing"
+                      : isSpaceHeld || mode === "pan"
+                      ? "grab"
+                      : mode === "calibrate"
+                      ? "crosshair"
+                      : mode === "draw"
+                      ? "crosshair"
+                      : mode === "door"
+                      ? "crosshair"
+                      : "pointer",
+                  display: 'block',
+                  overflow: 'visible',
+                }}
+                onClick={handleCanvasClick}
+              >
+                <g>
                 {/* Floor plan image */}
                 <image
                   href={image}
@@ -3900,7 +4210,8 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
                   </g>
                 )}
               </g>
-            </svg>
+              </svg>
+            </div>
           )}
 
           {/* Scale bar */}

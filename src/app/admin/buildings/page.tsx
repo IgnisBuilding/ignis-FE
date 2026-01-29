@@ -1,13 +1,12 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Building2, Download, FileDown, Layers, Plus, Search, X } from "lucide-react"
+import { Building2, FileDown, Layers, Plus, Search, X } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { buildingApi } from "../../../lib/api"
 import DashboardLayout from "@/components/layout/DashboardLayout"
 import ProtectedRoute from "@/components/auth/ProtectedRoute"
 import { BuildingsTable } from "@/components/buildings"
-import { FilterSidebar } from "@/components/buildings"
 import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -65,7 +64,6 @@ function BuildingsManagementContent() {
     buildingName: "",
   })
   const [deleteLoading, setDeleteLoading] = useState(false)
-  const [selectedFilters, setSelectedFilters] = useState<string[]>([])
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
 
@@ -74,24 +72,14 @@ function BuildingsManagementContent() {
   }, [])
 
   useEffect(() => {
-    let filtered = buildings.filter(
+    const filtered = buildings.filter(
       (building) =>
         building.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         building.address.toLowerCase().includes(searchTerm.toLowerCase())
     )
-
-    if (selectedFilters.length > 0) {
-      filtered = filtered.filter((building) => {
-        const typeMatch = selectedFilters.some((filter) =>
-          filter.toLowerCase().includes(building.type.toLowerCase())
-        )
-        return typeMatch || selectedFilters.length === 0
-      })
-    }
-
     setFilteredBuildings(filtered)
     setCurrentPage(1)
-  }, [searchTerm, buildings, selectedFilters])
+  }, [searchTerm, buildings])
 
   const fetchBuildings = async () => {
     try {
@@ -212,27 +200,12 @@ function BuildingsManagementContent() {
     setDeleteState({ isOpen: false, buildingId: null, buildingName: "" })
   }
 
-  const handleFilterChange = (filter: string) => {
-    setSelectedFilters((prev) => {
-      if (prev.includes(filter)) {
-        return prev.filter((f) => f !== filter)
-      } else {
-        return [...prev, filter]
-      }
-    })
-  }
-
   const handleExportReport = () => {
     // TODO: Implement export functionality
     toast({
       title: "Export Report",
       description: "Export functionality will be implemented soon",
     })
-  }
-
-  const clearFilters = () => {
-    setSelectedFilters([])
-    setSearchTerm("")
   }
 
   const totalPages = Math.ceil(filteredBuildings.length / itemsPerPage)
@@ -248,13 +221,8 @@ function BuildingsManagementContent() {
 
   return (
     <DashboardLayout role="admin" userName={user?.name || "Admin"} userTitle="ADMINISTRATOR">
-      <div className="flex h-[calc(100vh-4rem)] w-full max-w-none">
-        {/* Filter Sidebar */}
-        <FilterSidebar selectedFilters={selectedFilters} onFilterChange={handleFilterChange} />
-
-        {/* Main Content */}
-        <div className="flex-1 overflow-auto w-full">
-          <div className="p-3 sm:p-4 md:p-6 lg:p-8 w-full max-w-none">
+      <div className="h-[calc(100vh-4rem)] w-full overflow-auto">
+        <div className="p-3 sm:p-4 md:p-6 lg:p-8 w-full max-w-none">
             {/* Header */}
             <div className="mb-6">
               <div className="flex items-center justify-between mb-6">
@@ -317,49 +285,16 @@ function BuildingsManagementContent() {
                 </Card>
               </div>
 
-              {/* Search and Active Filters */}
-              <div className="space-y-3">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                  <Input
-                    type="text"
-                    placeholder="Search buildings by name or address..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-
-                {(selectedFilters.length > 0 || searchTerm) && (
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm text-muted-foreground">Active filters:</span>
-                    {selectedFilters.map((filter) => (
-                      <span
-                        key={filter}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-secondary text-foreground text-sm rounded-md"
-                      >
-                        {filter}
-                        <button
-                          onClick={() => handleFilterChange(filter)}
-                          className="hover:text-destructive"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </span>
-                    ))}
-                    {searchTerm && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-secondary text-foreground text-sm rounded-md">
-                        Search: {searchTerm}
-                        <button onClick={() => setSearchTerm("")} className="hover:text-destructive">
-                          <X className="h-3 w-3" />
-                        </button>
-                      </span>
-                    )}
-                    <Button variant="ghost" size="sm" onClick={clearFilters} className="h-7 text-xs">
-                      Clear all
-                    </Button>
-                  </div>
-                )}
+              {/* Search */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                <Input
+                  type="text"
+                  placeholder="Search buildings by name or address..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
               </div>
             </div>
 
@@ -377,11 +312,11 @@ function BuildingsManagementContent() {
                   <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                   <h3 className="text-lg font-semibold text-foreground mb-2">No buildings found</h3>
                   <p className="text-muted-foreground mb-6">
-                    {searchTerm || selectedFilters.length > 0
-                      ? "Try adjusting your search or filters"
+                    {searchTerm
+                      ? "Try adjusting your search"
                       : "Get started by adding your first building"}
                   </p>
-                  {!searchTerm && selectedFilters.length === 0 && (
+                  {!searchTerm && (
                     <Button onClick={() => handleOpenModal()}>
                       <Plus className="h-4 w-4 mr-2" />
                       Add Building
@@ -431,7 +366,6 @@ function BuildingsManagementContent() {
               </>
             )}
           </div>
-        </div>
       </div>
 
       {/* Add/Edit Modal */}

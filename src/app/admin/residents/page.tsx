@@ -185,9 +185,9 @@ function ResidentsManagementContent() {
   };
 
   const filteredResidents = residents.filter((r) =>
-    r.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    r.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    r.type.toLowerCase().includes(searchTerm.toLowerCase())
+    (r.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (r.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (r.type || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const getStatusBadge = (resident: ApiResident) => {
@@ -197,7 +197,10 @@ function ResidentsManagementContent() {
     return <Badge className="bg-gray-500 text-white">Inactive</Badge>;
   };
 
-  const getTypeBadge = (type: string) => {
+  const getTypeBadge = (type?: string) => {
+    if (!type) {
+      return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs">Resident</Badge>;
+    }
     switch (type.toLowerCase()) {
       case 'owner':
         return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">Owner</Badge>;
@@ -282,20 +285,20 @@ function ResidentsManagementContent() {
                   >
                     <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
                       <Avatar className="flex-shrink-0">
-                        <AvatarImage src={`https://avatar.vercel.sh/${resident.name}`} />
+                        <AvatarImage src={`https://avatar.vercel.sh/${resident.name || 'user'}`} />
                         <AvatarFallback>
-                          {resident.name.split(' ').map((n) => n[0]).join('')}
+                          {(resident.name || 'U').split(' ').map((n) => n[0]).join('')}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-semibold text-foreground">{resident.name}</span>
+                          <span className="font-semibold text-foreground">{resident.name || 'Unknown'}</span>
                           {resident.isActive && <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />}
                           {!resident.isActive && <AlertCircle className="h-4 w-4 text-gray-500 flex-shrink-0" />}
                         </div>
                         <div className="flex items-center gap-2 text-sm text-muted-foreground mt-0.5">
                           <Mail className="h-3 w-3 flex-shrink-0" />
-                          <span className="truncate">{resident.email}</span>
+                          <span className="truncate">{resident.email || 'No email'}</span>
                         </div>
                         <div className="flex items-center gap-2 mt-1 flex-wrap">
                           <div className="flex items-center gap-1 text-xs text-muted-foreground">
