@@ -6,8 +6,6 @@ import { useAuth } from '@/context/AuthContext';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { cn } from '@/lib/utils';
-import { useTour } from '@/providers/TourProvider';
-import { FeatureGuideModal, HelpButton } from '@/components/tour';
 import { IncidentActionModal } from '@/components/dialogs';
 import { useToast } from '@/hooks/use-toast';
 import { api } from '@/lib/api';
@@ -26,14 +24,6 @@ import {
   Building,
   Activity,
 } from 'lucide-react';
-
-// Feature guide content for admin dashboard
-const dashboardFeatures = [
-  { id: "stats", title: "Real-Time Statistics", description: "Monitor critical metrics at a glance including active alarms, personnel count, resource availability, and average response times. All data updates in real-time from field sensors and unit reports." },
-  { id: "critical", title: "Critical Priority Incidents", description: "High-priority incidents requiring immediate attention are prominently displayed here. View severity levels, assigned units, elapsed time, and take quick response actions directly from this card." },
-  { id: "feed", title: "Active Incident Feed", description: "Track all ongoing incidents with real-time status updates, resource assignments, and duration monitoring. Filter by priority to focus on what matters most or view all active units at once." },
-  { id: "dispatch", title: "Quick Dispatch", description: "Use the Dispatch button in the sidebar to rapidly deploy units to new incidents. The system will suggest optimal unit assignments based on proximity and availability." },
-];
 
 // Status color helper
 function getStatusColor(color: string) {
@@ -56,12 +46,10 @@ const defaultIncidentsData = [
 function AdminDashboardContent() {
   const { user } = useAuth();
   const router = useRouter();
-  const { setCurrentPage } = useTour();
   const { toast } = useToast();
 
   // UI State
   const [filter, setFilter] = useState<"all" | "priority">("all");
-  const [showGuide, setShowGuide] = useState(false);
   const [showIncidentModal, setShowIncidentModal] = useState(false);
   const [respondingIncident, setRespondingIncident] = useState({
     id: "#4922-A",
@@ -78,11 +66,6 @@ function AdminDashboardContent() {
   });
   const [alerts, setAlerts] = useState<any[]>(defaultIncidentsData);
   const [loading, setLoading] = useState(true);
-
-  // Set current page for tour
-  useEffect(() => {
-    setCurrentPage("dashboard");
-  }, [setCurrentPage]);
 
   // Fetch dashboard data from API
   useEffect(() => {
@@ -202,20 +185,7 @@ function AdminDashboardContent() {
   return (
     <DashboardLayout role="admin" userName={user?.name || 'Admin'} userTitle="ADMINISTRATOR">
       <div className="flex-1 space-y-4 sm:space-y-6 overflow-auto p-3 sm:p-4 md:p-6 lg:p-8 lg:space-y-8 w-full max-w-none">
-        {/* Help Button */}
-        <div className="flex justify-end">
-          <HelpButton onClick={() => setShowGuide(true)} />
-        </div>
-
-        {/* Feature Guide Modal */}
-        <FeatureGuideModal
-          features={dashboardFeatures}
-          isOpen={showGuide}
-          onClose={() => setShowGuide(false)}
-          title="Dashboard Features"
-        />
-
-        {/* Stats Cards - Fixed icon to be square */}
+        {/* Stats Cards */}
         <div className="grid gap-3 grid-cols-1 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {statsData.map((stat) => (
             <Card key={stat.label} className="border border-border">

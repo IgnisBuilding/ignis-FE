@@ -1,6 +1,5 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Plus, Edit2, Trash2, Search, Activity, Thermometer, Wind, Droplets, AlertCircle } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
@@ -10,7 +9,6 @@ import { api, Sensor as ApiSensor } from '@/lib/api';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 
 function SensorsManagementContent() {
-  const router = useRouter();
   const { user, role } = useAuth();
   const [sensors, setSensors] = useState<ApiSensor[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,12 +48,13 @@ function SensorsManagementContent() {
   };
 
   const filteredSensors = sensors.filter(s =>
-    s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.status.toLowerCase().includes(searchTerm.toLowerCase())
+    (s.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (s.type || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (s.status || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const getSensorIcon = (type: string) => {
+  const getSensorIcon = (type?: string) => {
+    if (!type) return <Activity className="w-5 h-5" />;
     switch(type.toLowerCase()) {
       case 'smoke': return <Wind className="w-5 h-5" />;
       case 'temperature': return <Thermometer className="w-5 h-5" />;
@@ -178,15 +177,15 @@ function SensorsManagementContent() {
                               <div className="p-2.5 bg-gradient-to-br from-dark-green-100 to-dark-green-50 rounded-xl text-dark-green-600 shadow-sm">
                                 {getSensorIcon(sensor.type)}
                               </div>
-                              <span className="text-dark-green-800 font-semibold capitalize">{sensor.type}</span>
+                              <span className="text-dark-green-800 font-semibold capitalize">{sensor.type || 'Unknown'}</span>
                             </div>
                           </td>
-                          <td className="px-6 py-4 text-dark-green-600">{sensor.name}</td>
-                          <td className="px-6 py-4 text-dark-green-600">{sensor.value} {sensor.unit}</td>
+                          <td className="px-6 py-4 text-dark-green-600">{sensor.name || 'Unnamed Sensor'}</td>
+                          <td className="px-6 py-4 text-dark-green-600">{sensor.value ?? 'N/A'} {sensor.unit || ''}</td>
                           <td className="px-6 py-4 text-dark-green-600">{sensor.room?.name || sensor.roomId || 'N/A'}</td>
                           <td className="px-6 py-4">
                             <span className={`px-3 py-1.5 rounded-full text-xs font-bold ${sensor.status === 'active' ? 'bg-gradient-to-r from-green-100 to-green-50 text-green-700 border border-green-200' : sensor.status === 'alert' ? 'bg-gradient-to-r from-red-100 to-red-50 text-red-700 border border-red-200' : 'bg-gradient-to-r from-gray-100 to-gray-50 text-gray-700 border border-gray-200'}`}>
-                              {sensor.status}
+                              {sensor.status || 'unknown'}
                             </span>
                           </td>
                           <td className="px-6 py-4 text-dark-green-600 text-sm">
