@@ -346,6 +346,7 @@ function EmergencyPageContent() {
               buildingId={buildingId}
               floorPlanData={floorPlanData}
               activeFloorLevel={activeFloor?.level}
+              activeFloorId={activeFloor?.id}
             />
 
             {/* Tactical Overlay Legend */}
