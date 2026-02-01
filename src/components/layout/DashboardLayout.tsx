@@ -70,6 +70,7 @@ const roleConfig: Record<string, {
     navItems: [
       { label: "Dashboard", href: "/firefighter", icon: LayoutDashboard },
       { label: "Live Map", href: "/firefighter/map", icon: Map },
+      { label: "Societies", href: "/firefighter/societies", icon: MapPin },
       { label: "Personnel", href: "/firefighter/team", icon: Users },
       { label: "Logistics", href: "/firefighter/logistics", icon: Truck },
       { label: "Reports", href: "/firefighter/reports", icon: BarChart3 },
@@ -109,7 +110,9 @@ const roleConfig: Record<string, {
     navItems: [
       { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
       { label: "Live Map", href: "/admin/map", icon: Map },
+      { label: "Fire Brigades", href: "/admin/fire-brigades", icon: Flame },
       { label: "Buildings", href: "/admin/buildings", icon: Building2 },
+      { label: "Societies", href: "/admin/societies", icon: MapPin },
       { label: "Cameras", href: "/admin/cameras", icon: Video },
       { label: "Residents", href: "/admin/residents", icon: Users },
       { label: "Sensors", href: "/admin/sensors", icon: Radio },
