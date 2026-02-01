@@ -22,11 +22,13 @@ import {
   Home,
   AlertTriangle,
   LogOut,
+  MapPin,
 } from "lucide-react"
 
 const getFirefighterNavItems = (t: any) => [
   { icon: LayoutDashboard, label: t.sidebar.dashboard, href: "/firefighter" },
   { icon: Map, label: t.sidebar.liveMap, href: "/firefighter/map" },
+  { icon: MapPin, label: "Societies", href: "/firefighter/societies" },
   { icon: Users, label: "Team", href: "/firefighter/team" },
   { icon: AlertTriangle, label: "Active Fires", href: "/firefighter/fires" },
   { icon: Truck, label: t.sidebar.logistics, href: "/firefighter/logistics" },
@@ -37,6 +39,7 @@ const getFirefighterNavItems = (t: any) => [
 const getAdminNavItems = (t: any) => [
   { icon: LayoutDashboard, label: t.sidebar.dashboard, href: "/admin" },
   { icon: Building2, label: "Buildings", href: "/admin/buildings" },
+  { icon: MapPin, label: "Societies", href: "/admin/societies" },
   { icon: Users, label: "Residents", href: "/admin/residents" },
   { icon: Radio, label: "Sensors", href: "/admin/sensors" },
   { icon: Settings, label: t.sidebar.settings, href: "/settings" },
@@ -44,6 +47,7 @@ const getAdminNavItems = (t: any) => [
 
 const getResidentNavItems = (t: any) => [
   { icon: Home, label: "Home", href: "/resident" },
+  { icon: Map, label: "Building Map", href: "/resident/map" },
   { icon: AlertTriangle, label: "Alerts", href: "/resident/alerts" },
   { icon: Building2, label: "My Apartment", href: "/resident/apartment" },
   { icon: Settings, label: t.sidebar.settings, href: "/settings" },

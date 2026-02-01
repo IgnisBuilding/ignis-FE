@@ -34,6 +34,18 @@ interface BuildingFormData {
   type: string
   total_floors: number
   apartments_per_floor: number
+  society_id?: number
+}
+
+interface Society {
+  id: number
+  name: string
+  location: string
+  brigade_id: number
+  brigade_name: string
+  state_name: string
+  hq_name: string
+  display_label: string
 }
 
 interface DeleteState {
@@ -47,6 +59,7 @@ function BuildingsManagementContent() {
   const { toast } = useToast()
   const [buildings, setBuildings] = useState<Building[]>([])
   const [filteredBuildings, setFilteredBuildings] = useState<Building[]>([])
+  const [societies, setSocieties] = useState<Society[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -57,6 +70,7 @@ function BuildingsManagementContent() {
     type: "residential",
     total_floors: 1,
     apartments_per_floor: 1,
+    society_id: undefined,
   })
   const [deleteState, setDeleteState] = useState<DeleteState>({
     isOpen: false,
@@ -69,7 +83,20 @@ function BuildingsManagementContent() {
 
   useEffect(() => {
     fetchBuildings()
+    fetchSocieties()
   }, [])
+
+  const fetchSocieties = async () => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/buildings/societies`)
+      if (response.ok) {
+        const data = await response.json()
+        setSocieties(data)
+      }
+    } catch (err) {
+      console.error("Error fetching societies:", err)
+    }
+  }
 
   useEffect(() => {
     const filtered = buildings.filter(
@@ -108,6 +135,7 @@ function BuildingsManagementContent() {
         type: building.type,
         total_floors: (building as any).total_floors || 1,
         apartments_per_floor: (building as any).apartments_per_floor || 1,
+        society_id: building.society_id,
       })
     } else {
       setEditingBuilding(null)
@@ -117,6 +145,7 @@ function BuildingsManagementContent() {
         type: "residential",
         total_floors: 1,
         apartments_per_floor: 1,
+        society_id: societies.length > 0 ? societies[0].id : undefined,
       })
     }
     setIsModalOpen(true)
@@ -131,6 +160,7 @@ function BuildingsManagementContent() {
       type: "residential",
       total_floors: 1,
       apartments_per_floor: 1,
+      society_id: undefined,
     })
   }
 
@@ -420,6 +450,27 @@ function BuildingsManagementContent() {
                 <option value="industrial">Industrial</option>
                 <option value="mixed">Mixed Use</option>
               </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">
+                Society / District
+              </label>
+              <select
+                value={formData.society_id || ""}
+                onChange={(e) => setFormData({ ...formData, society_id: e.target.value ? parseInt(e.target.value) : undefined })}
+                className="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="">-- Select Society (Optional) --</option>
+                {societies.map((society) => (
+                  <option key={society.id} value={society.id}>
+                    {society.display_label}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Assigns this building to a fire brigade jurisdiction
+              </p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
