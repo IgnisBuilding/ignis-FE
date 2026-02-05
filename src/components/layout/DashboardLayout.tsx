@@ -52,7 +52,7 @@ interface NavItem {
 
 interface DashboardLayoutProps {
   children: ReactNode;
-  role: "firefighter" | "resident" | "manager" | "admin";
+  role: "firefighter" | "firefighter_hq" | "firefighter_state" | "firefighter_district" | "resident" | "manager" | "admin";
   userName: string;
   userTitle: string;
   disablePadding?: boolean;
@@ -64,9 +64,10 @@ const roleConfig: Record<string, {
   navItems: NavItem[];
   dispatchButton: boolean;
 }> = {
-  firefighter: {
+  // Firefighter HQ - Full access to all firefighter pages
+  firefighter_hq: {
     title: "IGNIS COMMAND",
-    subtitle: "ELITE TACTICAL",
+    subtitle: "HQ OPERATIONS",
     navItems: [
       { label: "Dashboard", href: "/firefighter", icon: LayoutDashboard },
       { label: "Live Map", href: "/firefighter/map", icon: Map },
@@ -74,6 +75,47 @@ const roleConfig: Record<string, {
       { label: "Personnel", href: "/firefighter/team", icon: Users },
       { label: "Logistics", href: "/firefighter/logistics", icon: Truck },
       { label: "Reports", href: "/firefighter/reports", icon: BarChart3 },
+      { label: "Directory", href: "/firefighter/directory", icon: BookOpen },
+      { label: "Settings", href: "/settings", icon: Settings },
+    ],
+    dispatchButton: true,
+  },
+  // Firefighter State - No Logistics access
+  firefighter_state: {
+    title: "IGNIS COMMAND",
+    subtitle: "STATE OPERATIONS",
+    navItems: [
+      { label: "Dashboard", href: "/firefighter", icon: LayoutDashboard },
+      { label: "Live Map", href: "/firefighter/map", icon: Map },
+      { label: "Societies", href: "/firefighter/societies", icon: MapPin },
+      { label: "Personnel", href: "/firefighter/team", icon: Users },
+      { label: "Reports", href: "/firefighter/reports", icon: BarChart3 },
+      { label: "Directory", href: "/firefighter/directory", icon: BookOpen },
+      { label: "Settings", href: "/settings", icon: Settings },
+    ],
+    dispatchButton: true,
+  },
+  // Firefighter District - Limited access (no Personnel, Logistics, Reports)
+  firefighter_district: {
+    title: "IGNIS COMMAND",
+    subtitle: "DISTRICT OPS",
+    navItems: [
+      { label: "Dashboard", href: "/firefighter", icon: LayoutDashboard },
+      { label: "Live Map", href: "/firefighter/map", icon: Map },
+      { label: "Societies", href: "/firefighter/societies", icon: MapPin },
+      { label: "Directory", href: "/firefighter/directory", icon: BookOpen },
+      { label: "Settings", href: "/settings", icon: Settings },
+    ],
+    dispatchButton: true,
+  },
+  // Legacy firefighter role - maps to district level
+  firefighter: {
+    title: "IGNIS COMMAND",
+    subtitle: "TACTICAL OPS",
+    navItems: [
+      { label: "Dashboard", href: "/firefighter", icon: LayoutDashboard },
+      { label: "Live Map", href: "/firefighter/map", icon: Map },
+      { label: "Societies", href: "/firefighter/societies", icon: MapPin },
       { label: "Directory", href: "/firefighter/directory", icon: BookOpen },
       { label: "Settings", href: "/settings", icon: Settings },
     ],

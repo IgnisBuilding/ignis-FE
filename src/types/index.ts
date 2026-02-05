@@ -1,5 +1,15 @@
 // User Types
-export type UserRole = 'building_authority' | 'management' | 'resident' | 'firefighter' | 'admin';
+// Backend roles with firefighter hierarchy
+export type UserRole =
+  | 'admin'
+  | 'firefighter_hq'
+  | 'firefighter_state'
+  | 'firefighter_district'
+  | 'firefighter'
+  | 'commander'
+  | 'management'
+  | 'building_authority'
+  | 'resident';
 
 export interface User {
   id: string;

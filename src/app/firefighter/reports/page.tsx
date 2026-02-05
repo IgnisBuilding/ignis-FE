@@ -77,7 +77,7 @@ const reportsData = [
 ];
 
 function ReportsPageContent() {
-  const { user } = useAuth();
+  const { user, dashboardRole, roleTitle } = useAuth();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [showDownloadDialog, setShowDownloadDialog] = useState(false);
@@ -150,9 +150,9 @@ function ReportsPageContent() {
 
   return (
     <DashboardLayout
-      role="firefighter"
+      role={dashboardRole}
       userName={user?.name || 'Cmdr. Sterling'}
-      userTitle="SENIOR DIRECTOR"
+      userTitle={roleTitle}
     >
       <div className="flex-1 space-y-4 overflow-auto p-3 sm:p-4 md:p-6 lg:p-8 sm:space-y-6 w-full max-w-none">
         {/* Header */}
@@ -341,7 +341,7 @@ function ReportsPageContent() {
 
 export default function ReportsPage() {
   return (
-    <ProtectedRoute allowedRoles={['firefighter']}>
+    <ProtectedRoute allowedRoles={['firefighter_hq', 'firefighter_state', 'admin']}>
       <ReportsPageContent />
     </ProtectedRoute>
   );

@@ -68,7 +68,7 @@ function getStatusColor(status: string) {
 }
 
 function FirefighterDashboardContent() {
-  const { user } = useAuth();
+  const { user, dashboardRole, roleTitle } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const [hazards, setHazards] = useState<Hazard[]>([]);
@@ -168,9 +168,9 @@ function FirefighterDashboardContent() {
   if (loading) {
     return (
       <DashboardLayout
-        role="firefighter"
+        role={dashboardRole}
         userName={user?.name || 'Commander'}
-        userTitle="FIREFIGHTER"
+        userTitle={roleTitle}
       >
         <div className="flex items-center justify-center h-full min-h-[60vh]">
           <div className="text-center">
@@ -186,9 +186,9 @@ function FirefighterDashboardContent() {
 
   return (
     <DashboardLayout
-      role="firefighter"
+      role={dashboardRole}
       userName={user?.name || 'Cmdr. Sterling'}
-      userTitle="SENIOR DIRECTOR"
+      userTitle={roleTitle}
     >
       <div className="flex-1 space-y-4 sm:space-y-6 overflow-auto p-3 sm:p-4 md:p-6 lg:p-8 lg:space-y-8 w-full max-w-none">
         {/* Stats Cards */}
@@ -473,7 +473,7 @@ function FirefighterDashboardContent() {
 
 export default function FirefighterDashboard() {
   return (
-    <ProtectedRoute allowedRoles={['firefighter']}>
+    <ProtectedRoute allowedRoles={['firefighter', 'firefighter_hq', 'firefighter_state', 'firefighter_district', 'admin']}>
       <FirefighterDashboardContent />
     </ProtectedRoute>
   );

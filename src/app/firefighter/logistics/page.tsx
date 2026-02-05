@@ -77,7 +77,7 @@ const equipmentData = [
 ];
 
 function LogisticsPageContent() {
-  const { user } = useAuth();
+  const { user, dashboardRole, roleTitle } = useAuth();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [showMaintenanceDialog, setShowMaintenanceDialog] = useState(false);
@@ -156,9 +156,9 @@ function LogisticsPageContent() {
 
   return (
     <DashboardLayout
-      role="firefighter"
+      role={dashboardRole}
       userName={user?.name || 'Cmdr. Sterling'}
-      userTitle="SENIOR DIRECTOR"
+      userTitle={roleTitle}
     >
       <div className="flex-1 space-y-4 overflow-auto p-3 sm:p-4 md:p-6 lg:p-8 sm:space-y-6 w-full max-w-none">
         {/* Header */}
@@ -355,7 +355,7 @@ function LogisticsPageContent() {
 
 export default function LogisticsPage() {
   return (
-    <ProtectedRoute allowedRoles={['firefighter']}>
+    <ProtectedRoute allowedRoles={['firefighter_hq', 'admin']}>
       <LogisticsPageContent />
     </ProtectedRoute>
   );
