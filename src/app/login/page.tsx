@@ -24,15 +24,25 @@ export default function LoginPage() {
         if (storedUser) {
           const userData = JSON.parse(storedUser);
           const role = userData.role;
-          
-          if (role === 'management' || role === 'building_authority') {
-            router.push('/admin');
-          } else if (role === 'firefighter') {
-            router.push('/firefighter');
-          } else if (role === 'resident') {
-            router.push('/resident');
-          } else {
-            router.push('/');
+
+          // Route based on role
+          switch (role) {
+            case 'admin':
+            case 'commander':
+            case 'management':
+            case 'building_authority':
+              router.push('/admin');
+              break;
+            case 'firefighter':
+            case 'firefighter_hq':
+            case 'firefighter_state':
+            case 'firefighter_district':
+              router.push('/firefighter');
+              break;
+            case 'resident':
+            default:
+              router.push('/resident');
+              break;
           }
         } else {
           router.push('/');
@@ -47,11 +57,14 @@ export default function LoginPage() {
     }
   };
 
-  const fillDemoCredentials = (role: 'management' | 'firefighter' | 'resident') => {
+  const fillDemoCredentials = (role: 'admin' | 'management' | 'firefighter_hq' | 'firefighter_state' | 'firefighter_district' | 'resident') => {
     const credentials = {
+      admin: { email: 'admin@ignis.com', password: 'admin123' },
       management: { email: 'management@ignis.com', password: 'admin123' },
-      firefighter: { email: 'firefighter@ignis.com', password: 'admin123' },
-      resident: { email: 'resident@ignis.com', password: 'admin123' },
+      firefighter_hq: { email: 'firefighter@ignis.com', password: 'firefighter123' },
+      firefighter_state: { email: 'firefighter.state@ignis.com', password: 'firefighter123' },
+      firefighter_district: { email: 'firefighter.district@ignis.com', password: 'firefighter123' },
+      resident: { email: 'resident@ignis.com', password: 'resident123' },
     };
     setEmail(credentials[role].email);
     setPassword(credentials[role].password);
@@ -146,17 +159,17 @@ export default function LoginPage() {
             <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
-                onClick={() => fillDemoCredentials('management')}
+                onClick={() => fillDemoCredentials('admin')}
                 className="px-3 py-2 text-xs font-bold bg-primary/5 text-primary rounded-lg hover:bg-primary/10 transition-all border border-primary/10 uppercase tracking-wider"
               >
-                Management
+                Admin
               </button>
               <button
                 type="button"
-                onClick={() => fillDemoCredentials('firefighter')}
+                onClick={() => fillDemoCredentials('management')}
                 className="px-3 py-2 text-xs font-bold bg-primary/5 text-primary rounded-lg hover:bg-primary/10 transition-all border border-primary/10 uppercase tracking-wider"
               >
-                Firefighter
+                Manager
               </button>
               <button
                 type="button"
@@ -164,6 +177,27 @@ export default function LoginPage() {
                 className="px-3 py-2 text-xs font-bold bg-primary/5 text-primary rounded-lg hover:bg-primary/10 transition-all border border-primary/10 uppercase tracking-wider"
               >
                 Resident
+              </button>
+              <button
+                type="button"
+                onClick={() => fillDemoCredentials('firefighter_hq')}
+                className="px-3 py-2 text-xs font-bold bg-primary/5 text-primary rounded-lg hover:bg-primary/10 transition-all border border-primary/10 uppercase tracking-wider"
+              >
+                FF HQ
+              </button>
+              <button
+                type="button"
+                onClick={() => fillDemoCredentials('firefighter_state')}
+                className="px-3 py-2 text-xs font-bold bg-primary/5 text-primary rounded-lg hover:bg-primary/10 transition-all border border-primary/10 uppercase tracking-wider"
+              >
+                FF State
+              </button>
+              <button
+                type="button"
+                onClick={() => fillDemoCredentials('firefighter_district')}
+                className="px-3 py-2 text-xs font-bold bg-primary/5 text-primary rounded-lg hover:bg-primary/10 transition-all border border-primary/10 uppercase tracking-wider"
+              >
+                FF District
               </button>
             </div>
           </div>

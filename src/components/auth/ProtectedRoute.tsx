@@ -22,11 +22,28 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
     }
 
     if (allowedRoles && role && !allowedRoles.includes(role)) {
-      // Redirect to appropriate dashboard
-      const dashboardRoute = 
-        role === 'management' ? '/admin' :
-        role === 'firefighter' ? '/firefighter' :
-        '/resident';
+      // Redirect to appropriate dashboard based on role
+      let dashboardRoute = '/resident';
+      switch (role) {
+        case 'admin':
+          dashboardRoute = '/admin';
+          break;
+        case 'commander':
+        case 'management':
+        case 'building_authority':
+          dashboardRoute = '/admin';
+          break;
+        case 'firefighter':
+        case 'firefighter_hq':
+        case 'firefighter_state':
+        case 'firefighter_district':
+          dashboardRoute = '/firefighter';
+          break;
+        case 'resident':
+        default:
+          dashboardRoute = '/resident';
+          break;
+      }
       router.push(dashboardRoute);
     }
   }, [isAuthenticated, role, allowedRoles, router, loading]);

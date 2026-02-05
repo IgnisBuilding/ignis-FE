@@ -5,21 +5,18 @@ import { useAuth } from '@/context/AuthContext';
 import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Flame,
   MessageCircle,
   X,
-  AlertTriangle,
   Share2,
   Check,
-  PersonStanding,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import type { EmergencyState } from '@/lib/map';
 import { api, type Floor } from '@/lib/api';
-import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 
@@ -39,14 +36,9 @@ const EvacuationMap = dynamic(
   }
 );
 
-// Mock units for unit tracking
-const defaultUnits = [
-  { id: 'SQ42', name: 'Squad 42', status: 'Entering Floor 07', active: true },
-  { id: 'RE02', name: 'Rescue 02', status: 'Staging Floor 05', active: false },
-];
 
 function EmergencyPageContent() {
-  const { user } = useAuth();
+  const { user, dashboardRole, roleTitle } = useAuth();
   const searchParams = useSearchParams();
 
   // Get building ID and name from URL params
@@ -61,14 +53,12 @@ function EmergencyPageContent() {
   const [floorPlanData, setFloorPlanData] = useState<any>(null);
 
   // UI State
-  const [viewMode, setViewMode] = useState<'2d' | '3d'>('3d');
   const [stackMode, setStackMode] = useState(false);
   const [isAIOpen, setIsAIOpen] = useState(false);
   const [isTalking, setIsTalking] = useState(false);
 
   // Emergency State
   const [emergencyState, setEmergencyState] = useState<EmergencyState | null>(null);
-  const [units, setUnits] = useState(defaultUnits);
 
   // Fetch floors and floor plan from API
   useEffect(() => {
@@ -140,11 +130,6 @@ function EmergencyPageContent() {
         description: 'Thermal escalation in NW quadrant. Recommend pathing via East Stairs (Safety Trail updated).',
         acknowledged: false,
       });
-
-      setUnits([
-        { id: 'SQ42', name: 'Squad 42', status: 'Responding to Alert', active: true },
-        { id: 'RE02', name: 'Rescue 02', status: 'En Route', active: true },
-      ]);
     } else if (state.mode === 'evacuation_in_progress') {
       setAiMessages([
         "EVACUATION IN PROGRESS",
@@ -152,11 +137,6 @@ function EmergencyPageContent() {
         `Evacuation ${Math.round(state.evacuationProgress * 100)}% complete`,
         "Follow illuminated exit signs",
         "Assist those who need help"
-      ]);
-
-      setUnits([
-        { id: 'SQ42', name: 'Squad 42', status: 'Clearing Floor 07', active: true },
-        { id: 'RE02', name: 'Rescue 02', status: 'Assisting Evacuation', active: true },
       ]);
     } else if (state.mode === 'evacuation_complete') {
       setAiMessages([
@@ -168,11 +148,6 @@ function EmergencyPageContent() {
       ]);
       setIsTalking(false);
       setCriticalAlert(null);
-
-      setUnits([
-        { id: 'SQ42', name: 'Squad 42', status: 'Sweep Complete', active: false },
-        { id: 'RE02', name: 'Rescue 02', status: 'Standby', active: false },
-      ]);
     } else if (state.mode === 'idle') {
       setAiMessages([
         "System ready. Monitoring for fire hazards.",
@@ -181,7 +156,6 @@ function EmergencyPageContent() {
       ]);
       setIsTalking(false);
       setCriticalAlert(null);
-      setUnits(defaultUnits);
     }
   }, []);
 
@@ -204,68 +178,9 @@ function EmergencyPageContent() {
     }
   };
 
-  // Get building system status
-  const getAirstreamIntegrity = () => {
-    if (!emergencyState || emergencyState.mode === 'idle') return 100;
-    if (emergencyState.mode === 'fire_detected') return 75;
-    if (emergencyState.mode === 'evacuation_in_progress') return 60;
-    return 100;
-  };
-
-  const getStairwellStatus = () => {
-    if (!emergencyState || emergencyState.mode === 'idle') return [true, true, true, true];
-    if (emergencyState.mode === 'fire_detected') return [true, false, true, false];
-    return [true, true, true, true];
-  };
-
   return (
-    <DashboardLayout role="admin" userName={user?.name || 'Admin'} userTitle="ADMINISTRATOR">
+    <DashboardLayout role={dashboardRole} userName={user?.name || 'User'} userTitle={`${roleTitle} • ${buildingName}`}>
       <div className="flex-1 flex flex-col h-full">
-        {/* Header */}
-        <header className="flex-shrink-0 flex h-14 items-center justify-between border-b border-border bg-card px-4">
-          <div className="flex items-center gap-3">
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-base font-bold text-foreground">{buildingName.toUpperCase()}</h1>
-                <Badge variant="secondary" className="text-[10px] font-semibold">BUILDING #{buildingId}</Badge>
-              </div>
-              <p className="text-xs text-muted-foreground">{floors.length} Floors • Emergency View</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {/* View Mode Toggle */}
-            <div className="flex rounded-lg border border-border bg-secondary p-0.5">
-              <Button
-                variant="ghost"
-                size="sm"
-                className={`px-3 h-7 text-xs ${viewMode === '2d' ? 'bg-card shadow-sm' : ''}`}
-                onClick={() => setViewMode('2d')}
-              >
-                2D PLAN
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className={`px-3 h-7 text-xs ${viewMode === '3d' ? 'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground' : ''}`}
-                onClick={() => setViewMode('3d')}
-              >
-                3D VIEW
-              </Button>
-            </div>
-
-            {/* Evacuation Alert Button */}
-            <Button
-              variant="destructive"
-              size="sm"
-              className="gap-2"
-            >
-              <AlertTriangle className="h-4 w-4" />
-              Evacuation Alert
-            </Button>
-          </div>
-        </header>
-
         <div className="flex flex-1 min-h-0">
           {/* Floor Selector */}
           <div className="flex-shrink-0 flex flex-col items-center gap-1 border-r border-border bg-card px-3 py-4">
@@ -369,84 +284,6 @@ function EmergencyPageContent() {
               </CardContent>
             </Card>
           </div>
-
-          {/* Right Sidebar - Command Intelligence */}
-          <div className="flex-shrink-0 w-64 border-l border-border bg-card p-4 overflow-y-auto">
-            <h2 className="mb-4 text-xs font-bold uppercase tracking-wider text-foreground">Command Intelligence</h2>
-
-            {/* Airstream Integrity */}
-            <div className="mb-4 rounded-lg border border-border p-3">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Airstream Integrity</span>
-                <span className="text-xs font-semibold text-foreground">
-                  {getAirstreamIntegrity() > 80 ? 'Positive' : 'Compromised'}
-                </span>
-              </div>
-              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-secondary">
-                <motion.div
-                  className="h-full bg-green-500"
-                  initial={{ width: '100%' }}
-                  animate={{ width: `${getAirstreamIntegrity()}%` }}
-                  transition={{ duration: 0.5 }}
-                />
-              </div>
-            </div>
-
-            {/* Stairwell Pressurization */}
-            <div className="mb-4 rounded-lg border border-border p-3">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Stairwell Pressurization</span>
-                <span className="text-xs font-semibold text-foreground">Active</span>
-              </div>
-              <div className="mt-2 flex gap-1">
-                {getStairwellStatus().map((active, idx) => (
-                  <div
-                    key={idx}
-                    className={`h-1.5 flex-1 rounded-full ${active ? 'bg-green-500' : 'bg-secondary'}`}
-                  />
-                ))}
-              </div>
-            </div>
-
-            {/* Unit Tracking */}
-            <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-foreground">Unit Tracking</h3>
-            <div className="space-y-2">
-              {units.map((unit) => (
-                <div
-                  key={unit.id}
-                  className={`flex items-center justify-between rounded-lg p-2 ${
-                    unit.active ? 'bg-primary text-primary-foreground' : 'bg-secondary'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <div className={`flex h-8 w-8 items-center justify-center rounded text-[10px] font-bold ${
-                      unit.active ? 'bg-primary-foreground/20' : 'bg-card'
-                    }`}>
-                      {unit.id}
-                    </div>
-                    <div>
-                      <p className={`text-xs font-semibold ${unit.active ? 'text-primary-foreground' : 'text-foreground'}`}>{unit.name}</p>
-                      <p className={`text-[10px] ${unit.active ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>{unit.status}</p>
-                    </div>
-                  </div>
-                  {unit.active && <PersonStanding className="h-4 w-4 text-primary-foreground/70" />}
-                </div>
-              ))}
-            </div>
-
-            {/* Elite Protocol */}
-            <Card className="mt-4 border-0 bg-primary text-primary-foreground">
-              <CardContent className="p-3">
-                <div className="mb-1 flex items-center gap-2">
-                  <Check className="h-3 w-3" />
-                  <span className="text-[10px] font-bold uppercase tracking-wider">Elite Protocol</span>
-                </div>
-                <p className="text-[11px] italic text-primary-foreground/80">
-                  "Tactical awareness is superiority. The 3D view ensures no vertical spread goes unnoticed."
-                </p>
-              </CardContent>
-            </Card>
-          </div>
         </div>
       </div>
 
@@ -509,7 +346,7 @@ function EmergencyPageContent() {
 
 export default function EmergencyPage() {
   return (
-    <ProtectedRoute allowedRoles={['management', 'building_authority', 'firefighter']}>
+    <ProtectedRoute allowedRoles={['admin', 'commander', 'management', 'building_authority', 'firefighter', 'firefighter_hq', 'firefighter_state', 'firefighter_district']}>
       <Suspense fallback={
         <div className="w-full h-screen flex items-center justify-center bg-muted/20">
           <div className="flex flex-col items-center gap-3">

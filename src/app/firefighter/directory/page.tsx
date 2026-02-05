@@ -88,7 +88,7 @@ const savedViews = [
 ];
 
 function DirectoryContent() {
-  const { user } = useAuth();
+  const { user, dashboardRole, roleTitle } = useAuth();
   const { toast } = useToast();
   const [selectedFilters, setSelectedFilters] = useState<string[]>([
     'NORTH DISTRICT',
@@ -149,9 +149,9 @@ function DirectoryContent() {
 
   return (
     <DashboardLayout
-      role="firefighter"
+      role={dashboardRole}
       userName={user?.name || 'Cmdr. Sterling'}
-      userTitle="SENIOR DIRECTOR"
+      userTitle={roleTitle}
     >
       <div className="flex-1 space-y-4 overflow-auto p-3 sm:p-4 md:p-6 lg:p-8 sm:space-y-6 w-full max-w-none">
         <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
@@ -406,7 +406,7 @@ function DirectoryContent() {
 
 export default function Directory() {
   return (
-    <ProtectedRoute allowedRoles={['firefighter']}>
+    <ProtectedRoute allowedRoles={['firefighter', 'firefighter_hq', 'firefighter_state', 'firefighter_district', 'admin']}>
       <DirectoryContent />
     </ProtectedRoute>
   );

@@ -8,24 +8,10 @@ import { Settings as SettingsIcon, Bell, Users, Wifi, Shield, Monitor, Megaphone
 type SettingsTab = 'profile' | 'notifications' | 'security' | 'appearance' | 'system' | 'users' | 'sensors';
 
 function SettingsContent() {
-    const { user, role } = useAuth();
+    const { user, role, dashboardRole, roleTitle } = useAuth();
 
-    // Determine dashboard role based on user's actual role
-    const getDashboardRole = () => {
-        if (role === 'firefighter') return 'firefighter';
-        if (role === 'resident') return 'resident';
-        return 'admin';
-    };
-
-    // Determine user title based on role
-    const getUserTitle = () => {
-        if (role === 'firefighter') return 'FIREFIGHTER';
-        if (role === 'resident') return 'RESIDENT';
-        return 'ADMINISTRATOR';
-    };
-
-    // Check if user is admin (management or building_authority)
-    const isAdmin = role === 'management' || role === 'building_authority';
+    // Check if user has admin/management privileges
+    const isAdmin = role === 'admin' || role === 'commander' || role === 'management' || role === 'building_authority' || role === 'firefighter_hq';
     const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
 
     // Custom switch styles
@@ -86,7 +72,7 @@ function SettingsContent() {
     const tabs = isAdmin ? [...commonTabs, ...adminTabs] : commonTabs;
 
     return (
-        <DashboardLayout role={getDashboardRole()} userName={user?.name || 'User'} userTitle={getUserTitle()}>
+        <DashboardLayout role={dashboardRole} userName={user?.name || 'User'} userTitle={roleTitle}>
             <style jsx global>{switchStyles}</style>
             <div className="flex-1 p-6">
                 {/* Page Header */}

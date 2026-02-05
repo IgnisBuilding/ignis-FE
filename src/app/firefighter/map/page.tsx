@@ -52,7 +52,7 @@ const fireStationMarkers: MapMarker[] = [
 ];
 
 function FirefighterMapContent() {
-    const { user } = useAuth();
+    const { user, dashboardRole, roleTitle } = useAuth();
     const router = useRouter();
     const [selectedMarker, setSelectedMarker] = useState<MapMarker | null>(null);
     const [selectedBuilding, setSelectedBuilding] = useState<number | null>(null);
@@ -186,7 +186,7 @@ function FirefighterMapContent() {
     };
 
     return (
-        <DashboardLayout role="firefighter" userName={user?.name || 'Firefighter'} userTitle="FIRE SAFETY" disablePadding={true}>
+        <DashboardLayout role={dashboardRole} userName={user?.name || 'Firefighter'} userTitle={roleTitle} disablePadding={true}>
             <div className="relative w-full h-full overflow-hidden min-h-[calc(100vh-64px)]">
                 {/* Real Map */}
                 <LiveMap
@@ -392,7 +392,7 @@ function FirefighterMapContent() {
 
 export default function FirefighterMapPage() {
     return (
-        <ProtectedRoute allowedRoles={['firefighter']}>
+        <ProtectedRoute allowedRoles={['firefighter', 'firefighter_hq', 'firefighter_state', 'firefighter_district', 'admin']}>
             <FirefighterMapContent />
         </ProtectedRoute>
     );

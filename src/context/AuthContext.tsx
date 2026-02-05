@@ -5,9 +5,80 @@ import { useRouter } from 'next/navigation';
 import { User, UserRole, SignupData } from '@/types';
 import { api } from '@/lib/api';
 
+// Dashboard role type used by DashboardLayout
+export type DashboardRole = 'firefighter' | 'firefighter_hq' | 'firefighter_state' | 'firefighter_district' | 'resident' | 'manager' | 'admin';
+
+// Map backend/user roles to dashboard layout roles
+export function mapToDashboardRole(role: UserRole | null | undefined): DashboardRole {
+  if (!role) return 'firefighter';
+  switch (role) {
+    case 'admin':
+      return 'admin';
+    // Firefighter hierarchy - keep specific roles for different nav menus
+    case 'firefighter_hq':
+      return 'firefighter_hq';
+    case 'firefighter_state':
+      return 'firefighter_state';
+    case 'firefighter_district':
+      return 'firefighter_district';
+    case 'firefighter':
+      return 'firefighter';
+    // Management roles
+    case 'commander':
+    case 'building_authority':
+    case 'management':
+      return 'manager';
+    case 'resident':
+      return 'resident';
+    default:
+      return 'firefighter';
+  }
+}
+
+// Get user-friendly title from role
+export function getRoleTitle(role: UserRole | null | undefined): string {
+  if (!role) return 'USER';
+  switch (role) {
+    case 'admin':
+      return 'ADMINISTRATOR';
+    case 'firefighter_hq':
+      return 'HQ FIREFIGHTER';
+    case 'firefighter_state':
+      return 'STATE FIREFIGHTER';
+    case 'firefighter_district':
+      return 'DISTRICT FIREFIGHTER';
+    case 'firefighter':
+      return 'FIREFIGHTER';
+    case 'commander':
+      return 'FIRE COMMANDER';
+    case 'resident':
+      return 'RESIDENT';
+    case 'building_authority':
+      return 'BUILDING AUTHORITY';
+    case 'management':
+      return 'MANAGEMENT';
+    default:
+      return 'USER';
+  }
+}
+
+// Helper to check if a role is any firefighter role
+export function isFirefighterRole(role: UserRole | null | undefined): boolean {
+  if (!role) return false;
+  return ['firefighter', 'firefighter_hq', 'firefighter_state', 'firefighter_district'].includes(role);
+}
+
+// Helper to check if a role is any management role
+export function isManagementRole(role: UserRole | null | undefined): boolean {
+  if (!role) return false;
+  return ['admin', 'commander', 'management', 'building_authority'].includes(role);
+}
+
 interface AuthContextType {
   user: User | null;
   role: UserRole | null;
+  dashboardRole: DashboardRole;
+  roleTitle: string;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
@@ -111,6 +182,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const value: AuthContextType = useMemo(() => ({
     user,
     role: user?.role || null,
+    dashboardRole: mapToDashboardRole(user?.role),
+    roleTitle: getRoleTitle(user?.role),
     isAuthenticated: !!user,
     login,
     logout,
@@ -129,6 +202,8 @@ export const useAuth = () => {
     return {
       user: null,
       role: null,
+      dashboardRole: 'firefighter_district' as DashboardRole,
+      roleTitle: 'USER',
       isAuthenticated: false,
       login: async () => false,
       logout: () => {},

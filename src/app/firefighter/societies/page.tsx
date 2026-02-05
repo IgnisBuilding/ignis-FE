@@ -57,7 +57,7 @@ interface EmployeeInfo {
 }
 
 function SocietiesManagementContent() {
-  const { user } = useAuth()
+  const { user, dashboardRole, roleTitle } = useAuth()
   const { toast } = useToast()
   const [societies, setSocieties] = useState<Society[]>([])
   const [brigades, setBrigades] = useState<Brigade[]>([])
@@ -306,7 +306,7 @@ function SocietiesManagementContent() {
   // Access denied view for non-HQ firefighters
   if (accessDenied) {
     return (
-      <DashboardLayout role="firefighter" userName={user?.name || "Firefighter"} userTitle="FIREFIGHTER">
+      <DashboardLayout role={dashboardRole} userName={user?.name || "Firefighter"} userTitle={roleTitle}>
         <div className="h-[calc(100vh-4rem)] w-full overflow-auto">
           <div className="p-3 sm:p-4 md:p-6 lg:p-8 w-full max-w-none">
             <Card className="p-12">
@@ -328,7 +328,7 @@ function SocietiesManagementContent() {
   }
 
   return (
-    <DashboardLayout role="firefighter" userName={user?.name || "Firefighter"} userTitle="HQ FIREFIGHTER">
+    <DashboardLayout role={dashboardRole} userName={user?.name || "Firefighter"} userTitle={roleTitle}>
       <div className="h-[calc(100vh-4rem)] w-full overflow-auto">
         <div className="p-3 sm:p-4 md:p-6 lg:p-8 w-full max-w-none">
           {/* Header */}
@@ -640,7 +640,7 @@ function SocietiesManagementContent() {
 
 export default function FirefighterSocietiesPage() {
   return (
-    <ProtectedRoute allowedRoles={["firefighter"]}>
+    <ProtectedRoute allowedRoles={["firefighter", "firefighter_hq", "firefighter_state", "firefighter_district", "admin"]}>
       <SocietiesManagementContent />
     </ProtectedRoute>
   )
