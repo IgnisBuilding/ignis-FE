@@ -29,9 +29,25 @@ import {
   computeLocalRoute,
   placeLocalFires,
   clearLocalFires,
+  // Fetch active hazards from backend
+  fetchActiveHazards,
 } from '@/lib/map';
 
 import type { EmergencyState, MapCallbacks, Sensor, HazardData, IsolationResponse } from '@/lib/map';
+
+// Evacuee position interface for real-time tracking
+export interface EvacueePosition {
+  user_id: number;
+  building_id: number;
+  floor_id: number;
+  coordinates: [number, number];
+  heading?: number;
+  status: 'active' | 'navigating' | 'safe' | 'trapped' | 'offline';
+  current_instruction?: string;
+  progress?: number;
+  last_update: number;
+  userName?: string;
+}
 
 // Props interface
 interface EvacuationMapProps {
@@ -48,6 +64,10 @@ interface EvacuationMapProps {
   floorPlanData?: any; // Floor plan GeoJSON data from database
   activeFloorLevel?: number; // Active floor level from parent
   activeFloorId?: number; // Active floor ID from parent (for precise filtering)
+  // Real-time evacuee tracking
+  evacuees?: Map<number, EvacueePosition>; // Map of user_id to position
+  showEvacuees?: boolean; // Whether to show evacuee markers
+  currentUserId?: number; // Current user's ID (to highlight their marker)
 }
 
 // Notification component
@@ -81,6 +101,9 @@ const EvacuationMap = memo(({
   floorPlanData,
   activeFloorLevel,
   activeFloorId,
+  evacuees,
+  showEvacuees = true,
+  currentUserId,
 }: EvacuationMapProps) => {
   // Refs
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -89,6 +112,7 @@ const EvacuationMap = memo(({
   const startMarkerRef = useRef<maplibregl.Marker | null>(null);
   const endMarkerRef = useRef<maplibregl.Marker | null>(null);
   const roomsDataRef = useRef<GeoJSON.FeatureCollection | null>(null);
+  const evacueeMarkersRef = useRef<Map<number, maplibregl.Marker>>(new Map());
 
   // State
   const [isMapLoaded, setIsMapLoaded] = useState(false);
@@ -101,7 +125,7 @@ const EvacuationMap = memo(({
     fireMarkers: [],
     evacuationProgress: 0,
   });
-  const [routeNodes, setRouteNodes] = useState<{ id: string; name: string; nodeId?: string; roomId?: string; coordinates?: [number, number] }[]>([]);
+  const [routeNodes, setRouteNodes] = useState<{ id: string; name: string; nodeId?: string; roomId?: string; coordinates?: [number, number]; floorId?: number; floorLevel?: string | number; apartmentId?: number }[]>([]);
   const [selectedStart, setSelectedStart] = useState<string>('');
   const [selectedEnd, setSelectedEnd] = useState<string>('');
   const [isComputingRoute, setIsComputingRoute] = useState(false);
@@ -140,6 +164,145 @@ const EvacuationMap = memo(({
   useEffect(() => {
     activeFireZonesRef.current = activeFireZones;
   }, [activeFireZones]);
+
+  // ═══════════════════════════════════════════════════════════════
+  // REAL-TIME EVACUEE MARKERS
+  // ═══════════════════════════════════════════════════════════════
+  useEffect(() => {
+    if (!isMapLoaded || !mapRef.current || !showEvacuees || !evacuees) return;
+
+    const map = mapRef.current;
+    const currentMarkers = evacueeMarkersRef.current;
+    const evacueeIds = new Set(evacuees.keys());
+
+    // Remove markers for evacuees no longer in the list
+    currentMarkers.forEach((marker, userId) => {
+      if (!evacueeIds.has(userId)) {
+        marker.remove();
+        currentMarkers.delete(userId);
+      }
+    });
+
+    // Add or update markers for each evacuee
+    evacuees.forEach((evacuee, userId) => {
+      // Skip if coordinates are invalid
+      if (!evacuee.coordinates || evacuee.coordinates.length !== 2) return;
+      if (!isValidLonLat(evacuee.coordinates[0], evacuee.coordinates[1])) return;
+
+      // Filter by floor if activeFloorId is set
+      if (activeFloorId && evacuee.floor_id !== activeFloorId) {
+        // Hide marker if on different floor
+        const existingMarker = currentMarkers.get(userId);
+        if (existingMarker) {
+          existingMarker.getElement().style.display = 'none';
+        }
+        return;
+      }
+
+      const isCurrentUser = currentUserId === userId;
+      const existingMarker = currentMarkers.get(userId);
+
+      if (existingMarker) {
+        // Update existing marker position with smooth animation
+        existingMarker.setLngLat(evacuee.coordinates);
+        existingMarker.getElement().style.display = 'block';
+
+        // Update marker style based on status
+        const el = existingMarker.getElement();
+        el.className = `evacuee-marker evacuee-${evacuee.status}${isCurrentUser ? ' current-user' : ''}`;
+
+        // Update rotation if heading is available
+        if (evacuee.heading !== undefined) {
+          el.style.transform = `rotate(${evacuee.heading}deg)`;
+        }
+      } else {
+        // Create new marker
+        const el = document.createElement('div');
+        el.className = `evacuee-marker evacuee-${evacuee.status}${isCurrentUser ? ' current-user' : ''}`;
+
+        // Style based on status
+        const statusColors: Record<string, string> = {
+          active: '#3B82F6',      // Blue
+          navigating: '#10B981',  // Green
+          safe: '#22C55E',        // Bright green
+          trapped: '#EF4444',     // Red
+          offline: '#6B7280',     // Gray
+        };
+
+        const color = statusColors[evacuee.status] || statusColors.active;
+        const size = isCurrentUser ? 24 : 18;
+
+        el.innerHTML = `
+          <div style="
+            width: ${size}px;
+            height: ${size}px;
+            background: ${color};
+            border: 3px solid white;
+            border-radius: 50%;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            ${isCurrentUser ? 'animation: pulse 2s infinite;' : ''}
+          ">
+            ${isCurrentUser ? `
+              <div style="
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                width: 8px;
+                height: 8px;
+                background: white;
+                border-radius: 50%;
+              "></div>
+            ` : ''}
+          </div>
+          ${evacuee.heading !== undefined ? `
+            <div style="
+              position: absolute;
+              top: -8px;
+              left: 50%;
+              transform: translateX(-50%) rotate(${evacuee.heading}deg);
+              width: 0;
+              height: 0;
+              border-left: 5px solid transparent;
+              border-right: 5px solid transparent;
+              border-bottom: 8px solid ${color};
+            "></div>
+          ` : ''}
+        `;
+
+        const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
+          .setLngLat(evacuee.coordinates)
+          .setPopup(
+            new maplibregl.Popup({ offset: 25, closeButton: false })
+              .setHTML(`
+                <div style="padding: 8px; min-width: 150px;">
+                  <div style="font-weight: 600; margin-bottom: 4px;">
+                    ${isCurrentUser ? '📍 You' : `👤 User ${evacuee.user_id}`}
+                  </div>
+                  <div style="font-size: 12px; color: #666;">
+                    <div>Status: <span style="color: ${color}; font-weight: 500;">${evacuee.status}</span></div>
+                    ${evacuee.current_instruction ? `<div style="margin-top: 4px;">📢 ${evacuee.current_instruction}</div>` : ''}
+                    ${evacuee.progress !== undefined ? `<div>Progress: ${evacuee.progress}%</div>` : ''}
+                  </div>
+                </div>
+              `)
+          )
+          .addTo(map);
+
+        currentMarkers.set(userId, marker);
+      }
+    });
+  }, [evacuees, isMapLoaded, showEvacuees, activeFloorId, currentUserId]);
+
+  // Cleanup evacuee markers on unmount
+  useEffect(() => {
+    return () => {
+      evacueeMarkersRef.current.forEach(marker => marker.remove());
+      evacueeMarkersRef.current.clear();
+    };
+  }, []);
 
   // Imported building state
   const [isUsingImportedData, setIsUsingImportedData] = useState(false);
@@ -484,7 +647,20 @@ const EvacuationMap = memo(({
             };
           });
 
-        setRouteNodes([...roomNodes, ...navNodes]);
+        // Deduplicate by node_id to avoid multiple entries for same node
+        const seenNodeIds = new Set<string>();
+        const deduplicatedRoomNodes = roomNodes.filter((node: any) => {
+          if (seenNodeIds.has(node.nodeId)) return false;
+          seenNodeIds.add(node.nodeId);
+          return true;
+        });
+        const deduplicatedNavNodes = navNodes.filter((node: any) => {
+          if (seenNodeIds.has(node.nodeId)) return false;
+          seenNodeIds.add(node.nodeId);
+          return true;
+        });
+
+        setRouteNodes([...deduplicatedRoomNodes, ...deduplicatedNavNodes]);
 
         // Store data globally for debugging
         if (typeof window !== 'undefined') {
@@ -526,6 +702,90 @@ const EvacuationMap = memo(({
       }
     };
   }, [showControls, showNotification]);
+
+  // Load active hazards from backend when map is loaded
+  // This ensures existing fires are displayed when the emergency page opens
+  useEffect(() => {
+    if (!isMapLoaded || !mapRef.current) return;
+
+    const loadExistingHazards = async () => {
+      try {
+        console.log('[Hazards] Loading active hazards from backend for building:', buildingId);
+        const hazardsGeoJSON = await fetchActiveHazards(buildingId);
+
+        if (!hazardsGeoJSON || !hazardsGeoJSON.features || hazardsGeoJSON.features.length === 0) {
+          console.log('[Hazards] No active hazards found');
+          return;
+        }
+
+        console.log(`[Hazards] Found ${hazardsGeoJSON.features.length} active hazard(s)`);
+        const map = mapRef.current;
+        if (!map) return;
+
+        // Process each hazard and add fire markers
+        for (const hazard of hazardsGeoJSON.features) {
+          const props = hazard.properties || {};
+          const geometry = hazard.geometry as GeoJSON.Point;
+
+          // Skip if geometry is invalid
+          if (!geometry || geometry.type !== 'Point' || !geometry.coordinates) {
+            console.log('[Hazards] Skipping hazard with invalid geometry:', props.id);
+            continue;
+          }
+
+          // Only process fire-type hazards that are active
+          if (props.type !== 'fire' || props.status !== 'active') {
+            console.log('[Hazards] Skipping non-fire or inactive hazard:', props.id, props.type, props.status);
+            continue;
+          }
+
+          const [lng, lat] = geometry.coordinates;
+          if (!isValidLonLat(lng, lat)) {
+            console.log('[Hazards] Skipping hazard with invalid coordinates:', props.id);
+            continue;
+          }
+
+          // Check if fire already exists at this location (avoid duplicates)
+          const nodeId = String(props.node_id);
+          if (activeFireZonesRef.current.some(fz => fz.roomId === nodeId)) {
+            console.log('[Hazards] Fire already displayed at node:', nodeId);
+            continue;
+          }
+
+          // Add fire marker
+          const marker = new maplibregl.Marker({ color: 'red', scale: 1.2 })
+            .setLngLat([lng, lat])
+            .setPopup(new maplibregl.Popup({ offset: 25 }).setHTML(
+              formatFireAlertPopup(`Hazard #${props.id}`, new Date().toLocaleTimeString())
+            ))
+            .addTo(map);
+          fireMarkersRef.current.push(marker);
+
+          // Track this fire zone
+          setActiveFireZones(prev => [...prev, {
+            roomId: nodeId,
+            roomName: `Hazard #${props.id}`,
+            severity: props.severity || 'high',
+          }]);
+
+          console.log('[Hazards] Added fire marker for hazard:', props.id, 'at', [lng, lat]);
+        }
+
+        // Update emergency state if we have active hazards
+        if (hazardsGeoJSON.features.some(f => f.properties?.type === 'fire' && f.properties?.status === 'active')) {
+          updateEmergencyState({
+            isActive: true,
+            mode: 'fire_detected',
+          });
+          showNotification(`${hazardsGeoJSON.features.length} active fire(s) detected in building`, 'error');
+        }
+      } catch (error) {
+        console.error('[Hazards] Failed to load active hazards:', error);
+      }
+    };
+
+    loadExistingHazards();
+  }, [isMapLoaded, buildingId, showNotification, updateEmergencyState]);
 
   // Update map data when floorPlanData or activeFloorLevel changes
   useEffect(() => {
@@ -689,6 +949,11 @@ const EvacuationMap = memo(({
             coordinates = [cx / ring.length, cy / ring.length];
           }
 
+          // Extract floor and apartment info for filtering
+          const floorId = f.properties?.floor_id || roomNode?.properties?.floor_id;
+          const floorLevel = f.properties?.level || f.properties?.floor_level;
+          const apartmentId = f.properties?.apartment_id || roomNode?.properties?.apartment_id;
+
           return {
             id: String(roomId),
             name: f.properties?.name || 'Unknown',
@@ -698,6 +963,9 @@ const EvacuationMap = memo(({
               : (roomNode ? String(roomNode.properties?.db_id || roomNode.properties?.id) : String(roomId)),
             roomId: String(roomId),
             coordinates,
+            floorId,
+            floorLevel,
+            apartmentId,
           };
         });
 
@@ -714,17 +982,39 @@ const EvacuationMap = memo(({
           }
           const nodeType = f.properties?.node_type || 'node';
           const nodeId = f.properties?.db_id || f.properties?.id || f.id;
+
+          // Extract floor and apartment info for filtering
+          const floorId = f.properties?.floor_id;
+          const floorLevel = f.properties?.level || f.properties?.floor_level;
+          const apartmentId = f.properties?.apartment_id;
+
           return {
             id: `nav-${nodeId}`,
             name: `${nodeType.charAt(0).toUpperCase() + nodeType.slice(1)} ${nodeId}`,
             nodeId: String(nodeId),
             roomId: `nav-${nodeId}`,
             coordinates,
+            floorId,
+            floorLevel,
+            apartmentId,
           };
         });
 
-      setRouteNodes([...roomNodesForRoute, ...navNodesForRoute]);
-      console.log('[EvacuationMap] Route nodes populated:', roomNodesForRoute.length, 'rooms,', navNodesForRoute.length, 'nav nodes');
+      // Deduplicate by node_id to avoid multiple entries for same node
+      const seenNodeIds = new Set<string>();
+      const deduplicatedRoomNodes = roomNodesForRoute.filter((node: any) => {
+        if (seenNodeIds.has(node.nodeId)) return false;
+        seenNodeIds.add(node.nodeId);
+        return true;
+      });
+      const deduplicatedNavNodes = navNodesForRoute.filter((node: any) => {
+        if (seenNodeIds.has(node.nodeId)) return false;
+        seenNodeIds.add(node.nodeId);
+        return true;
+      });
+
+      setRouteNodes([...deduplicatedRoomNodes, ...deduplicatedNavNodes]);
+      console.log('[EvacuationMap] Route nodes populated:', deduplicatedRoomNodes.length, 'rooms,', deduplicatedNavNodes.length, 'nav nodes (deduplicated)');
 
       // Build ALL-floor route nodes for fire detection (not filtered by active floor)
       const allRoomFeatures = floorPlanData.features.filter((f: any) =>
@@ -1991,6 +2281,125 @@ const EvacuationMap = memo(({
     }
   }, [routeNodes, autoPlaceFireInRoom]);
 
+  // WebSocket listener for hazard events (created/updated/deleted) from other sources like Android app
+  // This enables real-time sync between webapp and Android
+  useEffect(() => {
+    if (!isMapLoaded) return;
+
+    console.log('[HazardSync] Connecting to hazard events WebSocket...');
+    const hazardSocket = io(process.env.NEXT_PUBLIC_API_URL!, {
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+    });
+
+    hazardSocket.on('connect', () => {
+      console.log('[HazardSync] Connected to hazard events');
+    });
+
+    hazardSocket.on('disconnect', () => {
+      console.log('[HazardSync] Disconnected from hazard events');
+    });
+
+    // Listen for hazard created events (e.g., from Android app)
+    hazardSocket.on('hazard.created', async (hazard: {
+      id: number;
+      type: string;
+      severity: string;
+      status: string;
+      node_id?: number;
+      nodeId?: number;
+      floor_id?: number;
+      floorId?: number;
+    }) => {
+      console.log('[HazardSync] Hazard created event:', hazard);
+
+      // Only process fire hazards that are active
+      if (hazard.type !== 'fire' || hazard.status !== 'active') {
+        console.log('[HazardSync] Ignoring non-fire or inactive hazard');
+        return;
+      }
+
+      // Reload hazards to get full data with geometry
+      const hazardsGeoJSON = await fetchActiveHazards(buildingId);
+      if (!hazardsGeoJSON || !hazardsGeoJSON.features) return;
+
+      const newHazard = hazardsGeoJSON.features.find(
+        f => f.properties?.id === hazard.id
+      );
+
+      if (!newHazard || !newHazard.geometry || newHazard.geometry.type !== 'Point') {
+        console.log('[HazardSync] Could not find hazard geometry');
+        return;
+      }
+
+      const map = mapRef.current;
+      if (!map) return;
+
+      const [lng, lat] = (newHazard.geometry as GeoJSON.Point).coordinates;
+      if (!isValidLonLat(lng, lat)) return;
+
+      // Check if fire already displayed
+      const nodeId = String(hazard.node_id || hazard.nodeId);
+      if (activeFireZonesRef.current.some(fz => fz.roomId === nodeId)) {
+        console.log('[HazardSync] Fire already displayed');
+        return;
+      }
+
+      // Add fire marker
+      const marker = new maplibregl.Marker({ color: 'red', scale: 1.2 })
+        .setLngLat([lng, lat])
+        .setPopup(new maplibregl.Popup({ offset: 25 }).setHTML(
+          formatFireAlertPopup(`Hazard #${hazard.id}`, new Date().toLocaleTimeString())
+        ))
+        .addTo(map);
+      fireMarkersRef.current.push(marker);
+
+      // Track fire zone
+      setActiveFireZones(prev => [...prev, {
+        roomId: nodeId,
+        roomName: `Hazard #${hazard.id}`,
+        severity: hazard.severity || 'high',
+      }]);
+
+      // Update emergency state
+      updateEmergencyState({
+        isActive: true,
+        mode: 'fire_detected',
+        fireMarkers: fireMarkersRef.current,
+      });
+
+      showNotification(`🔥 New fire alert detected - Hazard #${hazard.id}`, 'error');
+    });
+
+    // Listen for hazard resolved events
+    hazardSocket.on('hazard.resolved', (hazard: { id: number }) => {
+      console.log('[HazardSync] Hazard resolved event:', hazard);
+      showNotification(`Fire resolved - Hazard #${hazard.id}`, 'success');
+
+      // Remove from active fire zones
+      setActiveFireZones(prev =>
+        prev.filter(fz => !fz.roomName?.includes(`#${hazard.id}`))
+      );
+    });
+
+    // Listen for hazard deleted events
+    hazardSocket.on('hazard.deleted', (data: { id: number }) => {
+      console.log('[HazardSync] Hazard deleted event:', data);
+
+      // Remove from active fire zones
+      setActiveFireZones(prev =>
+        prev.filter(fz => !fz.roomName?.includes(`#${data.id}`))
+      );
+    });
+
+    return () => {
+      console.log('[HazardSync] Cleanup - disconnecting socket');
+      hazardSocket.disconnect();
+    };
+  }, [isMapLoaded, buildingId, showNotification, updateEmergencyState]);
+
   const clearFireZones = useCallback(async () => {
     const map = mapRef.current;
     if (!map) return;
@@ -2334,6 +2743,25 @@ const EvacuationMap = memo(({
 
   return (
     <div className={`flex flex-col w-full h-full ${className}`}>
+      {/* CSS for evacuee marker animations */}
+      <style>{`
+        @keyframes pulse {
+          0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
+          70% { box-shadow: 0 0 0 15px rgba(59, 130, 246, 0); }
+          100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+        }
+        .evacuee-marker {
+          cursor: pointer;
+          transition: transform 0.3s ease;
+        }
+        .evacuee-marker:hover {
+          transform: scale(1.2);
+        }
+        .evacuee-marker.current-user > div {
+          animation: pulse 2s infinite;
+        }
+      `}</style>
+
       {/* Map Section */}
       <div className="relative flex-1 min-h-0">
         {/* Map Container */}

@@ -189,6 +189,8 @@ export const API_ENDPOINTS = {
   placeFires: '/fireSafety/place-fires',
   clearFires: '/fireSafety/clear-fires',
   savedRoutes: '/fireSafety',
+  hazards: '/fireSafety/hazards',
+  activeHazards: '/hazards/active',
 };
 
 // Note: All data is fetched from backend API only (no static fallbacks)
