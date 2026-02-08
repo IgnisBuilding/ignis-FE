@@ -109,7 +109,7 @@ const EvacuationMap = memo(({
 
   // Fire zone management state
   const [selectedFireZones, setSelectedFireZones] = useState<string[]>([]);
-  const [fireSeverity, setFireSeverity] = useState<'high' | 'critical'>('high');
+  const [fireSeverity, setFireSeverity] = useState<'HIGH' | 'CRITICAL'>('HIGH');
   const [activeFireZones, setActiveFireZones] = useState<Array<{ roomId: string; roomName: string; severity: string }>>([]);
 
   // Automatic fire detection state
@@ -126,6 +126,7 @@ const EvacuationMap = memo(({
   const allFloorRouteNodesRef = useRef<{ id: string; name: string; nodeId?: string; roomId?: string; coordinates?: [number, number]; floorLevel?: string }[]>([]);
   const allRoomsDataRef = useRef<GeoJSON.FeatureCollection | null>(null);
   const activeFireZonesRef = useRef<Array<{ roomId: string; roomName: string; severity: string }>>([]);
+  const pendingFireEventsRef = useRef<Array<{ roomId: string; detectionData: any }>>([]);
 
   // Panel collapse states - start collapsed for cleaner initial view
   const [isEmergencyPanelCollapsed, setIsEmergencyPanelCollapsed] = useState(true);
@@ -1720,7 +1721,13 @@ const EvacuationMap = memo(({
     // Look up room across ALL floors (not just the active floor)
     const room = allFloorRouteNodesRef.current.find(n => n.roomId === roomId) || routeNodes.find(n => n.roomId === roomId);
     if (!room) {
-      console.error('[AutoFire] Room not found in any floor:', roomId, 'allFloorNodes:', allFloorRouteNodesRef.current.length, 'routeNodes:', routeNodes.length);
+      // If nodes haven't loaded yet, queue the event for later processing
+      if (allFloorRouteNodesRef.current.length === 0 && routeNodes.length === 0) {
+        console.warn('[AutoFire] Map data not loaded yet, queuing fire event for room:', roomId);
+        pendingFireEventsRef.current.push({ roomId, detectionData });
+      } else {
+        console.error('[AutoFire] Room not found in any floor:', roomId, 'allFloorNodes:', allFloorRouteNodesRef.current.length, 'routeNodes:', routeNodes.length);
+      }
       return;
     }
 
@@ -1971,6 +1978,18 @@ const EvacuationMap = memo(({
       setIsConnectedToIgnis(false);
     };
   }, [ignisFireDetectionEnabled, buildingId, autoPlaceFireInRoom, showNotification, updateEmergencyState]);
+
+  // Process pending fire events once route nodes become available
+  useEffect(() => {
+    if (routeNodes.length > 0 && pendingFireEventsRef.current.length > 0) {
+      console.log('[AutoFire] Route nodes loaded, processing', pendingFireEventsRef.current.length, 'pending fire event(s)');
+      const pending = [...pendingFireEventsRef.current];
+      pendingFireEventsRef.current = [];
+      for (const event of pending) {
+        autoPlaceFireInRoom(event.roomId, event.detectionData);
+      }
+    }
+  }, [routeNodes, autoPlaceFireInRoom]);
 
   const clearFireZones = useCallback(async () => {
     const map = mapRef.current;
@@ -2539,13 +2558,13 @@ const EvacuationMap = memo(({
                     <select
                       id="fire-severity-select"
                       value={fireSeverity}
-                      onChange={(e) => setFireSeverity(e.target.value as 'high' | 'critical')}
+                      onChange={(e) => setFireSeverity(e.target.value as 'HIGH' | 'CRITICAL')}
                       disabled={autoFireEnabled}
                       className="w-full px-2 py-1.5 text-xs border rounded focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                       title="Select fire severity level"
                     >
-                      <option value="high">High (Dangerous - Avoid)</option>
-                      <option value="critical">Critical (Life Threatening)</option>
+                      <option value="HIGH">High (Dangerous - Avoid)</option>
+                      <option value="CRITICAL">Critical (Life Threatening)</option>
                     </select>
                   </div>
 
