@@ -103,14 +103,37 @@ export function useEvacueeTracking(
 
   const [isConnected, setIsConnected] = useState(false);
   const [evacuees, setEvacuees] = useState<Map<number, EvacueePosition>>(
-    new Map()
+    () => new Map()
   );
-  const [routes, setRoutes] = useState<Map<number, EvacueeRoute>>(new Map());
+  const [routes, setRoutes] = useState<Map<number, EvacueeRoute>>(() => new Map());
   const [stats, setStats] = useState<EvacuationStats | null>(null);
   const socketRef = useRef<Socket | null>(null);
+  const mountedRef = useRef(true);
+
+  // Store callbacks in refs to avoid dependency issues
+  const callbacksRef = useRef({
+    onEvacueePositionUpdate,
+    onEvacueeRouteUpdate,
+    onEvacueeSafe,
+    onEvacueeTrapped,
+    onStatsUpdate,
+  });
+
+  // Update refs when callbacks change
+  useEffect(() => {
+    callbacksRef.current = {
+      onEvacueePositionUpdate,
+      onEvacueeRouteUpdate,
+      onEvacueeSafe,
+      onEvacueeTrapped,
+      onStatsUpdate,
+    };
+  }, [onEvacueePositionUpdate, onEvacueeRouteUpdate, onEvacueeSafe, onEvacueeTrapped, onStatsUpdate]);
 
   const connect = useCallback(() => {
     if (socketRef.current?.connected) return;
+
+    console.log('[EvacueeTracking WS] Connecting to:', `${WS_URL}/navigation`);
 
     const socket = io(`${WS_URL}/navigation`, {
       transports: ['websocket', 'polling'],
@@ -121,16 +144,16 @@ export function useEvacueeTracking(
 
     socket.on('connect', () => {
       console.log('[EvacueeTracking WS] Connected');
-      setIsConnected(true);
-
-      if (buildingId) {
-        socket.emit('subscribe:building:tracking', { buildingId });
+      if (mountedRef.current) {
+        setIsConnected(true);
       }
     });
 
     socket.on('disconnect', () => {
       console.log('[EvacueeTracking WS] Disconnected');
-      setIsConnected(false);
+      if (mountedRef.current) {
+        setIsConnected(false);
+      }
     });
 
     socket.on('connected', (data) => {
@@ -145,101 +168,105 @@ export function useEvacueeTracking(
     socket.on('evacuee.position', (position: EvacueePosition) => {
       console.log('[EvacueeTracking WS] Position update:', position);
 
-      setEvacuees((prev) => {
-        const updated = new Map(prev);
-        updated.set(position.user_id, position);
-        return updated;
-      });
+      if (mountedRef.current) {
+        setEvacuees((prev) => {
+          const updated = new Map(prev);
+          updated.set(position.user_id, position);
+          return updated;
+        });
+      }
 
-      onEvacueePositionUpdate?.(position);
+      callbacksRef.current.onEvacueePositionUpdate?.(position);
     });
 
     // Route updates when evacuee starts navigation or gets rerouted
     socket.on('evacuee.route', (route: EvacueeRoute) => {
       console.log('[EvacueeTracking WS] Route update:', route);
 
-      setRoutes((prev) => {
-        const updated = new Map(prev);
-        updated.set(route.user_id, route);
-        return updated;
-      });
+      if (mountedRef.current) {
+        setRoutes((prev) => {
+          const updated = new Map(prev);
+          updated.set(route.user_id, route);
+          return updated;
+        });
+      }
 
-      onEvacueeRouteUpdate?.(route);
+      callbacksRef.current.onEvacueeRouteUpdate?.(route);
     });
 
     // Evacuee reached safety
     socket.on('evacuee.safe', (event: EvacueeSafeEvent) => {
       console.log('[EvacueeTracking WS] Evacuee safe:', event);
 
-      setEvacuees((prev) => {
-        const updated = new Map(prev);
-        const existing = updated.get(event.user_id);
-        if (existing) {
-          updated.set(event.user_id, { ...existing, status: 'safe' });
-        }
-        return updated;
-      });
+      if (mountedRef.current) {
+        setEvacuees((prev) => {
+          const updated = new Map(prev);
+          const existing = updated.get(event.user_id);
+          if (existing) {
+            updated.set(event.user_id, { ...existing, status: 'safe' });
+          }
+          return updated;
+        });
 
-      // Remove route for safe evacuee
-      setRoutes((prev) => {
-        const updated = new Map(prev);
-        updated.delete(event.user_id);
-        return updated;
-      });
+        // Remove route for safe evacuee
+        setRoutes((prev) => {
+          const updated = new Map(prev);
+          updated.delete(event.user_id);
+          return updated;
+        });
+      }
 
-      onEvacueeSafe?.(event);
+      callbacksRef.current.onEvacueeSafe?.(event);
     });
 
     // Evacuee trapped
     socket.on('evacuee.trapped', (event: EvacueeTrappedEvent) => {
       console.log('[EvacueeTracking WS] Evacuee trapped:', event);
 
-      setEvacuees((prev) => {
-        const updated = new Map(prev);
-        const existing = updated.get(event.user_id);
-        if (existing) {
-          updated.set(event.user_id, { ...existing, status: 'trapped' });
-        }
-        return updated;
-      });
+      if (mountedRef.current) {
+        setEvacuees((prev) => {
+          const updated = new Map(prev);
+          const existing = updated.get(event.user_id);
+          if (existing) {
+            updated.set(event.user_id, { ...existing, status: 'trapped' });
+          }
+          return updated;
+        });
+      }
 
-      onEvacueeTrapped?.(event);
+      callbacksRef.current.onEvacueeTrapped?.(event);
     });
 
     // Evacuation stats update
     socket.on('evacuation.stats', (statsData: EvacuationStats) => {
       console.log('[EvacueeTracking WS] Stats update:', statsData);
-      setStats(statsData);
-      onStatsUpdate?.(statsData);
+      if (mountedRef.current) {
+        setStats(statsData);
+      }
+      callbacksRef.current.onStatsUpdate?.(statsData);
     });
 
     socket.on('error', (error) => {
       console.error('[EvacueeTracking WS] Error:', error);
     });
 
+    socket.on('connect_error', (error) => {
+      console.error('[EvacueeTracking WS] Connection error:', error.message);
+    });
+
     socketRef.current = socket;
-  }, [
-    buildingId,
-    onEvacueePositionUpdate,
-    onEvacueeRouteUpdate,
-    onEvacueeSafe,
-    onEvacueeTrapped,
-    onStatsUpdate,
-  ]);
+  }, []); // No dependencies - stable reference
 
   const disconnect = useCallback(() => {
     if (socketRef.current) {
       socketRef.current.disconnect();
       socketRef.current = null;
-      setIsConnected(false);
-      setEvacuees(new Map());
-      setRoutes(new Map());
-      setStats(null);
     }
-  }, []);
+  }, []); // No dependencies - stable reference
 
   const subscribeToBuilding = useCallback((id: number) => {
     if (socketRef.current?.connected) {
+      console.log('[EvacueeTracking WS] Subscribing to building:', id);
       socketRef.current.emit('subscribe:building:tracking', { buildingId: id });
     }
   }, []);
@@ -254,16 +281,19 @@ export function useEvacueeTracking(
 
   // Auto-connect on mount
   useEffect(() => {
+    mountedRef.current = true;
+
     if (autoConnect) {
       connect();
     }
 
     return () => {
+      mountedRef.current = false;
       disconnect();
     };
-  }, [autoConnect, connect, disconnect]);
+  }, [autoConnect]); // Only depend on autoConnect, not on connect/disconnect
 
-  // Subscribe to building when it changes
+  // Subscribe to building when connected and buildingId is available
   useEffect(() => {
     if (buildingId && isConnected) {
       subscribeToBuilding(buildingId);

@@ -507,6 +507,28 @@ class ApiService {
     });
   }
 
+  async getActiveHazards(buildingId?: number): Promise<any[]> {
+    const query = buildingId ? `?building_id=${buildingId}` : '';
+    return this.request<any[]>(`/hazards/active${query}`, {
+      method: 'GET',
+    });
+  }
+
+  async createHazard(data: {
+    type: string;
+    severity: string;
+    status: string;
+    nodeId?: number;
+    roomId?: number;
+    floorId?: number;
+    apartmentId?: number;
+  }): Promise<any> {
+    return this.request<any>('/hazards', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
   async respondToHazard(id: number, data: { status: string; notes?: string }): Promise<any> {
     return this.request<any>(`/hazards/${id}/respond`, {
       method: 'POST',
