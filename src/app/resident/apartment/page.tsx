@@ -97,7 +97,7 @@ export default function ApartmentDetailsPage() {
                     {apartment.number}
                   </p>
                   <div className="mt-2 text-xs text-muted-foreground">
-                    Floor {apartment.floor} • {apartment.building?.name || 'N/A'}
+                    {apartment.floor?.name || `Floor ${apartment.floor?.level || 0}`} • {apartment.building?.name || 'N/A'}
                   </div>
                 </div>
                 <div className="rounded-lg bg-green-100 p-2.5 flex-shrink-0 h-10 w-10 flex items-center justify-center">
@@ -174,7 +174,7 @@ export default function ApartmentDetailsPage() {
               <div className="flex items-start gap-3 p-3 rounded-lg border border-border bg-muted/30">
                 <MapPin className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />
                 <div>
-                  <p className="font-semibold text-foreground text-sm">Floor {apartment.floor}</p>
+                  <p className="font-semibold text-foreground text-sm">{apartment.floor?.name || `Floor ${apartment.floor?.level || 0}`}</p>
                   <p className="text-xs text-muted-foreground">{apartment.residents} residents on this floor</p>
                 </div>
               </div>
@@ -197,40 +197,40 @@ export default function ApartmentDetailsPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="p-3 border border-green-200 bg-green-50 rounded-lg">
+              <div className="p-3 border border-green-200 dark:border-green-900/30 bg-green-50 dark:bg-green-950/20 rounded-lg">
                 <div className="flex justify-between items-center mb-2">
                   <span className="font-semibold text-foreground text-sm">Smoke Detector</span>
                   <Badge className="bg-green-500 text-white text-xs">Active</Badge>
                 </div>
                 <p className="text-xs text-muted-foreground mb-2">Last checked: 2 days ago</p>
                 <div className="flex items-center gap-2">
-                  <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div className="w-full h-2 bg-gray-200 dark:bg-muted rounded-full overflow-hidden">
                     <div className="h-full bg-green-500 w-[95%]" />
                   </div>
                   <span className="text-xs text-muted-foreground font-medium">95%</span>
                 </div>
               </div>
-              <div className="p-3 border border-green-200 bg-green-50 rounded-lg">
+              <div className="p-3 border border-green-200 dark:border-green-900/30 bg-green-50 dark:bg-green-950/20 rounded-lg">
                 <div className="flex justify-between items-center mb-2">
                   <span className="font-semibold text-foreground text-sm">Heat Sensor</span>
                   <Badge className="bg-green-500 text-white text-xs">Active</Badge>
                 </div>
                 <p className="text-xs text-muted-foreground mb-2">Last checked: 1 day ago</p>
                 <div className="flex items-center gap-2">
-                  <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div className="w-full h-2 bg-gray-200 dark:bg-muted rounded-full overflow-hidden">
                     <div className="h-full bg-green-500 w-[98%]" />
                   </div>
                   <span className="text-xs text-muted-foreground font-medium">98%</span>
                 </div>
               </div>
-              <div className="p-3 border border-yellow-200 bg-yellow-50 rounded-lg">
+              <div className="p-3 border border-yellow-200 dark:border-yellow-900/30 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg">
                 <div className="flex justify-between items-center mb-2">
                   <span className="font-semibold text-foreground text-sm">CO2 Monitor</span>
                   <Badge className="bg-yellow-500 text-white text-xs">Maintenance Due</Badge>
                 </div>
                 <p className="text-xs text-muted-foreground mb-2">Last checked: 28 days ago</p>
                 <div className="flex items-center gap-2">
-                  <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div className="w-full h-2 bg-gray-200 dark:bg-muted rounded-full overflow-hidden">
                     <div className="h-full bg-yellow-500 w-[78%]" />
                   </div>
                   <span className="text-xs text-muted-foreground font-medium">78%</span>
@@ -298,7 +298,7 @@ export default function ApartmentDetailsPage() {
                   </li>
                 </ul>
               </div>
-              <div className="p-3 border border-green-200 bg-green-50 rounded-lg">
+              <div className="p-3 border border-green-200 dark:border-green-900/30 bg-green-50 dark:bg-green-950/20 rounded-lg">
                 <h4 className="font-semibold text-foreground text-sm mb-2">Emergency Contacts</h4>
                 <ul className="text-xs text-muted-foreground space-y-1">
                   <li>Fire Department: 911</li>

@@ -43,7 +43,7 @@ export function ActiveIncidentFeed({
             className={`px-4 py-1.5 rounded-full text-xs font-bold border transition-colors ${
               filter === 'all'
                 ? 'bg-primary/5 text-primary border-primary/10'
-                : 'bg-white text-slate-400 border-slate-100'
+                : 'bg-white dark:bg-secondary text-slate-400 dark:text-muted-foreground border-slate-100 dark:border-border'
             }`}
           >
             All Units
@@ -53,7 +53,7 @@ export function ActiveIncidentFeed({
             className={`px-4 py-1.5 rounded-full text-xs font-bold border transition-colors ${
               filter === 'priority'
                 ? 'bg-primary/5 text-primary border-primary/10'
-                : 'bg-white text-slate-400 border-slate-100'
+                : 'bg-white dark:bg-secondary text-slate-400 dark:text-muted-foreground border-slate-100 dark:border-border'
             }`}
           >
             Priority Only
@@ -61,7 +61,7 @@ export function ActiveIncidentFeed({
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-primary/5 bg-white">
+      <div className="overflow-hidden rounded-2xl border border-primary/5 dark:border-border bg-white dark:bg-card">
         <table className="w-full text-left border-collapse">
           <thead className="bg-primary/5 border-b border-primary/5">
             <tr>
@@ -72,10 +72,10 @@ export function ActiveIncidentFeed({
               <th className="px-6 py-4 text-[11px] font-bold text-primary uppercase tracking-widest text-right">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-50">
+          <tbody className="divide-y divide-slate-50 dark:divide-border">
             {incidents.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-12 text-center text-slate-400">
+                <td colSpan={5} className="px-6 py-12 text-center text-slate-400 dark:text-muted-foreground">
                   No active incidents
                 </td>
               </tr>
@@ -86,7 +86,7 @@ export function ActiveIncidentFeed({
                   <tr key={incident.id} className="hover:bg-primary/[0.02] transition-colors group">
                     <td className="px-6 py-4">
                       <div className="flex flex-col gap-1">
-                        <span className="text-xs font-bold text-slate-400">#{incident.id}</span>
+                        <span className="text-xs font-bold text-slate-400 dark:text-muted-foreground">#{incident.id}</span>
                         <span className={`flex items-center gap-1.5 text-xs font-bold ${status.color}`}>
                           <span className={`w-1.5 h-1.5 rounded-full ${status.dotColor}`}></span>
                           {status.label}
@@ -95,27 +95,27 @@ export function ActiveIncidentFeed({
                     </td>
                     <td className="px-6 py-4">
                       <p className="font-bold text-primary text-sm">{incident.title}</p>
-                      <p className="text-xs text-slate-500">{incident.description}</p>
+                      <p className="text-xs text-slate-500 dark:text-muted-foreground">{incident.description}</p>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex -space-x-2">
                         {incident.resources.slice(0, 2).map((resource, idx) => (
                           <div
                             key={idx}
-                            className="w-7 h-7 rounded-full bg-slate-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-slate-600"
+                            className="w-7 h-7 rounded-full bg-slate-100 dark:bg-muted border-2 border-white dark:border-card flex items-center justify-center text-[10px] font-bold text-slate-600 dark:text-muted-foreground"
                           >
                             {resource}
                           </div>
                         ))}
                         {incident.resources.length > 2 && (
-                          <div className="w-7 h-7 rounded-full bg-primary/10 border-2 border-white flex items-center justify-center text-[10px] font-bold text-primary">
+                          <div className="w-7 h-7 rounded-full bg-primary/10 border-2 border-white dark:border-card flex items-center justify-center text-[10px] font-bold text-primary">
                             +{incident.resources.length - 2}
                           </div>
                         )}
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-sm font-medium text-slate-600">{incident.duration}</span>
+                      <span className="text-sm font-medium text-slate-600 dark:text-muted-foreground">{incident.duration}</span>
                     </td>
                     <td className="px-6 py-4 text-right">
                       <button

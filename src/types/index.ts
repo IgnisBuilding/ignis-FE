@@ -16,6 +16,8 @@ export interface User {
   name: string;
   email: string;
   role: UserRole;
+  phone?: string;
+  emergencyContact?: string;
   buildingId?: string;
   apartmentNumber?: string;
   avatar?: string;
@@ -116,14 +118,23 @@ export interface Alert {
 // Apartment Types
 export interface Apartment {
   id: number;
+  unit_number?: string;
   number: string;
-  floor: number;
-  residents: number;
+  floor: {
+    id: number;
+    name: string;
+    level: number;
+  };
   building: {
     id: number;
     name: string;
     address: string;
+    type?: string;
+    has_floor_plan?: boolean;
+    center_lat?: number;
+    center_lng?: number;
   };
+  residents: number;
   occupied: boolean;
   createdAt: Date;
   updatedAt: Date;

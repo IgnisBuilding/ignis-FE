@@ -21,17 +21,7 @@ export interface Translations {
     commander: string
     seniorDirector: string
   }
-  sidebar: {
-    ignis: string
-    eliteTactical: string
-    dashboard: string
-    liveMap: string
-    personnel: string
-    logistics: string
-    reports: string
-    settings: string
-    newDispatch: string
-  }
+  sidebar: Record<string, string>
   dashboard: Record<string, string>
   liveMap: Record<string, string>
   incident: Record<string, string>
@@ -39,4 +29,16 @@ export interface Translations {
   logistics: Record<string, string>
   reports: Record<string, string>
   settings: Record<string, string>
+  nav: Record<string, string>
+  buttons: Record<string, string>
+  profile: Record<string, string>
+  security: Record<string, string>
+  notifications: Record<string, string>
+  appearance: Record<string, string>
+  system: Record<string, string>
+  users: Record<string, string>
+  sensors: Record<string, string>
+  login: Record<string, string>
+  signup: Record<string, string>
+  toasts: Record<string, string>
 }

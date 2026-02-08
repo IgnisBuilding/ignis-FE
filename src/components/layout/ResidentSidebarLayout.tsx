@@ -25,9 +25,9 @@ export default function ResidentSidebarLayout({ children }: ResidentSidebarLayou
   ];
 
   return (
-    <div className="min-h-screen bg-accent flex overflow-hidden">
+    <div className="min-h-screen bg-accent dark:bg-background flex overflow-hidden">
       {/* Sidebar */}
-      <aside className="w-64 border-r border-primary/10 flex flex-col justify-between bg-white h-screen sticky top-0">
+      <aside className="w-64 border-r border-primary/10 dark:border-border flex flex-col justify-between bg-white dark:bg-card h-screen sticky top-0">
         <div className="p-6">
           {/* Logo */}
           <div className="flex items-center gap-3 mb-10">
@@ -78,7 +78,7 @@ export default function ResidentSidebarLayout({ children }: ResidentSidebarLayou
       {/* Main Content */}
       <main className="flex-1 flex flex-col h-screen overflow-y-auto">
         {/* Header */}
-        <header className="flex items-center justify-between border-b border-primary/5 bg-white/50 backdrop-blur-md px-8 py-4 sticky top-0 z-10">
+        <header className="flex items-center justify-between border-b border-primary/5 dark:border-border bg-white/50 dark:bg-card/50 backdrop-blur-md px-8 py-4 sticky top-0 z-10">
           <div className="flex items-center gap-8">
             <div className="flex items-center gap-3">
               <div className="w-2.5 h-2.5 rounded-full bg-green-500"></div>

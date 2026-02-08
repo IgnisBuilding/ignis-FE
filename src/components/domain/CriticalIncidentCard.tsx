@@ -39,13 +39,13 @@ export function CriticalIncidentCard({
   };
 
   return (
-    <div className="bg-white rounded-3xl p-8 flex flex-col lg:flex-row gap-8 shadow-2xl shadow-primary/10 border border-primary/5">
+    <div className="bg-white dark:bg-card rounded-3xl p-8 flex flex-col lg:flex-row gap-8 shadow-2xl shadow-primary/10 border border-primary/5 dark:border-border">
       {/* Map Image Section */}
-      <div className="lg:w-1/3 h-64 lg:h-auto bg-gradient-to-br from-slate-300 to-slate-400 bg-cover bg-center rounded-2xl relative overflow-hidden min-h-[250px]">
+      <div className="lg:w-1/3 h-64 lg:h-auto bg-gradient-to-br from-slate-300 to-slate-400 dark:from-muted dark:to-muted bg-cover bg-center rounded-2xl relative overflow-hidden min-h-[250px]">
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
-        <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur rounded-lg px-3 py-1.5 flex items-center gap-2">
+        <div className="absolute bottom-4 left-4 bg-white/90 dark:bg-card/90 backdrop-blur rounded-lg px-3 py-1.5 flex items-center gap-2">
           <MapPin className="w-4 h-4 text-red-600" />
-          <span className="text-xs font-bold text-slate-800">{location.sector || location.building}</span>
+          <span className="text-xs font-bold text-slate-800 dark:text-foreground">{location.sector || location.building}</span>
         </div>
       </div>
 
@@ -68,7 +68,7 @@ export function CriticalIncidentCard({
           <h3 className="text-3xl font-bold text-primary mb-3">{title}</h3>
 
           {/* Description */}
-          <p className="text-slate-500 leading-relaxed max-w-2xl mb-6">
+          <p className="text-slate-500 dark:text-muted-foreground leading-relaxed max-w-2xl mb-6">
             {description}
             {unitsAssigned.length > 0 && (
               <span className="font-bold text-primary"> Units Assigned: {unitsAssigned.join(', ')}.</span>
@@ -77,16 +77,16 @@ export function CriticalIncidentCard({
         </div>
 
         {/* Footer Section */}
-        <div className="flex flex-col md:flex-row items-center gap-8 border-t border-slate-100 pt-6">
+        <div className="flex flex-col md:flex-row items-center gap-8 border-t border-slate-100 dark:border-border pt-6">
           {/* Stats */}
           <div className="flex items-center gap-4">
-            <div className="text-center px-4 border-r border-slate-100">
-              <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">Elapsed</p>
+            <div className="text-center px-4 border-r border-slate-100 dark:border-border">
+              <p className="text-[10px] text-slate-400 dark:text-muted-foreground font-bold uppercase mb-1">Elapsed</p>
               <p className="text-lg font-bold text-primary tracking-tighter">{elapsedTime}</p>
             </div>
             {backupEta && (
               <div className="text-center px-4">
-                <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">Backup ETA</p>
+                <p className="text-[10px] text-slate-400 dark:text-muted-foreground font-bold uppercase mb-1">Backup ETA</p>
                 <p className="text-lg font-bold text-primary tracking-tighter">{backupEta}</p>
               </div>
             )}

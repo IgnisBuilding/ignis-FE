@@ -258,7 +258,7 @@ function FirefighterDashboardContent() {
                     <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4">
                       <Badge
                         variant="secondary"
-                        className="gap-1 sm:gap-1.5 bg-white px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm font-medium text-foreground shadow-sm"
+                        className="gap-1 sm:gap-1.5 bg-white dark:bg-card px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm font-medium text-foreground shadow-sm"
                       >
                         <MapPin className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-red-500 flex-shrink-0" />
                         <span className="truncate">

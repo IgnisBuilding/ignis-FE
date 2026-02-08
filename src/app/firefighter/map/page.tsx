@@ -70,7 +70,7 @@ function FirefighterMapContent() {
                 // Fetch buildings by jurisdiction
                 const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/buildings/by-jurisdiction/${user.id}`, {
                     headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                        'Authorization': `Bearer ${localStorage.getItem('ignis_token')}`,
                     },
                 });
                 const data = await response.json();
@@ -101,7 +101,7 @@ function FirefighterMapContent() {
                 try {
                     const hazardsResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/hazards/active`, {
                         headers: {
-                            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                            'Authorization': `Bearer ${localStorage.getItem('ignis_token')}`,
                         },
                     });
                     const hazards = await hazardsResponse.json();

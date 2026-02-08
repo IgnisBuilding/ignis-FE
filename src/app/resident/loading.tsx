@@ -1,6 +1,6 @@
 export default function Loading() {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-white">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-white dark:bg-background">
       <div className="text-center">
         <div className="w-16 h-16 mx-auto mb-4 green-gradient rounded-2xl flex items-center justify-center shadow-lg">
           <svg className="w-8 h-8 text-white animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -8,7 +8,7 @@ export default function Loading() {
           </svg>
         </div>
         <div className="animate-spin rounded-full h-10 w-10 border-4 border-primary border-t-transparent mx-auto mb-4"></div>
-        <p className="text-gray-700 font-medium">Loading Resident Portal...</p>
+        <p className="text-gray-700 dark:text-foreground font-medium">Loading Resident Portal...</p>
       </div>
     </div>
   );
