@@ -22,6 +22,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import { useEvacueeTracking } from '@/hooks/use-evacuee-tracking';
 
 // Dynamically import EvacuationMap to avoid SSR issues with MapLibre
 const EvacuationMap = dynamic(
@@ -69,6 +70,28 @@ function EmergencyPageContent() {
   // Emergency State
   const [emergencyState, setEmergencyState] = useState<EmergencyState | null>(null);
   const [units, setUnits] = useState(defaultUnits);
+
+  // Real-time evacuee tracking
+  const {
+    isConnected: isTrackingConnected,
+    evacuees,
+    routes,
+    stats: evacuationStats,
+    subscribeToBuilding,
+    unsubscribeFromBuilding,
+  } = useEvacueeTracking({
+    buildingId,
+    autoConnect: true,
+    onEvacueePositionUpdate: (position) => {
+      console.log('[Emergency] Evacuee position update:', position);
+    },
+    onEvacueeSafe: (event) => {
+      console.log('[Emergency] Evacuee safe:', event);
+    },
+    onEvacueeTrapped: (event) => {
+      console.log('[Emergency] Evacuee trapped:', event);
+    },
+  });
 
   // Fetch floors and floor plan from API
   useEffect(() => {
@@ -347,6 +370,10 @@ function EmergencyPageContent() {
               floorPlanData={floorPlanData}
               activeFloorLevel={activeFloor?.level}
               activeFloorId={activeFloor?.id}
+              // Real-time evacuee tracking
+              evacuees={evacuees}
+              showEvacuees={true}
+              currentUserId={user?.id}
             />
 
             {/* Tactical Overlay Legend */}
@@ -366,6 +393,13 @@ function EmergencyPageContent() {
                     <Check className="h-2 w-2 text-white" />
                   </div>
                   <span className="text-xs text-foreground">Exit</span>
+                </div>
+                {/* Live Tracking Status */}
+                <div className="flex items-center gap-1.5 border-l pl-4 ml-2">
+                  <span className={`h-2.5 w-2.5 rounded-full ${isTrackingConnected ? 'bg-blue-500 animate-pulse' : 'bg-gray-400'}`} />
+                  <span className="text-xs text-foreground">
+                    {isTrackingConnected ? `${evacuees.size} Live` : 'Offline'}
+                  </span>
                 </div>
               </CardContent>
             </Card>

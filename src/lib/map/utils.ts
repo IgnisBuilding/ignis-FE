@@ -997,6 +997,41 @@ export function clearLocalFires(): { success: boolean; deletedCount: number } {
 }
 
 /**
+ * Fetch active hazards from the backend
+ * Returns GeoJSON FeatureCollection of active hazards (fires, smoke, etc.)
+ * Can filter by building_id
+ */
+export async function fetchActiveHazards(
+  buildingId?: number
+): Promise<GeoJSON.FeatureCollection | null> {
+  const apiBase = DEFAULT_MAP_CONFIG.apiBase;
+  const query = buildingId ? `?building_id=${buildingId}` : '';
+  const url = `${apiBase}${API_ENDPOINTS.hazards}${query}`;
+
+  console.log(`[MapAPI] Fetching active hazards from: ${url}`);
+
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(10000),
+    });
+
+    if (!response.ok) {
+      console.error(`[MapAPI] Failed to fetch hazards: ${response.status}`);
+      return null;
+    }
+
+    const data = await response.json();
+    console.log(`[MapAPI] Fetched ${data.features?.length || 0} hazards`);
+    return data as GeoJSON.FeatureCollection;
+  } catch (error) {
+    console.error(`[MapAPI] Error fetching hazards:`, error);
+    return null;
+  }
+}
+
+/**
  * Imported building data structure from Map Editor
  */
 export interface ImportedBuildingData {
