@@ -512,7 +512,7 @@ export interface FireZoneInput {
 
 export async function placeFires(
   fireZones: FireZoneInput[],
-  severity: 'high' | 'critical' = 'high'
+  severity: 'HIGH' | 'CRITICAL' = 'HIGH'
 ): Promise<{ success: boolean; hazardIds?: number[]; error?: string }> {
   const apiBase = DEFAULT_MAP_CONFIG.apiBase;
   const url = `${apiBase}${API_ENDPOINTS.placeFires}`;
@@ -525,7 +525,7 @@ export async function placeFires(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         fireZones,
-        severity,
+        severity: severity.toUpperCase(),
         type: 'fire',
         status: 'active',
       }),
@@ -974,7 +974,7 @@ export function computeLocalRoute(
  */
 export function placeLocalFires(
   fireZones: FireZoneInput[],
-  severity: 'high' | 'critical' = 'high'
+  severity: 'HIGH' | 'CRITICAL' = 'HIGH'
 ): { success: boolean; hazardIds: number[] } {
   console.log(`[LocalRouter] Placing ${fireZones.length} local fire(s)`);
 

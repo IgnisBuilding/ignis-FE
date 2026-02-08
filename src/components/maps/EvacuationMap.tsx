@@ -47,6 +47,7 @@ interface EvacuationMapProps {
   buildingId?: number; // Building ID from database
   floorPlanData?: any; // Floor plan GeoJSON data from database
   activeFloorLevel?: number; // Active floor level from parent
+  activeFloorId?: number; // Active floor ID from parent (for precise filtering)
 }
 
 // Notification component
@@ -79,6 +80,7 @@ const EvacuationMap = memo(({
   buildingId,
   floorPlanData,
   activeFloorLevel,
+  activeFloorId,
 }: EvacuationMapProps) => {
   // Refs
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -107,7 +109,7 @@ const EvacuationMap = memo(({
 
   // Fire zone management state
   const [selectedFireZones, setSelectedFireZones] = useState<string[]>([]);
-  const [fireSeverity, setFireSeverity] = useState<'high' | 'critical'>('high');
+  const [fireSeverity, setFireSeverity] = useState<'HIGH' | 'CRITICAL'>('HIGH');
   const [activeFireZones, setActiveFireZones] = useState<Array<{ roomId: string; roomName: string; severity: string }>>([]);
 
   // Automatic fire detection state
@@ -121,6 +123,10 @@ const EvacuationMap = memo(({
   const [ignisFireDetectionEnabled, setIgnisFireDetectionEnabled] = useState(true); // Enabled by default
   const [isConnectedToIgnis, setIsConnectedToIgnis] = useState(false);
   const ignisSocketRef = useRef<Socket | null>(null);
+  const allFloorRouteNodesRef = useRef<{ id: string; name: string; nodeId?: string; roomId?: string; coordinates?: [number, number]; floorLevel?: string }[]>([]);
+  const allRoomsDataRef = useRef<GeoJSON.FeatureCollection | null>(null);
+  const activeFireZonesRef = useRef<Array<{ roomId: string; roomName: string; severity: string }>>([]);
+  const pendingFireEventsRef = useRef<Array<{ roomId: string; detectionData: any }>>([]);
 
   // Panel collapse states - start collapsed for cleaner initial view
   const [isEmergencyPanelCollapsed, setIsEmergencyPanelCollapsed] = useState(true);
@@ -129,6 +135,11 @@ const EvacuationMap = memo(({
 
   // Isolation alert state (when person is trapped by fire)
   const [isolationAlert, setIsolationAlert] = useState<IsolationResponse | null>(null);
+
+  // Keep activeFireZonesRef in sync to avoid stale closures in socket handlers
+  useEffect(() => {
+    activeFireZonesRef.current = activeFireZones;
+  }, [activeFireZones]);
 
   // Imported building state
   const [isUsingImportedData, setIsUsingImportedData] = useState(false);
@@ -213,8 +224,17 @@ const EvacuationMap = memo(({
         if (floorPlanData && floorPlanData.features && floorPlanData.features.length > 0) {
           console.log('[EvacuationMap] Using floor plan data from props, buildingId:', buildingId);
 
-          // Filter features by type and active floor level
+          // Filter features by active floor ID (preferred) or level (fallback)
           const filterByFloor = (features: any[]) => {
+            // Prefer floor_id filtering for precise matching
+            if (activeFloorId) {
+              return features.filter((f: any) =>
+                f.properties?.floor_id === activeFloorId ||
+                f.properties?.floorId === activeFloorId ||
+                (!f.properties?.floor_id && !f.properties?.floorId)
+              );
+            }
+            // Fallback to level filtering
             if (!activeFloorLevel) return features;
             return features.filter((f: any) =>
               !f.properties?.level || String(f.properties.level) === String(activeFloorLevel)
@@ -413,13 +433,18 @@ const EvacuationMap = memo(({
         });
 
         // Populate route node options from rooms data with actual node IDs
+        // The rooms endpoint now includes node_id directly in properties
         const roomNodes = roomsData.features
           .filter(f => f.properties?.name)
           .map(f => {
             const roomId = f.properties?.id || f.id;
+            // Use node_id directly from room properties (added by backend)
+            // Fall back to room-nodes mapping, then to room ID
+            const nodeIdFromProps = f.properties?.node_id;
             const mapping = roomToNodeMap.get(Number(roomId));
+            const nodeId = nodeIdFromProps || (mapping ? mapping.nodeId : roomId);
 
-            // Get centroid of the room for visualization (fallback if no mapping)
+            // Get centroid of the room for visualization
             let coordinates: [number, number] | undefined;
             if (mapping) {
               coordinates = mapping.coordinates;
@@ -433,8 +458,8 @@ const EvacuationMap = memo(({
             return {
               id: String(roomId),
               name: f.properties?.name || 'Unknown',
-              // CRITICAL: Use the actual node ID from room-nodes mapping for fire placement
-              nodeId: mapping ? String(mapping.nodeId) : String(roomId),
+              // CRITICAL: Use node_id from room properties for route computation
+              nodeId: String(nodeId),
               roomId: String(roomId),
               coordinates,
               nodeType: mapping?.nodeType,
@@ -509,8 +534,17 @@ const EvacuationMap = memo(({
     const map = mapRef.current;
 
     try {
-      // Filter features by active floor level
+      // Filter features by active floor ID (preferred) or level (fallback)
       const filterByFloor = (features: any[]) => {
+        // Prefer floor_id filtering for precise matching
+        if (activeFloorId) {
+          return features.filter((f: any) =>
+            f.properties?.floor_id === activeFloorId ||
+            f.properties?.floorId === activeFloorId ||
+            (!f.properties?.floor_id && !f.properties?.floorId) // Include features without floor_id
+          );
+        }
+        // Fallback to level filtering
         if (!activeFloorLevel) return features;
         return features.filter((f: any) =>
           !f.properties?.level || String(f.properties.level) === String(activeFloorLevel)
@@ -658,8 +692,10 @@ const EvacuationMap = memo(({
           return {
             id: String(roomId),
             name: f.properties?.name || 'Unknown',
-            // Use the database node ID if available
-            nodeId: roomNode ? String(roomNode.properties?.db_id || roomNode.properties?.id) : String(roomId),
+            // Use node_id from room properties (backend), or find from roomNode, or fall back to roomId
+            nodeId: f.properties?.node_id
+              ? String(f.properties.node_id)
+              : (roomNode ? String(roomNode.properties?.db_id || roomNode.properties?.id) : String(roomId)),
             roomId: String(roomId),
             coordinates,
           };
@@ -689,6 +725,57 @@ const EvacuationMap = memo(({
 
       setRouteNodes([...roomNodesForRoute, ...navNodesForRoute]);
       console.log('[EvacuationMap] Route nodes populated:', roomNodesForRoute.length, 'rooms,', navNodesForRoute.length, 'nav nodes');
+
+      // Build ALL-floor route nodes for fire detection (not filtered by active floor)
+      const allRoomFeatures = floorPlanData.features.filter((f: any) =>
+        f.properties?.room_type || (f.geometry?.type === 'Polygon' && !f.properties?.type)
+      );
+      const allNodeFeatures = floorPlanData.features.filter((f: any) =>
+        f.properties?.type === 'node'
+      );
+      const allRoomNodesForRoute = allRoomFeatures
+        .filter((f: any) => f.properties?.name)
+        .map((f: any) => {
+          const roomId = f.properties?.db_id || f.properties?.id || f.id;
+          const roomNode = allNodeFeatures.find((n: any) =>
+            n.properties?.room_id === roomId ||
+            String(n.properties?.room_id) === String(roomId)
+          );
+          let coordinates: [number, number] | undefined;
+          if (f.properties?.centroid_lng && f.properties?.centroid_lat) {
+            coordinates = [f.properties.centroid_lng, f.properties.centroid_lat];
+          } else if (f.geometry && f.geometry.type === 'Polygon') {
+            const ring = f.geometry.coordinates[0];
+            let cx = 0, cy = 0;
+            ring.forEach(([lng, lat]: [number, number]) => { cx += lng; cy += lat; });
+            coordinates = [cx / ring.length, cy / ring.length];
+          }
+          return {
+            id: String(roomId),
+            name: f.properties?.name || 'Unknown',
+            // Use node_id from room properties (backend), or find from roomNode, or fall back to roomId
+            nodeId: f.properties?.node_id
+              ? String(f.properties.node_id)
+              : (roomNode ? String(roomNode.properties?.db_id || roomNode.properties?.id) : String(roomId)),
+            roomId: String(roomId),
+            coordinates,
+            floorLevel: String(f.properties?.level || ''),
+          };
+        });
+      allFloorRouteNodesRef.current = allRoomNodesForRoute;
+
+      // Store all rooms data (all floors) for fire zone polygon visualization
+      allRoomsDataRef.current = {
+        type: 'FeatureCollection',
+        features: allRoomFeatures.map((f: any) => ({
+          ...f,
+          properties: {
+            ...f.properties,
+            room_type: f.properties?.room_type || f.properties?.type || 'other',
+          }
+        }))
+      };
+      console.log('[EvacuationMap] All-floor route nodes:', allRoomNodesForRoute.length, 'rooms across all floors');
 
       console.log('[EvacuationMap] Updated map with floor', activeFloorLevel, '- rooms:', roomFeatures.length);
     } catch (err) {
@@ -1490,33 +1577,60 @@ const EvacuationMap = memo(({
 
     console.log('[FireZone] Registered hazard IDs:', result.hazardIds, isUsingImportedRouting() ? '(local)' : '(backend)');
 
-    // Clear existing fire markers
-    fireMarkersRef.current.forEach(marker => marker.remove());
-    fireMarkersRef.current = [];
+    // Add fire markers for each selected zone (APPEND, don't clear existing!)
+    // Only clear markers that are being replaced (same room)
+    const existingRoomIds = new Set(activeFireZonesRef.current.map(fz => fz.roomId));
 
-    // Add fire markers for each selected zone
     fireZones.forEach(zone => {
-      if (zone.coordinates) {
+      // Skip if this room already has a fire marker
+      if (existingRoomIds.has(String(zone.roomId))) {
+        console.log('[FireZone] Fire already exists in room:', zone.roomId);
+        return;
+      }
+
+      let coords = zone.coordinates;
+
+      // If no coordinates, try to get from room geometry
+      if (!coords && roomsDataRef.current?.features) {
+        const roomFeature = roomsDataRef.current.features.find(f =>
+          f.properties?.id === zone.roomId || parseInt(String(f.id)) === zone.roomId
+        );
+        if (roomFeature?.geometry?.type === 'Polygon' && roomFeature.geometry.coordinates?.[0]) {
+          // Calculate centroid of polygon
+          const ring = roomFeature.geometry.coordinates[0] as [number, number][];
+          const sumLng = ring.reduce((sum, coord) => sum + coord[0], 0);
+          const sumLat = ring.reduce((sum, coord) => sum + coord[1], 0);
+          coords = [sumLng / ring.length, sumLat / ring.length] as [number, number];
+        }
+      }
+
+      if (coords) {
         const marker = new maplibregl.Marker({ color: 'red', scale: 1.2 })
-          .setLngLat(zone.coordinates)
+          .setLngLat(coords)
           .setPopup(new maplibregl.Popup({ offset: 25 }).setHTML(formatFireAlertPopup(zone.roomName)))
           .addTo(map);
         fireMarkersRef.current.push(marker);
+      } else {
+        console.warn('[FireZone] No coordinates for fire marker:', zone.roomName, zone.roomId);
       }
     });
 
     // Add fire zone visualization layer
+    // Use BOTH existing activeFireZones AND newly selected zones
     const roomsData = roomsDataRef.current;
     console.log('[FireZone] roomsDataRef.current:', roomsData ? 'exists' : 'null');
     console.log('[FireZone] roomsData.features:', roomsData?.features ? `${roomsData.features.length} features` : 'undefined');
 
     if (roomsData && roomsData.features && Array.isArray(roomsData.features)) {
-      const fireRoomIds = selectedFireZones.map(id => parseInt(id));
-      console.log('[FireZone] Looking for room IDs:', fireRoomIds);
+      // Combine existing fire room IDs with newly selected ones
+      const existingFireRoomIds = activeFireZonesRef.current.map(fz => parseInt(fz.roomId));
+      const newFireRoomIds = selectedFireZones.map(id => parseInt(id));
+      const allFireRoomIds = [...new Set([...existingFireRoomIds, ...newFireRoomIds])];
+      console.log('[FireZone] All fire room IDs (existing + new):', allFireRoomIds);
 
       // Create fire zone overlay - with extra safety check
       const fireZoneFeatures = (roomsData.features || []).filter(f =>
-        fireRoomIds.includes(f.properties?.id) || fireRoomIds.includes(parseInt(String(f.id)))
+        allFireRoomIds.includes(f.properties?.id) || allFireRoomIds.includes(parseInt(String(f.id)))
       );
       console.log('[FireZone] Found matching features:', fireZoneFeatures.length);
 
@@ -1562,12 +1676,18 @@ const EvacuationMap = memo(({
       map.setPaintProperty('floor1-fill', 'fill-opacity', 0.8);
     }, 500);
 
-    // Update state - convert to expected types for activeFireZones
-    setActiveFireZones(fireZones.map(z => ({
+    // Update state - APPEND to existing activeFireZones (don't replace!)
+    const newFireZones = fireZones.map(z => ({
       roomId: String(z.roomId),
       roomName: z.roomName,
       severity: z.severity,
-    })));
+    }));
+    setActiveFireZones(prev => {
+      // Filter out duplicates (same roomId)
+      const existingRoomIds = new Set(prev.map(fz => fz.roomId));
+      const uniqueNewFires = newFireZones.filter(nf => !existingRoomIds.has(nf.roomId));
+      return [...prev, ...uniqueNewFires];
+    });
     setSelectedFireZones([]);
 
     updateEmergencyState({
@@ -1592,15 +1712,22 @@ const EvacuationMap = memo(({
       return;
     }
 
-    // Check if fire already placed in this room
-    if (activeFireZones.some(fz => fz.roomId === roomId)) {
+    // Check if fire already placed in this room (use ref to avoid stale closure)
+    if (activeFireZonesRef.current.some(fz => fz.roomId === roomId)) {
       console.log('[AutoFire] Fire already active in room:', roomId);
       return;
     }
 
-    const room = routeNodes.find(n => n.roomId === roomId);
+    // Look up room across ALL floors (not just the active floor)
+    const room = allFloorRouteNodesRef.current.find(n => n.roomId === roomId) || routeNodes.find(n => n.roomId === roomId);
     if (!room) {
-      console.error('[AutoFire] Room not found:', roomId);
+      // If nodes haven't loaded yet, queue the event for later processing
+      if (allFloorRouteNodesRef.current.length === 0 && routeNodes.length === 0) {
+        console.warn('[AutoFire] Map data not loaded yet, queuing fire event for room:', roomId);
+        pendingFireEventsRef.current.push({ roomId, detectionData });
+      } else {
+        console.error('[AutoFire] Room not found in any floor:', roomId, 'allFloorNodes:', allFloorRouteNodesRef.current.length, 'routeNodes:', routeNodes.length);
+      }
       return;
     }
 
@@ -1622,8 +1749,8 @@ const EvacuationMap = memo(({
     try {
       // Use local fire placement for imported buildings, backend API otherwise
       const result = isUsingImportedRouting()
-        ? placeLocalFires([fireZone], 'critical')
-        : await placeFires([fireZone], 'critical');
+        ? placeLocalFires([fireZone], 'CRITICAL')
+        : await placeFires([fireZone], 'CRITICAL');
 
       if (result.success) {
         // Add fire marker
@@ -1635,12 +1762,11 @@ const EvacuationMap = memo(({
           fireMarkersRef.current.push(marker);
         }
 
-        // Add fire zone visualization
-        const roomsData = roomsDataRef.current;
+        // Add fire zone visualization (use all-floor rooms data so fire on other floors still shows)
+        const roomsData = allRoomsDataRef.current || roomsDataRef.current;
         if (roomsData && roomsData.features) {
-          const fireRoomId = parseInt(roomId);
           const fireZoneFeatures = roomsData.features.filter(f =>
-            f.properties?.id === fireRoomId || parseInt(String(f.id)) === fireRoomId
+            String(f.properties?.id) === roomId || String(f.properties?.db_id) === roomId
           );
 
           if (fireZoneFeatures.length > 0) {
@@ -1694,7 +1820,7 @@ const EvacuationMap = memo(({
       console.error('[AutoFire] Failed to place fire:', error);
       showNotification('Auto fire placement failed', 'error');
     }
-  }, [routeNodes, currentFloor, activeFireZones, showNotification, updateEmergencyState]);
+  }, [routeNodes, currentFloor, showNotification, updateEmergencyState]);
 
   // Socket.IO connection for automatic fire detection from YOLO pipeline
   useEffect(() => {
@@ -1810,11 +1936,17 @@ const EvacuationMap = memo(({
     }) => {
       console.log('[IgnisFire] Fire detected event received:', event);
 
+      // Filter by building ID - ignore events from other buildings
+      if (buildingId && event.building_id !== buildingId) {
+        console.log('[IgnisFire] Ignoring fire event for building', event.building_id, '(current building:', buildingId, ')');
+        return;
+      }
+
       // Try to find the room by room_id if available
       if (event.room_id) {
         const roomIdStr = String(event.room_id);
-        // Check if fire already placed in this room
-        if (!activeFireZones.some(fz => fz.roomId === roomIdStr)) {
+        // Use ref to avoid stale closure (socket handler doesn't re-bind on state changes)
+        if (!activeFireZonesRef.current.some(fz => fz.roomId === roomIdStr)) {
           autoPlaceFireInRoom(roomIdStr, {
             camera_id: event.camera_id,
             confidence: event.confidence,
@@ -1845,7 +1977,19 @@ const EvacuationMap = memo(({
       ignisSocketRef.current = null;
       setIsConnectedToIgnis(false);
     };
-  }, [ignisFireDetectionEnabled, activeFireZones, autoPlaceFireInRoom, showNotification, updateEmergencyState]);
+  }, [ignisFireDetectionEnabled, buildingId, autoPlaceFireInRoom, showNotification, updateEmergencyState]);
+
+  // Process pending fire events once route nodes become available
+  useEffect(() => {
+    if (routeNodes.length > 0 && pendingFireEventsRef.current.length > 0) {
+      console.log('[AutoFire] Route nodes loaded, processing', pendingFireEventsRef.current.length, 'pending fire event(s)');
+      const pending = [...pendingFireEventsRef.current];
+      pendingFireEventsRef.current = [];
+      for (const event of pending) {
+        autoPlaceFireInRoom(event.roomId, event.detectionData);
+      }
+    }
+  }, [routeNodes, autoPlaceFireInRoom]);
 
   const clearFireZones = useCallback(async () => {
     const map = mapRef.current;
@@ -2414,13 +2558,13 @@ const EvacuationMap = memo(({
                     <select
                       id="fire-severity-select"
                       value={fireSeverity}
-                      onChange={(e) => setFireSeverity(e.target.value as 'high' | 'critical')}
+                      onChange={(e) => setFireSeverity(e.target.value as 'HIGH' | 'CRITICAL')}
                       disabled={autoFireEnabled}
                       className="w-full px-2 py-1.5 text-xs border rounded focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                       title="Select fire severity level"
                     >
-                      <option value="high">High (Dangerous - Avoid)</option>
-                      <option value="critical">Critical (Life Threatening)</option>
+                      <option value="HIGH">High (Dangerous - Avoid)</option>
+                      <option value="CRITICAL">Critical (Life Threatening)</option>
                     </select>
                   </div>
 
