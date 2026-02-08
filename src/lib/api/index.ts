@@ -9,6 +9,8 @@ export interface LoginResponse {
     email: string;
     name: string;
     role: string;
+    phone?: string;
+    emergencyContact?: string;
   };
 }
 
@@ -283,6 +285,14 @@ class ApiService {
   async delete<T>(endpoint: string): Promise<{ data: T }> {
     const data = await this.request<T>(endpoint, {
       method: 'DELETE',
+    });
+    return { data };
+  }
+
+  async patch<T>(endpoint: string, body?: unknown): Promise<{ data: T }> {
+    const data = await this.request<T>(endpoint, {
+      method: 'PATCH',
+      body: body ? JSON.stringify(body) : undefined,
     });
     return { data };
   }

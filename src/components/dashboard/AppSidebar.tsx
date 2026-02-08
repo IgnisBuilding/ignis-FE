@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, ReactNode } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -15,7 +16,6 @@ import {
   Truck,
   BarChart3,
   Radio,
-  Flame,
   Settings,
   Sliders,
   X,
@@ -26,31 +26,31 @@ import {
 } from "lucide-react"
 
 const getFirefighterNavItems = (t: any) => [
-  { icon: LayoutDashboard, label: t.sidebar.dashboard, href: "/firefighter" },
-  { icon: Map, label: t.sidebar.liveMap, href: "/firefighter/map" },
-  { icon: MapPin, label: "Societies", href: "/firefighter/societies" },
-  { icon: Users, label: "Team", href: "/firefighter/team" },
-  { icon: AlertTriangle, label: "Active Fires", href: "/firefighter/fires" },
-  { icon: Truck, label: t.sidebar.logistics, href: "/firefighter/logistics" },
-  { icon: BarChart3, label: t.sidebar.reports, href: "/firefighter/reports" },
-  { icon: Settings, label: t.sidebar.settings, href: "/settings" },
+  { icon: LayoutDashboard, label: t.nav.dashboard, href: "/firefighter" },
+  { icon: Map, label: t.nav.liveMap, href: "/firefighter/map" },
+  { icon: MapPin, label: t.nav.societies, href: "/firefighter/societies" },
+  { icon: Users, label: t.nav.team, href: "/firefighter/team" },
+  { icon: AlertTriangle, label: t.nav.activeFires, href: "/firefighter/fires" },
+  { icon: Truck, label: t.nav.logistics, href: "/firefighter/logistics" },
+  { icon: BarChart3, label: t.nav.reports, href: "/firefighter/reports" },
+  { icon: Settings, label: t.nav.settings, href: "/settings" },
 ]
 
 const getAdminNavItems = (t: any) => [
-  { icon: LayoutDashboard, label: t.sidebar.dashboard, href: "/admin" },
-  { icon: Building2, label: "Buildings", href: "/admin/buildings" },
-  { icon: MapPin, label: "Societies", href: "/admin/societies" },
-  { icon: Users, label: "Residents", href: "/admin/residents" },
-  { icon: Radio, label: "Sensors", href: "/admin/sensors" },
-  { icon: Settings, label: t.sidebar.settings, href: "/settings" },
+  { icon: LayoutDashboard, label: t.nav.dashboard, href: "/admin" },
+  { icon: Building2, label: t.nav.buildings, href: "/admin/buildings" },
+  { icon: MapPin, label: t.nav.societies, href: "/admin/societies" },
+  { icon: Users, label: t.nav.residents, href: "/admin/residents" },
+  { icon: Radio, label: t.nav.sensors, href: "/admin/sensors" },
+  { icon: Settings, label: t.nav.settings, href: "/settings" },
 ]
 
 const getResidentNavItems = (t: any) => [
-  { icon: Home, label: "Home", href: "/resident" },
-  { icon: Map, label: "Building Map", href: "/resident/map" },
-  { icon: AlertTriangle, label: "Alerts", href: "/resident/alerts" },
-  { icon: Building2, label: "My Apartment", href: "/resident/apartment" },
-  { icon: Settings, label: t.sidebar.settings, href: "/settings" },
+  { icon: Home, label: t.nav.home, href: "/resident" },
+  { icon: Map, label: t.nav.buildingMap, href: "/resident/map" },
+  { icon: AlertTriangle, label: t.nav.alerts, href: "/resident/alerts" },
+  { icon: Building2, label: t.nav.myApartment, href: "/resident/apartment" },
+  { icon: Settings, label: t.nav.settings, href: "/settings" },
 ]
 
 // Create context for sidebar state
@@ -110,19 +110,11 @@ export function AppSidebar() {
         "fixed left-0 top-0 z-40 hidden h-screen flex-col border-r border-border bg-card lg:flex transition-all duration-300",
         "w-56"
       )}>
-        <div className="flex items-center justify-between px-4 py-5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#1f3d2f]">
-              <Flame className="h-5 w-5 text-white" />
-            </div>
-            <div>
-              <h1 className="text-lg font-bold leading-tight text-foreground">{t.sidebar.ignis}</h1>
-              <p className="text-xs tracking-wide text-muted-foreground">{t.sidebar.eliteTactical}</p>
-            </div>
-          </div>
+        <div className="flex items-center justify-center p-3 border-b border-border">
+          <Image src="/sidebaropened.png" alt="Ignis" width={120} height={36} className="h-9 w-auto object-contain" />
         </div>
 
-        <nav className="flex-1 px-3 py-4">
+        <nav className="flex-1 px-3 pt-2 pb-4">
           <ul className="space-y-1">
             {navItems.map((item) => {
               const active = isActive(item.href)
@@ -159,7 +151,7 @@ export function AppSidebar() {
             onClick={logout}
           >
             <LogOut className="h-4 w-4" />
-            Logout
+            {t.buttons.logout}
           </Button>
         </div>
       </aside>
@@ -169,27 +161,17 @@ export function AppSidebar() {
         "fixed left-0 top-0 z-50 flex h-screen w-56 flex-col border-r border-border bg-card transition-all duration-300 lg:hidden",
         isOpen ? "translate-x-0" : "-translate-x-full"
       )}>
-        <div className="flex items-center justify-between px-4 py-5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#1f3d2f]">
-              <Flame className="h-5 w-5 text-white" />
-            </div>
-            <div>
-              <h1 className="text-lg font-bold leading-tight text-foreground">{t.sidebar.ignis}</h1>
-              <p className="text-xs tracking-wide text-muted-foreground">{t.sidebar.eliteTactical}</p>
-            </div>
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
+        <div className="relative flex items-center justify-center p-3 border-b border-border">
+          <Image src="/sidebaropened.png" alt="Ignis" width={120} height={36} className="h-9 w-auto object-contain" />
+          <button
             onClick={() => setIsOpen(false)}
-            className="text-muted-foreground hover:text-foreground"
+            className="absolute right-3 flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
           >
-            <X className="h-4 w-4" />
-          </Button>
+            <X className="h-5 w-5" />
+          </button>
         </div>
 
-        <nav className="flex-1 px-3 py-4">
+        <nav className="flex-1 px-3 pt-2 pb-4">
           <ul className="space-y-1">
             {navItems.map((item) => {
               const active = isActive(item.href)
@@ -227,7 +209,7 @@ export function AppSidebar() {
             onClick={logout}
           >
             <LogOut className="h-4 w-4" />
-            Logout
+            {t.buttons.logout}
           </Button>
         </div>
       </aside>

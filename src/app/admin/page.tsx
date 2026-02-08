@@ -242,7 +242,7 @@ function AdminDashboardContent() {
                     <span className="text-sm text-neutral-400">300x300</span>
                   </div>
                   <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4">
-                    <Badge variant="secondary" className="gap-1.5 bg-white px-3 py-1.5 text-sm font-medium text-foreground shadow-sm rounded-full">
+                    <Badge variant="secondary" className="gap-1.5 bg-white dark:bg-card px-3 py-1.5 text-sm font-medium text-foreground shadow-sm rounded-full">
                       <MapPin className="h-3.5 w-3.5 text-red-500 flex-shrink-0" />
                       <span>Sector 4 (Commercial)</span>
                     </Badge>

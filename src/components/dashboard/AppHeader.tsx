@@ -76,7 +76,7 @@ export function AppHeader({
             <p className="text-xs sm:text-sm font-semibold text-foreground">{userName}</p>
             <p className="text-xs text-muted-foreground">{userRole}</p>
           </div>
-          <Avatar className="h-8 w-8 sm:h-10 sm:w-10 border-2 border-[#1f3d2f] flex-shrink-0">
+          <Avatar className="h-8 w-8 sm:h-10 sm:w-10 border-2 border-[#1f3d2f] dark:border-primary flex-shrink-0">
             <AvatarFallback className="bg-[#1f3d2f] text-xs sm:text-sm font-semibold text-white">
               {userInitials}
             </AvatarFallback>

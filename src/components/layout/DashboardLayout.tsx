@@ -4,6 +4,7 @@ import { ReactNode, useState, createContext, useContext } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from '@/context/AuthContext';
 import Link from "next/link";
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,113 +59,115 @@ interface DashboardLayoutProps {
   disablePadding?: boolean;
 }
 
-const roleConfig: Record<string, {
+function getRoleConfig(t: any): Record<string, {
   title: string;
   subtitle: string;
   navItems: NavItem[];
   dispatchButton: boolean;
-}> = {
-  // Firefighter HQ - Full access to all firefighter pages
-  firefighter_hq: {
-    title: "IGNIS COMMAND",
-    subtitle: "HQ OPERATIONS",
-    navItems: [
-      { label: "Dashboard", href: "/firefighter", icon: LayoutDashboard },
-      { label: "Live Map", href: "/firefighter/map", icon: Map },
-      { label: "Societies", href: "/firefighter/societies", icon: MapPin },
-      { label: "Personnel", href: "/firefighter/team", icon: Users },
-      { label: "Logistics", href: "/firefighter/logistics", icon: Truck },
-      { label: "Reports", href: "/firefighter/reports", icon: BarChart3 },
-      { label: "Directory", href: "/firefighter/directory", icon: BookOpen },
-      { label: "Settings", href: "/settings", icon: Settings },
-    ],
-    dispatchButton: true,
-  },
-  // Firefighter State - No Logistics access
-  firefighter_state: {
-    title: "IGNIS COMMAND",
-    subtitle: "STATE OPERATIONS",
-    navItems: [
-      { label: "Dashboard", href: "/firefighter", icon: LayoutDashboard },
-      { label: "Live Map", href: "/firefighter/map", icon: Map },
-      { label: "Societies", href: "/firefighter/societies", icon: MapPin },
-      { label: "Personnel", href: "/firefighter/team", icon: Users },
-      { label: "Reports", href: "/firefighter/reports", icon: BarChart3 },
-      { label: "Directory", href: "/firefighter/directory", icon: BookOpen },
-      { label: "Settings", href: "/settings", icon: Settings },
-    ],
-    dispatchButton: true,
-  },
-  // Firefighter District - Limited access (no Personnel, Logistics, Reports)
-  firefighter_district: {
-    title: "IGNIS COMMAND",
-    subtitle: "DISTRICT OPS",
-    navItems: [
-      { label: "Dashboard", href: "/firefighter", icon: LayoutDashboard },
-      { label: "Live Map", href: "/firefighter/map", icon: Map },
-      { label: "Societies", href: "/firefighter/societies", icon: MapPin },
-      { label: "Directory", href: "/firefighter/directory", icon: BookOpen },
-      { label: "Settings", href: "/settings", icon: Settings },
-    ],
-    dispatchButton: true,
-  },
-  // Legacy firefighter role - maps to district level
-  firefighter: {
-    title: "IGNIS COMMAND",
-    subtitle: "TACTICAL OPS",
-    navItems: [
-      { label: "Dashboard", href: "/firefighter", icon: LayoutDashboard },
-      { label: "Live Map", href: "/firefighter/map", icon: Map },
-      { label: "Societies", href: "/firefighter/societies", icon: MapPin },
-      { label: "Directory", href: "/firefighter/directory", icon: BookOpen },
-      { label: "Settings", href: "/settings", icon: Settings },
-    ],
-    dispatchButton: true,
-  },
-  resident: {
-    title: "IGNIS SAFETY",
-    subtitle: "RESIDENT PORTAL",
-    navItems: [
-      { label: "Dashboard", href: "/resident", icon: Home },
-      { label: "Live Map", href: "/resident/map", icon: Map },
-      { label: "My Apartment", href: "/resident/apartment", icon: Building2 },
-      { label: "Alerts", href: "/resident/alerts", icon: AlertTriangle },
-      { label: "Settings", href: "/settings", icon: Settings },
-    ],
-    dispatchButton: false,
-  },
-  manager: {
-    title: "IGNIS CONTROL",
-    subtitle: "BUILDING MGMT",
-    navItems: [
-      { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
-      { label: "Buildings", href: "/admin/buildings", icon: Building2 },
-      { label: "Cameras", href: "/admin/cameras", icon: Video },
-      { label: "Residents", href: "/admin/residents", icon: Users },
-      { label: "Sensors", href: "/admin/sensors", icon: Radio },
-      { label: "Settings", href: "/settings", icon: Settings },
-    ],
-    dispatchButton: false,
-  },
-  admin: {
-    title: "IGNIS ADMIN",
-    subtitle: "MANAGEMENT",
-    navItems: [
-      { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
-      { label: "Live Map", href: "/admin/map", icon: Map },
-      { label: "Fire Brigades", href: "/admin/fire-brigades", icon: Flame },
-      { label: "Buildings", href: "/admin/buildings", icon: Building2 },
-      { label: "Societies", href: "/admin/societies", icon: MapPin },
-      { label: "Cameras", href: "/admin/cameras", icon: Video },
-      { label: "Residents", href: "/admin/residents", icon: Users },
-      { label: "Sensors", href: "/admin/sensors", icon: Radio },
-      { label: "Logistics", href: "/admin/logistics", icon: Truck },
-      { label: "Reports", href: "/admin/reports", icon: BarChart3 },
-      { label: "Settings", href: "/settings", icon: Settings },
-    ],
-    dispatchButton: false,
-  },
-};
+}> {
+  return {
+    // Firefighter HQ - Full access to all firefighter pages
+    firefighter_hq: {
+      title: "IGNIS COMMAND",
+      subtitle: t.sidebar.hqOps,
+      navItems: [
+        { label: t.nav.dashboard, href: "/firefighter", icon: LayoutDashboard },
+        { label: t.nav.liveMap, href: "/firefighter/map", icon: Map },
+        { label: t.nav.societies, href: "/firefighter/societies", icon: MapPin },
+        { label: t.nav.personnel, href: "/firefighter/team", icon: Users },
+        { label: t.nav.logistics, href: "/firefighter/logistics", icon: Truck },
+        { label: t.nav.reports, href: "/firefighter/reports", icon: BarChart3 },
+        { label: t.nav.directory, href: "/firefighter/directory", icon: BookOpen },
+        { label: t.nav.settings, href: "/settings", icon: Settings },
+      ],
+      dispatchButton: true,
+    },
+    // Firefighter State - No Logistics access
+    firefighter_state: {
+      title: "IGNIS COMMAND",
+      subtitle: t.sidebar.stateOps,
+      navItems: [
+        { label: t.nav.dashboard, href: "/firefighter", icon: LayoutDashboard },
+        { label: t.nav.liveMap, href: "/firefighter/map", icon: Map },
+        { label: t.nav.societies, href: "/firefighter/societies", icon: MapPin },
+        { label: t.nav.personnel, href: "/firefighter/team", icon: Users },
+        { label: t.nav.reports, href: "/firefighter/reports", icon: BarChart3 },
+        { label: t.nav.directory, href: "/firefighter/directory", icon: BookOpen },
+        { label: t.nav.settings, href: "/settings", icon: Settings },
+      ],
+      dispatchButton: true,
+    },
+    // Firefighter District - Limited access (no Personnel, Logistics, Reports)
+    firefighter_district: {
+      title: "IGNIS COMMAND",
+      subtitle: t.sidebar.districtOps,
+      navItems: [
+        { label: t.nav.dashboard, href: "/firefighter", icon: LayoutDashboard },
+        { label: t.nav.liveMap, href: "/firefighter/map", icon: Map },
+        { label: t.nav.societies, href: "/firefighter/societies", icon: MapPin },
+        { label: t.nav.directory, href: "/firefighter/directory", icon: BookOpen },
+        { label: t.nav.settings, href: "/settings", icon: Settings },
+      ],
+      dispatchButton: true,
+    },
+    // Legacy firefighter role - maps to district level
+    firefighter: {
+      title: "IGNIS COMMAND",
+      subtitle: t.sidebar.tacticalOps,
+      navItems: [
+        { label: t.nav.dashboard, href: "/firefighter", icon: LayoutDashboard },
+        { label: t.nav.liveMap, href: "/firefighter/map", icon: Map },
+        { label: t.nav.societies, href: "/firefighter/societies", icon: MapPin },
+        { label: t.nav.directory, href: "/firefighter/directory", icon: BookOpen },
+        { label: t.nav.settings, href: "/settings", icon: Settings },
+      ],
+      dispatchButton: true,
+    },
+    resident: {
+      title: "IGNIS SAFETY",
+      subtitle: t.sidebar.residentPortal,
+      navItems: [
+        { label: t.nav.dashboard, href: "/resident", icon: Home },
+        { label: t.nav.liveMap, href: "/resident/map", icon: Map },
+        { label: t.nav.myApartment, href: "/resident/apartment", icon: Building2 },
+        { label: t.nav.alerts, href: "/resident/alerts", icon: AlertTriangle },
+        { label: t.nav.settings, href: "/settings", icon: Settings },
+      ],
+      dispatchButton: false,
+    },
+    manager: {
+      title: "IGNIS CONTROL",
+      subtitle: t.sidebar.buildingMgmt,
+      navItems: [
+        { label: t.nav.dashboard, href: "/admin", icon: LayoutDashboard },
+        { label: t.nav.buildings, href: "/admin/buildings", icon: Building2 },
+        { label: t.nav.cameras, href: "/admin/cameras", icon: Video },
+        { label: t.nav.residents, href: "/admin/residents", icon: Users },
+        { label: t.nav.sensors, href: "/admin/sensors", icon: Radio },
+        { label: t.nav.settings, href: "/settings", icon: Settings },
+      ],
+      dispatchButton: false,
+    },
+    admin: {
+      title: "IGNIS ADMIN",
+      subtitle: t.sidebar.management,
+      navItems: [
+        { label: t.nav.dashboard, href: "/admin", icon: LayoutDashboard },
+        { label: t.nav.liveMap, href: "/admin/map", icon: Map },
+        { label: t.nav.fireBrigades, href: "/admin/fire-brigades", icon: Flame },
+        { label: t.nav.buildings, href: "/admin/buildings", icon: Building2 },
+        { label: t.nav.societies, href: "/admin/societies", icon: MapPin },
+        { label: t.nav.cameras, href: "/admin/cameras", icon: Video },
+        { label: t.nav.residents, href: "/admin/residents", icon: Users },
+        { label: t.nav.sensors, href: "/admin/sensors", icon: Radio },
+        { label: t.nav.logistics, href: "/admin/logistics", icon: Truck },
+        { label: t.nav.reports, href: "/admin/reports", icon: BarChart3 },
+        { label: t.nav.settings, href: "/settings", icon: Settings },
+      ],
+      dispatchButton: false,
+    },
+  };
+}
 
 // Sidebar Context
 const SidebarContext = createContext<{
@@ -189,7 +192,7 @@ export default function DashboardLayout({ children, role, userName, userTitle }:
   const { t } = useLanguage();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const config = roleConfig[role];
+  const config = getRoleConfig(t)[role];
 
   const isActive = (href: string) => {
     if (href === "/firefighter" || href === "/admin" || href === "/resident") {
@@ -210,29 +213,21 @@ export default function DashboardLayout({ children, role, userName, userTitle }:
           sidebarCollapsed ? "w-16" : "w-56"
         )}>
           {/* Sidebar Header */}
-          <div className={cn("flex items-center py-5", sidebarCollapsed ? "px-3 justify-center" : "px-4 justify-between")}>
+          <div className={cn("relative flex items-center justify-center border-b border-border p-3")}>
             {sidebarCollapsed ? (
               <button
                 onClick={() => setSidebarCollapsed(false)}
-                className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#1f3d2f] flex-shrink-0 hover:bg-[#2a5040] transition-colors cursor-pointer"
+                className="flex items-center justify-center rounded-lg hover:bg-secondary transition-colors cursor-pointer p-1.5"
                 title="Expand sidebar"
               >
-                <Flame className="h-5 w-5 text-white" />
+                <Image src="/sidebarclosed.png" alt="Ignis" width={28} height={28} className="h-7 w-7 object-contain" />
               </button>
             ) : (
               <>
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#1f3d2f] flex-shrink-0">
-                    <Flame className="h-5 w-5 text-white" />
-                  </div>
-                  <div className="min-w-0">
-                    <h1 className="text-lg font-bold leading-tight text-foreground truncate">{config.title}</h1>
-                    <p className="text-xs tracking-wide text-muted-foreground truncate">{config.subtitle}</p>
-                  </div>
-                </div>
+                <Image src="/sidebaropened.png" alt="Ignis" width={120} height={36} className="h-9 w-auto object-contain" />
                 <button
                   onClick={() => setSidebarCollapsed(true)}
-                  className="flex items-center justify-center h-10 w-8 ml-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-all self-center"
+                  className="absolute right-3 flex items-center justify-center h-9 w-9 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
                   title="Collapse sidebar"
                 >
                   <Menu className="h-5 w-5" />
@@ -242,7 +237,7 @@ export default function DashboardLayout({ children, role, userName, userTitle }:
           </div>
 
           {/* Navigation */}
-          <nav className={cn("flex-1 py-4", sidebarCollapsed ? "px-2" : "px-3")}>
+          <nav className={cn("flex-1 pt-2 pb-4", sidebarCollapsed ? "px-2" : "px-3")}>
             <ul className="space-y-1">
               {config.navItems.map((item) => {
                 const active = isActive(item.href);
@@ -288,10 +283,10 @@ export default function DashboardLayout({ children, role, userName, userTitle }:
               variant="outline"
               className={cn("w-full", sidebarCollapsed ? "p-2" : "gap-2")}
               onClick={logout}
-              title={sidebarCollapsed ? "Logout" : undefined}
+              title={sidebarCollapsed ? t.buttons.logout : undefined}
             >
               <LogOut className="h-4 w-4" />
-              {!sidebarCollapsed && "Logout"}
+              {!sidebarCollapsed && t.buttons.logout}
             </Button>
           </div>
         </aside>
@@ -301,24 +296,14 @@ export default function DashboardLayout({ children, role, userName, userTitle }:
           "fixed left-0 top-0 z-50 flex h-screen w-64 flex-col border-r border-border bg-card transition-transform duration-300 lg:hidden",
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}>
-          <div className="flex items-center justify-between px-4 py-5">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#1f3d2f]">
-                <Flame className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <h1 className="text-lg font-bold leading-tight text-foreground">{config.title}</h1>
-                <p className="text-xs tracking-wide text-muted-foreground">{config.subtitle}</p>
-              </div>
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
+          <div className="relative flex items-center justify-center p-3 border-b border-border">
+            <Image src="/sidebaropened.png" alt="Ignis" width={120} height={36} className="h-9 w-auto object-contain" />
+            <button
               onClick={() => setSidebarOpen(false)}
-              className="text-muted-foreground hover:text-foreground hover:bg-muted"
+              className="absolute right-3 flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
             >
               <X className="h-5 w-5" />
-            </Button>
+            </button>
           </div>
 
           <nav className="flex-1 px-3 py-4">
@@ -363,7 +348,7 @@ export default function DashboardLayout({ children, role, userName, userTitle }:
               onClick={logout}
             >
               <LogOut className="h-4 w-4" />
-              Logout
+              {t.buttons.logout}
             </Button>
           </div>
         </aside>
@@ -395,15 +380,6 @@ export default function DashboardLayout({ children, role, userName, userTitle }:
               >
                 <Menu className="h-5 w-5" />
               </Button>
-
-              <div className="hidden sm:flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-full bg-green-500" />
-                <span className="text-sm font-medium text-foreground">{t.header.systemOptimal}</span>
-              </div>
-              <div className="hidden md:flex items-center gap-2 text-muted-foreground">
-                <MapPin className="h-4 w-4" />
-                <span className="text-sm">{t.header.gpsLocked}</span>
-              </div>
             </div>
 
             <div className="flex-1 max-w-md mx-4">
@@ -427,7 +403,7 @@ export default function DashboardLayout({ children, role, userName, userTitle }:
                       <p className="text-sm font-semibold text-foreground">{userName}</p>
                       <p className="text-xs text-muted-foreground">{userTitle}</p>
                     </div>
-                    <Avatar className="h-8 w-8 sm:h-10 sm:w-10 border-2 border-[#1f3d2f]">
+                    <Avatar className="h-8 w-8 sm:h-10 sm:w-10 border-2 border-[#1f3d2f] dark:border-primary">
                       <AvatarFallback className="bg-[#1f3d2f] text-sm font-semibold text-white">
                         {userInitials}
                       </AvatarFallback>
@@ -446,22 +422,22 @@ export default function DashboardLayout({ children, role, userName, userTitle }:
                   <DropdownMenuItem asChild>
                     <Link href="/settings" className="flex items-center gap-2 cursor-pointer">
                       <User className="h-4 w-4" />
-                      <span>Profile</span>
+                      <span>{t.settings.profileTab}</span>
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link href="/settings" className="flex items-center gap-2 cursor-pointer">
                       <Settings className="h-4 w-4" />
-                      <span>Settings</span>
+                      <span>{t.settings.settings}</span>
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={logout}
-                    className="flex items-center gap-2 cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
+                    className="flex items-center gap-2 cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950/30"
                   >
                     <LogOut className="h-4 w-4" />
-                    <span>Logout</span>
+                    <span>{t.buttons.logout}</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

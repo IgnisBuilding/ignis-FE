@@ -103,15 +103,15 @@ function ResidentDashboardContent() {
         id: data.id,
         number: data.unit_number || data.number,
         floor: {
-          id: data.floor.id,
-          name: data.floor.name || `Floor ${data.floor.level}`,
-          level: data.floor.level,
+          id: data.floor?.id || 1,
+          name: data.floor?.name || `Floor ${data.floor?.level || 1}`,
+          level: data.floor?.level || 1,
         },
         building: {
-          id: data.building.id,
-          name: data.building.name,
-          address: data.building.address,
-          type: data.building.type || 'residential',
+          id: data.building?.id || 1,
+          name: data.building?.name || 'Unknown',
+          address: data.building?.address || 'N/A',
+          type: data.building?.type || 'residential',
         },
         status: data.occupied ? 'Occupied' : 'Vacant',
         occupied: data.occupied,
@@ -233,7 +233,7 @@ function ResidentDashboardContent() {
                   <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4">
                     <Badge
                       variant="secondary"
-                      className="gap-1.5 bg-white px-3 py-1.5 text-sm font-medium text-foreground shadow-sm rounded-full"
+                      className="gap-1.5 bg-white dark:bg-card px-3 py-1.5 text-sm font-medium text-foreground shadow-sm rounded-full"
                     >
                       <MapPin className="h-3.5 w-3.5 text-[#1f3d2f]" />
                       <span>{apartmentInfo?.building.address || 'Loading...'}</span>

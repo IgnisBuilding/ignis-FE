@@ -2,10 +2,12 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import { useLanguage } from '@/providers/LanguageProvider';
 
 export default function LoginPage() {
   const router = useRouter();
   const { login } = useAuth();
+  const { t } = useLanguage();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -15,10 +17,10 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError('');
-    
+
     try {
       const success = await login(email, password);
-      
+
       if (success) {
         const storedUser = localStorage.getItem('ignis_user');
         if (storedUser) {
@@ -48,10 +50,10 @@ export default function LoginPage() {
           router.push('/');
         }
       } else {
-        setError('Invalid email or password');
+        setError(t.login.invalidCredentials);
       }
     } catch (err: any) {
-      setError(err.message || 'Login failed. Please try again.');
+      setError(err.message || t.login.loginFailed);
     } finally {
       setLoading(false);
     }
@@ -72,7 +74,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-accent flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 fixed inset-0">
+    <div className="light min-h-screen w-full bg-[#FDFBF7] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 fixed inset-0" style={{ colorScheme: 'light' }}>
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
           <div className="flex justify-center mb-6">
@@ -83,8 +85,8 @@ export default function LoginPage() {
               </svg>
             </div>
           </div>
-          <h1 className="text-3xl font-bold text-primary mb-2">Ignis Command</h1>
-          <p className="text-primary/60 text-sm font-medium uppercase tracking-widest">Elite Response System</p>
+          <h1 className="text-3xl font-bold text-primary mb-2">{t.login.title}</h1>
+          <p className="text-primary/60 text-sm font-medium uppercase tracking-widest">{t.login.subtitle}</p>
         </div>
 
         <div className="glass-card rounded-2xl p-8 shadow-xl shadow-primary/5 border border-primary/5">
@@ -100,7 +102,7 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label htmlFor="email" className="block text-sm font-semibold text-primary/80 mb-2 uppercase tracking-wider text-xs">
-                Email Address
+                {t.login.email}
               </label>
               <input
                 id="email"
@@ -115,7 +117,7 @@ export default function LoginPage() {
 
             <div>
               <label htmlFor="password" className="block text-sm font-semibold text-primary/80 mb-2 uppercase tracking-wider text-xs">
-                Password
+                {t.login.password}
               </label>
               <input
                 id="password"
@@ -139,14 +141,14 @@ export default function LoginPage() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
-                  <span>Authenticating...</span>
+                  <span>{t.login.authenticating}</span>
                 </>
               ) : (
                 <>
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
                   </svg>
-                  <span>Sign In</span>
+                  <span>{t.login.signIn}</span>
                 </>
               )}
             </button>
@@ -154,7 +156,7 @@ export default function LoginPage() {
 
           <div className="mt-8 pt-6 border-t border-primary/10">
             <p className="text-xs text-primary/60 text-center mb-4 font-bold uppercase tracking-widest">
-              Quick Demo Login:
+              {t.login.quickDemo}
             </p>
             <div className="grid grid-cols-3 gap-2">
               <button
@@ -162,42 +164,42 @@ export default function LoginPage() {
                 onClick={() => fillDemoCredentials('admin')}
                 className="px-3 py-2 text-xs font-bold bg-primary/5 text-primary rounded-lg hover:bg-primary/10 transition-all border border-primary/10 uppercase tracking-wider"
               >
-                Admin
+                {t.login.admin}
               </button>
               <button
                 type="button"
                 onClick={() => fillDemoCredentials('management')}
                 className="px-3 py-2 text-xs font-bold bg-primary/5 text-primary rounded-lg hover:bg-primary/10 transition-all border border-primary/10 uppercase tracking-wider"
               >
-                Manager
+                {t.login.manager}
               </button>
               <button
                 type="button"
                 onClick={() => fillDemoCredentials('resident')}
                 className="px-3 py-2 text-xs font-bold bg-primary/5 text-primary rounded-lg hover:bg-primary/10 transition-all border border-primary/10 uppercase tracking-wider"
               >
-                Resident
+                {t.login.resident}
               </button>
               <button
                 type="button"
                 onClick={() => fillDemoCredentials('firefighter_hq')}
                 className="px-3 py-2 text-xs font-bold bg-primary/5 text-primary rounded-lg hover:bg-primary/10 transition-all border border-primary/10 uppercase tracking-wider"
               >
-                FF HQ
+                {t.login.ffHq}
               </button>
               <button
                 type="button"
                 onClick={() => fillDemoCredentials('firefighter_state')}
                 className="px-3 py-2 text-xs font-bold bg-primary/5 text-primary rounded-lg hover:bg-primary/10 transition-all border border-primary/10 uppercase tracking-wider"
               >
-                FF State
+                {t.login.ffState}
               </button>
               <button
                 type="button"
                 onClick={() => fillDemoCredentials('firefighter_district')}
                 className="px-3 py-2 text-xs font-bold bg-primary/5 text-primary rounded-lg hover:bg-primary/10 transition-all border border-primary/10 uppercase tracking-wider"
               >
-                FF District
+                {t.login.ffDistrict}
               </button>
             </div>
           </div>
@@ -206,4 +208,3 @@ export default function LoginPage() {
     </div>
   );
 }
-

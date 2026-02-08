@@ -441,7 +441,7 @@ function CamerasManagementContent() {
                   </div>
 
                   {/* Auto Create Hazard */}
-                  <div className="flex items-center justify-between p-4 bg-white rounded-xl border-2 border-dark-green-100">
+                  <div className="flex items-center justify-between p-4 bg-white dark:bg-card rounded-xl border-2 border-dark-green-100 dark:border-border">
                     <div>
                       <p className="font-semibold text-dark-green-700">Auto-create Hazard</p>
                       <p className="text-xs text-dark-green-500">Automatically create hazard record when fire detected</p>
@@ -452,14 +452,14 @@ function CamerasManagementContent() {
                         configFormData.auto_create_hazard ? 'bg-green-500' : 'bg-gray-300'
                       }`}
                     >
-                      <div className={`w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${
+                      <div className={`w-5 h-5 bg-white dark:bg-foreground rounded-full shadow-sm transition-transform ${
                         configFormData.auto_create_hazard ? 'translate-x-6' : 'translate-x-0.5'
                       }`} />
                     </button>
                   </div>
 
                   {/* Auto Notify Firefighters */}
-                  <div className="flex items-center justify-between p-4 bg-white rounded-xl border-2 border-dark-green-100">
+                  <div className="flex items-center justify-between p-4 bg-white dark:bg-card rounded-xl border-2 border-dark-green-100 dark:border-border">
                     <div>
                       <p className="font-semibold text-dark-green-700">Auto-notify Firefighters</p>
                       <p className="text-xs text-dark-green-500">Send notification to fire department automatically</p>
@@ -470,7 +470,7 @@ function CamerasManagementContent() {
                         configFormData.auto_notify_firefighters ? 'bg-green-500' : 'bg-gray-300'
                       }`}
                     >
-                      <div className={`w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${
+                      <div className={`w-5 h-5 bg-white dark:bg-foreground rounded-full shadow-sm transition-transform ${
                         configFormData.auto_notify_firefighters ? 'translate-x-6' : 'translate-x-0.5'
                       }`} />
                     </button>

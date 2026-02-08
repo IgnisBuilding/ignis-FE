@@ -7,7 +7,7 @@ import { useNotifications } from "@/providers/NotificationProvider"
 import { Button } from "@/components/ui/button"
 
 export function NotificationModal() {
-  const { notifications, removeNotification, markAsRead, unreadCount, clearAll } = useNotifications()
+  const { notifications, removeNotification, markAsRead, markAllAsRead, unreadCount, clearAll } = useNotifications()
   const [isOpen, setIsOpen] = useState(false)
 
   const typeConfig = {
@@ -37,8 +37,8 @@ export function NotificationModal() {
     },
   }
 
-  const formatTime = (timestamp: number) => {
-    const date = new Date(timestamp)
+  const formatTime = (dateStr: string) => {
+    const date = new Date(dateStr)
     const now = new Date()
     const diff = now.getTime() - date.getTime()
     const minutes = Math.floor(diff / 60000)
@@ -103,7 +103,7 @@ export function NotificationModal() {
               ) : (
                 <div className="divide-y divide-border">
                   {notifications.map((notification) => {
-                    const config = typeConfig[notification.type]
+                    const config = typeConfig[notification.type] || typeConfig.info
                     const Icon = config.icon
 
                     return (
@@ -113,7 +113,7 @@ export function NotificationModal() {
                           "flex gap-3 border-l-4 p-4 transition-colors cursor-pointer",
                           config.bgColor,
                           config.borderColor,
-                          !notification.read && "bg-opacity-100 dark:bg-opacity-20"
+                          notification.status === "unread" && "bg-opacity-100 dark:bg-opacity-20"
                         )}
                         onClick={() => markAsRead(notification.id)}
                       >
@@ -126,7 +126,7 @@ export function NotificationModal() {
                             {notification.message}
                           </p>
                           <p className="mt-2 text-xs text-muted-foreground">
-                            {formatTime(notification.timestamp)}
+                            {formatTime(notification.createdAt)}
                           </p>
                         </div>
                         <button
@@ -147,11 +147,19 @@ export function NotificationModal() {
 
             {/* Footer */}
             {notifications.length > 0 && (
-              <div className="border-t border-border p-4">
+              <div className="flex gap-2 border-t border-border p-4">
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="w-full text-xs text-muted-foreground hover:text-foreground"
+                  className="flex-1 text-xs text-muted-foreground hover:text-foreground"
+                  onClick={() => markAllAsRead()}
+                >
+                  Mark All Read
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="flex-1 text-xs text-muted-foreground hover:text-foreground"
                   onClick={() => clearAll()}
                 >
                   Clear All

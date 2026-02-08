@@ -389,7 +389,7 @@ function FireBrigadeManagementContent() {
                               </span>
                             </td>
                             <td className="p-4 text-center">
-                              <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${hq.status === "active" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-gray-100 text-gray-700"}`}>
+                              <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${hq.status === "active" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-gray-100 text-gray-700 dark:bg-muted dark:text-muted-foreground"}`}>
                                 {hq.status}
                               </span>
                             </td>
@@ -461,7 +461,7 @@ function FireBrigadeManagementContent() {
                               </span>
                             </td>
                             <td className="p-4 text-center">
-                              <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${state.status === "active" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-gray-100 text-gray-700"}`}>
+                              <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${state.status === "active" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-gray-100 text-gray-700 dark:bg-muted dark:text-muted-foreground"}`}>
                                 {state.status}
                               </span>
                             </td>
@@ -540,7 +540,7 @@ function FireBrigadeManagementContent() {
                               </span>
                             </td>
                             <td className="p-4 text-center">
-                              <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${station.status === "active" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-gray-100 text-gray-700"}`}>
+                              <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${station.status === "active" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-gray-100 text-gray-700 dark:bg-muted dark:text-muted-foreground"}`}>
                                 {station.status}
                               </span>
                             </td>

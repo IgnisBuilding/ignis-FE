@@ -78,45 +78,45 @@ html[dir="ltr"] * {
   }
 
   .dark {
-    --background: 0 0% 9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 12%;
-    --secondary: 0 0% 16%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 16%;
-    --muted-foreground: 0 0% 64%;
-    --accent: 0 0% 16%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62% 30%;
+    --background: 155 15% 10%;
+    --foreground: 150 10% 92%;
+    --card: 155 14% 13%;
+    --card-foreground: 150 10% 92%;
+    --popover: 155 14% 13%;
+    --popover-foreground: 150 10% 92%;
+    --primary: 155 30% 50%;
+    --primary-foreground: 155 20% 8%;
+    --secondary: 155 12% 18%;
+    --secondary-foreground: 150 10% 85%;
+    --muted: 155 10% 18%;
+    --muted-foreground: 150 8% 55%;
+    --accent: 155 12% 18%;
+    --accent-foreground: 150 10% 85%;
+    --destructive: 0 62% 50%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 16%;
-    --input: 0 0% 16%;
-    --ring: 0 0% 35%;
+    --border: 155 10% 20%;
+    --input: 155 10% 20%;
+    --ring: 155 30% 45%;
 
     /* Chart colors - dark mode */
-    --chart-1: 250 90% 60%;
-    --chart-2: 160 70% 50%;
+    --chart-1: 155 60% 50%;
+    --chart-2: 180 55% 50%;
     --chart-3: 35 90% 55%;
-    --chart-4: 290 80% 60%;
-    --chart-5: 10 90% 55%;
+    --chart-4: 200 70% 55%;
+    --chart-5: 10 80% 55%;
 
     /* Sidebar - dark mode */
-    --sidebar-background: 0 0% 12%;
-    --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 250 90% 60%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 0 0% 16%;
-    --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 0 0% 16%;
-    --sidebar-ring: 0 0% 35%;
+    --sidebar-background: 155 14% 11%;
+    --sidebar-foreground: 150 10% 92%;
+    --sidebar-primary: 155 30% 50%;
+    --sidebar-primary-foreground: 155 20% 8%;
+    --sidebar-accent: 155 12% 18%;
+    --sidebar-accent-foreground: 150 10% 85%;
+    --sidebar-border: 155 10% 18%;
+    --sidebar-ring: 155 30% 45%;
 
     /* Custom dashboard colors - dark mode */
-    --success: 145 60% 40%;
+    --success: 145 55% 45%;
     --success-foreground: 0 0% 100%;
     --warning: 45 85% 55%;
     --warning-foreground: 0 0% 15%;
@@ -143,8 +143,18 @@ html[dir="ltr"] * {
   transition: all 0.3s ease;
 }
 
+.dark .glass-card {
+  background: rgba(25, 45, 38, 0.5);
+  border: 1px solid rgba(80, 160, 130, 0.12);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+}
+
 .glass-card:hover {
   box-shadow: 0 10px 15px -3px rgba(26, 61, 53, 0.1);
+}
+
+.dark .glass-card:hover {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
 }
 
 .glass-card-static {
@@ -153,6 +163,12 @@ html[dir="ltr"] * {
   -webkit-backdrop-filter: blur(10px);
   border: 1px solid rgba(26, 61, 53, 0.05);
   box-shadow: 0 4px 6px -1px rgba(26, 61, 53, 0.05);
+}
+
+.dark .glass-card-static {
+  background: rgba(25, 45, 38, 0.5);
+  border: 1px solid rgba(80, 160, 130, 0.12);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
 }
 
 /* Stitch Design System - Pulse Red Animation for Critical Alerts */
@@ -184,14 +200,31 @@ html[dir="ltr"] * {
   border: 1px solid rgba(26, 61, 53, 0.05);
 }
 
+.dark .hero-card {
+  background: hsl(155, 14%, 13%);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(80, 160, 130, 0.12);
+}
+
 /* Ignis Theme - Green Gradient */
 .green-gradient {
   background: linear-gradient(135deg, #1a3d35 0%, #2d5a4e 100%);
 }
 
+.dark .green-gradient {
+  background: linear-gradient(135deg, #1e4a40 0%, #2d6858 100%);
+}
+
 /* Ignis Theme - Gradient Text */
 .gradient-text {
   background: linear-gradient(135deg, #1a3d35 0%, #2d5a4e 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.dark .gradient-text {
+  background: linear-gradient(135deg, #4db892 0%, #6fcfa8 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -206,9 +239,19 @@ html[dir="ltr"] * {
   box-shadow: 0 4px 6px -1px rgba(26, 61, 53, 0.05), 0 2px 4px -1px rgba(26, 61, 53, 0.03);
 }
 
+.dark .premium-card {
+  background: rgba(25, 45, 38, 0.6);
+  border: 1px solid rgba(80, 160, 130, 0.12);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -1px rgba(0, 0, 0, 0.1);
+}
+
 /* Ignis Theme - Cream Gradient Background */
 .cream-gradient {
   background: linear-gradient(180deg, #FDFBF7 0%, #f5f0e8 100%);
+}
+
+.dark .cream-gradient {
+  background: linear-gradient(180deg, hsl(155, 15%, 10%) 0%, hsl(155, 14%, 8%) 100%);
 }
 
 /* Custom scrollbar */
@@ -229,4 +272,16 @@ html[dir="ltr"] * {
 
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(26, 61, 53, 0.3);
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: rgba(80, 160, 130, 0.05);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(80, 160, 130, 0.2);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(80, 160, 130, 0.3);
 }

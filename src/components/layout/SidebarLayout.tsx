@@ -28,9 +28,9 @@ export default function SidebarLayout({ children }: SidebarLayoutProps) {
   ];
 
   return (
-    <div className="min-h-screen bg-accent flex overflow-hidden">
+    <div className="min-h-screen bg-accent dark:bg-background flex overflow-hidden">
       {/* Sidebar Navigation */}
-      <aside className="w-64 border-r border-primary/10 flex flex-col justify-between bg-white h-screen sticky top-0">
+      <aside className="w-64 border-r border-primary/10 dark:border-border flex flex-col justify-between bg-white dark:bg-card h-screen sticky top-0">
         <div className="p-6">
           {/* Logo */}
           <div className="flex items-center gap-3 mb-10">
@@ -81,7 +81,7 @@ export default function SidebarLayout({ children }: SidebarLayoutProps) {
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col h-screen overflow-y-auto">
         {/* Header */}
-        <header className="flex items-center justify-between border-b border-primary/5 bg-white/50 backdrop-blur-md px-8 py-4 sticky top-0 z-10">
+        <header className="flex items-center justify-between border-b border-primary/5 dark:border-border bg-white/50 dark:bg-card/50 backdrop-blur-md px-8 py-4 sticky top-0 z-10">
           <div className="flex items-center gap-8">
             <div className="flex items-center gap-3">
               <div className="w-2.5 h-2.5 rounded-full bg-green-500"></div>
@@ -107,7 +107,7 @@ export default function SidebarLayout({ children }: SidebarLayoutProps) {
             <div className="flex items-center gap-4">
               <button className="w-10 h-10 flex items-center justify-center bg-primary/5 rounded-full text-primary hover:bg-primary/10 relative transition-colors">
                 <Bell className="w-5 h-5" />
-                <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
+                <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-card"></span>
               </button>
               <button
                 onClick={handleLogout}

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import { useState, useEffect } from 'react';
 import { Bell, AlertTriangle, Info, CheckCircle, Search } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
@@ -10,20 +10,66 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import type { Notification } from '@/providers/NotificationProvider';
+
+interface DisplayAlert {
+  id: string;
+  type: string;
+  message: string;
+  timestamp: Date;
+  priority: string;
+  read: boolean;
+  source: 'alert' | 'notification';
+  notificationId?: number;
+}
 
 export default function AlertsPage() {
   const { user, role } = useAuth();
-  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [alerts, setAlerts] = useState<DisplayAlert[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'unread' | 'high' | 'critical'>('all');
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     if (user && role === 'resident') {
-      const fetchAlerts = async () => {
+      const fetchData = async () => {
         try {
-          const data = await api.getMyAlerts();
-          setAlerts(data);
+          // Fetch alerts and notifications in parallel
+          const [alertsData, notificationsResponse] = await Promise.all([
+            api.getMyAlerts().catch(() => [] as Alert[]),
+            api.get<Notification[]>('/notifications/my').catch(() => ({ data: [] as Notification[] })),
+          ]);
+
+          // Map alerts to display shape
+          const displayAlerts: DisplayAlert[] = (alertsData || []).map((a: Alert) => ({
+            id: `alert-${a.id}`,
+            type: a.type,
+            message: a.message,
+            timestamp: new Date(a.timestamp),
+            priority: a.priority,
+            read: a.read,
+            source: 'alert' as const,
+          }));
+
+          // Map notifications to display shape
+          const notifs = notificationsResponse.data || [];
+          const displayNotifications: DisplayAlert[] = notifs.map((n: Notification) => ({
+            id: `notif-${n.id}`,
+            type: n.type === 'error' ? 'fire' : n.type === 'warning' ? 'smoke' : n.type === 'info' ? 'info' : 'info',
+            message: `${n.title}: ${n.message}`,
+            timestamp: new Date(n.createdAt),
+            priority: n.priority || 'medium',
+            read: n.status === 'read',
+            source: 'notification' as const,
+            notificationId: n.id,
+          }));
+
+          // Combine and sort by timestamp (newest first)
+          const combined = [...displayAlerts, ...displayNotifications].sort(
+            (a, b) => b.timestamp.getTime() - a.timestamp.getTime()
+          );
+
+          setAlerts(combined);
         } catch (error) {
           console.error('Failed to fetch alerts:', error);
         } finally {
@@ -31,7 +77,7 @@ export default function AlertsPage() {
         }
       };
 
-      fetchAlerts();
+      fetchData();
     } else {
       setLoading(false);
     }
@@ -40,11 +86,25 @@ export default function AlertsPage() {
   const unreadCount = alerts.filter(a => !a.read).length;
   const criticalCount = alerts.filter(a => a.priority === 'critical').length;
 
-  const handleMarkAsRead = (id: string) => {
+  const handleMarkAsRead = async (id: string) => {
+    const alert = alerts.find(a => a.id === id);
+    if (alert?.source === 'notification' && alert.notificationId) {
+      try {
+        await api.patch(`/notifications/${alert.notificationId}/read`);
+      } catch {
+        // continue with optimistic update
+      }
+    }
     setAlerts(alerts.map(a => a.id === id ? { ...a, read: true } : a));
   };
 
-  const handleMarkAllRead = () => {
+  const handleMarkAllRead = async () => {
+    // Mark notification-source items on backend
+    try {
+      await api.patch('/notifications/read-all');
+    } catch {
+      // continue with optimistic update
+    }
     setAlerts(alerts.map(a => ({ ...a, read: true })));
   };
 
@@ -224,7 +284,7 @@ export default function AlertsPage() {
                         </div>
                         <p className="text-sm text-muted-foreground mb-1">{alert.message}</p>
                         <p className="text-xs text-muted-foreground">
-                          {new Date(alert.timestamp).toLocaleString()}
+                          {alert.timestamp.toLocaleString()}
                         </p>
                       </div>
                     </div>

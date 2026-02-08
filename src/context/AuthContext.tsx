@@ -83,6 +83,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
   signup: (data: SignupData) => Promise<boolean>;
+  updateUser: (partial: Partial<User>) => void;
   loading: boolean;
 }
 
@@ -127,6 +128,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           name: response.user.name,
           email: response.user.email,
           role: response.user.role as UserRole,
+          phone: response.user.phone,
+          emergencyContact: response.user.emergencyContact,
         };
 
         setUser(mappedUser);
@@ -151,6 +154,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     api.clearToken();
     router.push('/login');
   }, [router]);
+
+  const updateUser = useCallback((partial: Partial<User>) => {
+    setUser(prev => {
+      if (!prev) return prev;
+      const updated = { ...prev, ...partial };
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('ignis_user', JSON.stringify(updated));
+      }
+      return updated;
+    });
+  }, []);
 
   const signup = useCallback(async (data: SignupData): Promise<boolean> => {
     setLoading(true);
@@ -188,8 +202,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     login,
     logout,
     signup,
+    updateUser,
     loading
-  }), [user, login, logout, signup, loading]);
+  }), [user, login, logout, signup, updateUser, loading]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
@@ -208,6 +223,7 @@ export const useAuth = () => {
       login: async () => false,
       logout: () => {},
       signup: async () => false,
+      updateUser: () => {},
       loading: true,
     };
   }
