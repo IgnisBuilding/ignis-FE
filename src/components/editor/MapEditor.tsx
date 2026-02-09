@@ -1847,6 +1847,8 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
         lat: geo.lat,
         lng: geo.lng,
         is_exit: room.room_type === "exit" || room.room_type === "outdoor",
+        room_id: room.id,         // Frontend room ID for BE room_id resolution
+        room_db_id: room.db_id,   // DB room ID if already saved
       });
     });
 
@@ -2333,6 +2335,7 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
             level: room.level,
             name: room.name,
             room_type: room.room_type,
+            color: ROOM_TYPES[room.room_type]?.color || null,
             type: "room"
           },
           geometry: { type: "Polygon", coordinates },
@@ -2342,6 +2345,10 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
       const openingToFeature = (op: any) => {
         const startGeo = pixelToGeo(op.start.x, op.start.y);
         const endGeo = pixelToGeo(op.end.x, op.end.y);
+        // Resolve connected room DB IDs
+        const connectsDbIds = (op.connects || [])
+          .map((roomId: string) => rooms.find((r: any) => r.id === roomId)?.db_id)
+          .filter(Boolean);
         return {
           type: "Feature",
           properties: {
@@ -2349,7 +2356,11 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
             db_id: op.db_id, // Include database ID if exists
             level: op.level,
             type: "opening",
-            opening_type: op.type
+            name: op.name || null,
+            opening_type: op.type,
+            width_meters: OPENING_TYPES[op.type]?.width || null,
+            connects: op.connects || [],           // Frontend room IDs
+            connects_db_ids: connectsDbIds,        // Resolved DB room IDs
           },
           geometry: { type: "LineString", coordinates: [[startGeo.lng, startGeo.lat], [endGeo.lng, endGeo.lat]] },
         };
@@ -2357,6 +2368,10 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
 
       const cameraToFeature = (cam: any) => {
         const geo = pixelToGeo(cam.position.x, cam.position.y);
+        // Resolve linked room's DB ID for the backend
+        const linkedRoom = cam.linked_room_id
+          ? rooms.find((r: any) => r.id === cam.linked_room_id)
+          : null;
         return {
           type: "Feature",
           properties: {
@@ -2370,6 +2385,7 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
             rtsp_url: cam.rtsp_url,
             is_fire_detection_enabled: cam.is_fire_detection_enabled,
             linked_room_id: cam.linked_room_id,
+            linked_room_db_id: linkedRoom?.db_id || null,
             rotation: cam.rotation,
           },
           geometry: { type: "Point", coordinates: [geo.lng, geo.lat] },
@@ -2419,7 +2435,15 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
           },
         },
         // Include routing graph (nodes/edges are always regenerated from rooms/openings)
-        routingGraph: buildRoutingGraph,
+        routingGraph: (() => {
+          const rg = buildRoutingGraph;
+          console.log(`[SaveToDatabase] Routing graph: ${rg.nodes.length} nodes, ${rg.edges.length} edges`);
+          if (rg.edges.length === 0 && rg.nodes.length > 0) {
+            console.warn(`[SaveToDatabase] WARNING: 0 edges but ${rg.nodes.length} nodes! Openings connects:`,
+              openings.map(op => ({ id: op.id, type: op.type, connects: op.connects })));
+          }
+          return rg;
+        })(),
         // Building properties
         properties: {
           building_name: buildings.find(b => b.id === selectedBuildingId)?.name || "Unknown",

@@ -373,29 +373,42 @@ const EvacuationMap = memo(({
 
     map.on('load', async () => {
       try {
-        let roomsData: GeoJSON.FeatureCollection;
-        let featuresData: GeoJSON.FeatureCollection;
-        let detailsData: GeoJSON.FeatureCollection;
-        let nodesData: GeoJSON.FeatureCollection;
+        let roomsData: GeoJSON.FeatureCollection = { type: 'FeatureCollection', features: [] };
+        let featuresData: GeoJSON.FeatureCollection = { type: 'FeatureCollection', features: [] };
+        let detailsData: GeoJSON.FeatureCollection = { type: 'FeatureCollection', features: [] };
+        let nodesData: GeoJSON.FeatureCollection = { type: 'FeatureCollection', features: [] };
         let camerasData: GeoJSON.FeatureCollection = { type: 'FeatureCollection', features: [] };
         let roomNodesMappingData: any[] = [];
         let sensors: GeoJSON.FeatureCollection | null = null;
         let occupancy: any = null;
         let buildingCenter: [number, number] | null = null;
 
+        console.log('[EvacuationMap] handleMapLoad called - floorPlanData:', !!floorPlanData,
+          'features:', floorPlanData?.features?.length || 0, 'buildingId:', buildingId,
+          'activeFloorId:', activeFloorId, 'activeFloorLevel:', activeFloorLevel);
+
         // Priority 1: Use floorPlanData from props (passed from parent component)
         if (floorPlanData && floorPlanData.features && floorPlanData.features.length > 0) {
-          console.log('[EvacuationMap] Using floor plan data from props, buildingId:', buildingId);
+          console.log('[EvacuationMap] Using floor plan data from props, buildingId:', buildingId,
+            'features:', floorPlanData.features.length,
+            'activeFloorId:', activeFloorId, 'activeFloorLevel:', activeFloorLevel,
+            'center:', floorPlanData.properties?.center_lat, floorPlanData.properties?.center_lng);
 
           // Filter features by active floor ID (preferred) or level (fallback)
           const filterByFloor = (features: any[]) => {
             // Prefer floor_id filtering for precise matching
             if (activeFloorId) {
-              return features.filter((f: any) =>
-                f.properties?.floor_id === activeFloorId ||
-                f.properties?.floorId === activeFloorId ||
+              const filtered = features.filter((f: any) =>
+                Number(f.properties?.floor_id) === Number(activeFloorId) ||
+                Number(f.properties?.floorId) === Number(activeFloorId) ||
                 (!f.properties?.floor_id && !f.properties?.floorId)
               );
+              if (filtered.length === 0 && features.length > 0) {
+                console.warn('[EvacuationMap] Floor filter removed ALL features!',
+                  'activeFloorId:', activeFloorId, '(type:', typeof activeFloorId, ')',
+                  'sample floor_id:', features[0]?.properties?.floor_id, '(type:', typeof features[0]?.properties?.floor_id, ')');
+              }
+              return filtered;
             }
             // Fallback to level filtering
             if (!activeFloorLevel) return features;
@@ -407,6 +420,7 @@ const EvacuationMap = memo(({
           const roomFeatures = filterByFloor(floorPlanData.features.filter((f: any) =>
             f.properties?.room_type || (f.geometry?.type === 'Polygon' && !f.properties?.type)
           ));
+          console.log('[EvacuationMap] handleMapLoad - rooms after filter:', roomFeatures.length);
 
           const openingFeatures = filterByFloor(floorPlanData.features.filter((f: any) =>
             f.properties?.type === 'opening' || f.properties?.opening_type
@@ -508,19 +522,23 @@ const EvacuationMap = memo(({
             // Check if rooms data was loaded successfully
             if (!backendData.rooms || !backendData.rooms.features || backendData.rooms.features.length === 0) {
               console.error('Rooms data not loaded - backend may be unavailable');
-              showNotification('Backend server not available. Please ensure the backend is running.', 'error');
-              setIsMapLoaded(true); // Still mark as loaded to show error state
-              return;
+              // Don't return early if buildingId is set - floorPlanData will arrive via useEffect
+              if (!buildingId) {
+                showNotification('Backend server not available. Please ensure the backend is running.', 'error');
+                setIsMapLoaded(true);
+                return;
+              }
+              console.log('[EvacuationMap] Backend API returned no data, but buildingId is set - will wait for floorPlanData');
+            } else {
+              // Normalize and add sources
+              roomsData = normalizeGeoJSON(backendData.rooms);
+              featuresData = normalizeGeoJSON(backendData.features);
+              detailsData = normalizeGeoJSON(backendData.details);
+              nodesData = normalizeGeoJSON(backendData.nodes);
+              roomNodesMappingData = backendData.roomNodes || [];
+              sensors = backendData.sensors;
+              occupancy = backendData.occupancy;
             }
-
-            // Normalize and add sources
-            roomsData = normalizeGeoJSON(backendData.rooms);
-            featuresData = normalizeGeoJSON(backendData.features);
-            detailsData = normalizeGeoJSON(backendData.details);
-            nodesData = normalizeGeoJSON(backendData.nodes);
-            roomNodesMappingData = backendData.roomNodes || [];
-            sensors = backendData.sensors;
-            occupancy = backendData.occupancy;
           }
         }
 
@@ -602,10 +620,10 @@ const EvacuationMap = memo(({
           .map(f => {
             const roomId = f.properties?.id || f.id;
             // Use node_id directly from room properties (added by backend)
-            // Fall back to room-nodes mapping, then to room ID
+            // Fall back to room-nodes mapping, then null (don't use roomId as nodeId)
             const nodeIdFromProps = f.properties?.node_id;
             const mapping = roomToNodeMap.get(Number(roomId));
-            const nodeId = nodeIdFromProps || (mapping ? mapping.nodeId : roomId);
+            const nodeId = nodeIdFromProps || (mapping ? mapping.nodeId : null);
 
             // Get centroid of the room for visualization
             let coordinates: [number, number] | undefined;
@@ -622,12 +640,13 @@ const EvacuationMap = memo(({
               id: String(roomId),
               name: f.properties?.name || 'Unknown',
               // CRITICAL: Use node_id from room properties for route computation
-              nodeId: String(nodeId),
+              nodeId: nodeId ? String(nodeId) : null,
               roomId: String(roomId),
               coordinates,
               nodeType: mapping?.nodeType,
             };
-          });
+          })
+          .filter((node: any) => node.nodeId !== null);
 
         // Also add navigation nodes (doorways, exits, etc.) for route computation
         const navNodes = nodesData.features
@@ -789,20 +808,35 @@ const EvacuationMap = memo(({
 
   // Update map data when floorPlanData or activeFloorLevel changes
   useEffect(() => {
-    if (!mapRef.current || !isMapLoaded || !floorPlanData?.features?.length) return;
+    if (!mapRef.current || !isMapLoaded || !floorPlanData?.features?.length) {
+      console.log('[EvacuationMap] useEffect skip:', !mapRef.current ? 'no map' : '', !isMapLoaded ? 'not loaded' : '', !floorPlanData?.features?.length ? 'no features' : '');
+      return;
+    }
 
     const map = mapRef.current;
 
     try {
+      console.log('[EvacuationMap] useEffect updating map data:',
+        'features:', floorPlanData.features.length,
+        'activeFloorId:', activeFloorId, '(type:', typeof activeFloorId, ')',
+        'activeFloorLevel:', activeFloorLevel,
+        'center:', floorPlanData.properties?.center_lat, floorPlanData.properties?.center_lng);
+
       // Filter features by active floor ID (preferred) or level (fallback)
       const filterByFloor = (features: any[]) => {
         // Prefer floor_id filtering for precise matching
         if (activeFloorId) {
-          return features.filter((f: any) =>
+          const filtered = features.filter((f: any) =>
             f.properties?.floor_id === activeFloorId ||
             f.properties?.floorId === activeFloorId ||
             (!f.properties?.floor_id && !f.properties?.floorId) // Include features without floor_id
           );
+          if (filtered.length === 0 && features.length > 0) {
+            console.warn('[EvacuationMap] useEffect: Floor filter removed ALL features!',
+              'activeFloorId:', activeFloorId, '(type:', typeof activeFloorId, ')',
+              'sample floor_id:', features[0]?.properties?.floor_id, '(type:', typeof features[0]?.properties?.floor_id, ')');
+          }
+          return filtered;
         }
         // Fallback to level filtering
         if (!activeFloorLevel) return features;
@@ -906,6 +940,21 @@ const EvacuationMap = memo(({
       }
       if (cameraFeatures.length > 0) {
         console.log('[EvacuationMap] Updated cameras source with', cameraFeatures.length, 'cameras');
+      }
+
+      // Safety net: if layers don't exist yet (race condition with handleMapLoad), add them
+      if (!map.getLayer('floor1-fill')) {
+        console.log('[EvacuationMap] useEffect: layers missing, adding map layers');
+        try {
+          // Ensure stairs pattern image exists (required by addMapLayers)
+          if (!map.hasImage('stairs-pattern')) {
+            const stairsCanvas = createStairsPattern();
+            map.addImage('stairs-pattern', { width: 32, height: 32, data: new Uint8Array(stairsCanvas.getContext('2d')!.getImageData(0, 0, 32, 32).data) });
+          }
+          addMapLayers(map);
+        } catch (layerErr) {
+          console.error('[EvacuationMap] Error adding layers in useEffect:', layerErr);
+        }
       }
 
       // Update building center and fly to it
@@ -1079,7 +1128,7 @@ const EvacuationMap = memo(({
     } catch (err) {
       console.error('[EvacuationMap] Error updating map data:', err);
     }
-  }, [floorPlanData, activeFloorLevel, isMapLoaded, buildingId]);
+  }, [floorPlanData, activeFloorLevel, activeFloorId, isMapLoaded, buildingId]);
 
   // Add map layers
   const addMapLayers = (map: maplibregl.Map) => {

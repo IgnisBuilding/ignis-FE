@@ -525,7 +525,7 @@ export async function placeFires(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         fireZones,
-        severity: severity.toUpperCase(),
+        severity: severity.toLowerCase(),
         type: 'fire',
         status: 'active',
       }),
