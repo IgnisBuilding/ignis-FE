@@ -7,6 +7,7 @@ import DashboardLayout from "@/components/layout/DashboardLayout"
 import { useTour } from "@/providers/TourProvider"
 import { FeatureGuideModal, HelpButton } from "@/components/tour"
 import { useToast } from "@/hooks/use-toast"
+import { useReportsData } from "@/hooks/useReportsData"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -21,15 +22,9 @@ import {
   AlertCircle,
   CheckCircle,
   BarChart3,
+  Loader2,
+  Inbox,
 } from "lucide-react"
-
-const reportsData = [
-  { id: 1, incident: "Structure Fire - Central Plaza", date: "2024-01-20", responseTime: "4m 12s", units: 8, status: "Completed", severity: "Critical" },
-  { id: 2, incident: "Warehouse Fire - Pier 15", date: "2024-01-19", responseTime: "3m 45s", units: 12, status: "Completed", severity: "Extreme" },
-  { id: 3, incident: "Gas Leak - Industrial Park", date: "2024-01-18", responseTime: "5m 20s", units: 5, status: "Completed", severity: "High" },
-  { id: 4, incident: "Vehicle Accident - Highway 101", date: "2024-01-17", responseTime: "6m 15s", units: 4, status: "Completed", severity: "Medium" },
-  { id: 5, incident: "Medical Emergency - Downtown", date: "2024-01-16", responseTime: "3m 30s", units: 3, status: "Completed", severity: "High" },
-]
 
 const reportsFeatures = [
   { id: "incidents", title: "Incident Reports", description: "View detailed reports for all completed incidents including response times, units deployed, and outcomes. Download full incident records for documentation and analysis." },
@@ -46,6 +41,7 @@ function ReportsContent() {
   const [selectedReport, setSelectedReport] = useState<{ id: number; incident: string } | null>(null)
   const { setCurrentPage } = useTour()
   const { toast } = useToast()
+  const { reports, stats, loading, error, severityDistribution, responseTimeEntries } = useReportsData()
 
   useEffect(() => {
     setCurrentPage("reports")
@@ -74,29 +70,35 @@ function ReportsContent() {
     })
   }
 
-  const filteredReports = reportsData.filter((r) =>
+  const filteredReports = reports.filter((r) =>
     r.incident.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
   const getSeverityBadge = (severity: string) => {
     switch (severity) {
-      case "Extreme":
-        return <Badge className="bg-red-500 text-white hover:bg-red-500">Extreme</Badge>
       case "Critical":
-        return <Badge className="bg-orange-500 text-white hover:bg-orange-500">Critical</Badge>
+        return <Badge className="bg-red-500 text-white hover:bg-red-500">Critical</Badge>
       case "High":
-        return <Badge className="bg-amber-500 text-white hover:bg-amber-500">High</Badge>
+        return <Badge className="bg-orange-500 text-white hover:bg-orange-500">High</Badge>
+      case "Medium":
+        return <Badge className="bg-amber-500 text-white hover:bg-amber-500">Medium</Badge>
+      case "Low":
+        return <Badge className="bg-blue-500 text-white hover:bg-blue-500">Low</Badge>
       default:
-        return <Badge className="bg-blue-500 text-white hover:bg-blue-500">Medium</Badge>
+        return <Badge className="bg-gray-500 text-white hover:bg-gray-500">{severity}</Badge>
     }
   }
 
-  const stats = [
-    { label: "Total Incidents", value: "124", icon: AlertCircle, color: "text-red-500" },
-    { label: "Avg Response", value: "4m 32s", icon: Clock, color: "text-blue-500" },
-    { label: "Success Rate", value: "98.2%", icon: CheckCircle, color: "text-green-500" },
-    { label: "Personnel Hours", value: "2,847h", icon: TrendingUp, color: "text-amber-500" },
+  const statsDisplay = [
+    { label: "Total Incidents", value: loading ? "..." : String(stats.totalIncidents), icon: AlertCircle, color: "text-red-500" },
+    { label: "Avg Response", value: loading ? "..." : stats.avgResponseTime, icon: Clock, color: "text-blue-500" },
+    { label: "Resolution Rate", value: loading ? "..." : stats.resolutionRate, icon: CheckCircle, color: "text-green-500" },
+    { label: "Active Hazards", value: loading ? "..." : String(stats.activeHazards), icon: TrendingUp, color: "text-amber-500" },
   ]
+
+  const maxResponseTime = responseTimeEntries.length > 0
+    ? Math.max(...responseTimeEntries.map(e => e.seconds))
+    : 1
 
   return (
     <DashboardLayout role={dashboardRole} userName={user?.name || "Admin"} userTitle={roleTitle}>
@@ -112,14 +114,23 @@ function ReportsContent() {
         <div className="flex flex-col items-start justify-between gap-4 mb-6 sm:flex-row sm:items-center">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Reports & Analytics</h1>
-            <p className="text-sm text-muted-foreground">Incident reports from the last 30 days</p>
+            <p className="text-sm text-muted-foreground">Incident reports and hazard analytics</p>
           </div>
           <HelpButton onClick={() => setShowGuide(true)} />
         </div>
 
+        {/* Error State */}
+        {error && (
+          <Card className="border border-red-200 bg-red-50">
+            <CardContent className="p-4">
+              <p className="text-sm text-red-600">Failed to load reports: {error}</p>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Stats Overview */}
         <div className="grid grid-cols-1 gap-4 mb-6 sm:grid-cols-2 lg:grid-cols-4">
-          {stats.map((stat) => (
+          {statsDisplay.map((stat) => (
             <Card key={stat.label}>
               <CardContent className="p-4">
                 <div className="flex items-start justify-between">
@@ -166,66 +177,133 @@ function ReportsContent() {
             <CardTitle className="text-lg sm:text-xl">Incident History</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-border bg-muted/30">
-                    <th className="px-3 sm:px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Incident</th>
-                    <th className="px-3 sm:px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Date</th>
-                    <th className="px-3 sm:px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Response</th>
-                    <th className="px-3 sm:px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Units</th>
-                    <th className="px-3 sm:px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Severity</th>
-                    <th className="px-3 sm:px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredReports.map((report) => (
-                    <tr key={report.id} className="border-b border-border hover:bg-secondary/30 transition-colors">
-                      <td className="px-3 sm:px-4 py-3 text-xs sm:text-sm font-medium text-foreground">{report.incident}</td>
-                      <td className="px-3 sm:px-4 py-3 text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{report.date}</td>
-                      <td className="px-3 sm:px-4 py-3 text-xs sm:text-sm font-medium text-foreground whitespace-nowrap">{report.responseTime}</td>
-                      <td className="px-3 sm:px-4 py-3 text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{report.units}</td>
-                      <td className="px-3 sm:px-4 py-3">{getSeverityBadge(report.severity)}</td>
-                      <td className="px-3 sm:px-4 py-3">
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                          onClick={() => handleDownload(report)}
-                        >
-                          <Download className="h-4 w-4" />
-                        </Button>
-                      </td>
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                <span className="ml-3 text-sm text-muted-foreground">Loading incidents...</span>
+              </div>
+            ) : filteredReports.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                <Inbox className="h-12 w-12 opacity-30 mb-3" />
+                <p className="text-sm">{searchTerm ? "No incidents match your search" : "No incidents recorded yet"}</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-border bg-muted/30">
+                      <th className="px-3 sm:px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Incident</th>
+                      <th className="px-3 sm:px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Date</th>
+                      <th className="px-3 sm:px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Response</th>
+                      <th className="px-3 sm:px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
+                      <th className="px-3 sm:px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Severity</th>
+                      <th className="px-3 sm:px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Action</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {filteredReports.map((report) => (
+                      <tr key={report.id} className="border-b border-border hover:bg-secondary/30 transition-colors">
+                        <td className="px-3 sm:px-4 py-3 text-xs sm:text-sm font-medium text-foreground">{report.incident}</td>
+                        <td className="px-3 sm:px-4 py-3 text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{report.date}</td>
+                        <td className="px-3 sm:px-4 py-3 text-xs sm:text-sm font-medium text-foreground whitespace-nowrap">{report.responseTime}</td>
+                        <td className="px-3 sm:px-4 py-3 text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{report.status}</td>
+                        <td className="px-3 sm:px-4 py-3">{getSeverityBadge(report.severity)}</td>
+                        <td className="px-3 sm:px-4 py-3">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                            onClick={() => handleDownload(report)}
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </CardContent>
         </Card>
 
         {/* Key Metrics */}
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          {/* Response Time Trend */}
           <Card className="border border-border">
             <CardHeader className="pb-4">
               <CardTitle className="text-lg sm:text-xl">Response Time Trend</CardTitle>
             </CardHeader>
-            <CardContent className="h-48 sm:h-56 flex items-center justify-center text-muted-foreground">
-              <div className="text-center">
-                <BarChart3 className="h-12 w-12 sm:h-16 sm:w-16 opacity-30 mx-auto mb-3" />
-                <p className="text-sm text-muted-foreground">Chart visualization coming soon</p>
-              </div>
+            <CardContent>
+              {loading ? (
+                <div className="h-48 sm:h-56 flex items-center justify-center">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : responseTimeEntries.length === 0 ? (
+                <div className="h-48 sm:h-56 flex items-center justify-center text-muted-foreground">
+                  <div className="text-center">
+                    <BarChart3 className="h-12 w-12 sm:h-16 sm:w-16 opacity-30 mx-auto mb-3" />
+                    <p className="text-sm">No response time data available</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {responseTimeEntries.map((entry) => (
+                    <div key={entry.id} className="flex items-center gap-3">
+                      <span className="text-xs text-muted-foreground w-20 truncate flex-shrink-0">{entry.incident}</span>
+                      <div className="flex-1 bg-secondary rounded-full h-6 overflow-hidden">
+                        <div
+                          className="bg-blue-500 h-full rounded-full flex items-center justify-end pr-2 transition-all"
+                          style={{ width: `${Math.max(15, (entry.seconds / maxResponseTime) * 100)}%` }}
+                        >
+                          <span className="text-[10px] font-medium text-white whitespace-nowrap">{entry.formatted}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
+
+          {/* Incident Distribution */}
           <Card className="border border-border">
             <CardHeader className="pb-4">
               <CardTitle className="text-lg sm:text-xl">Incident Distribution</CardTitle>
             </CardHeader>
-            <CardContent className="h-48 sm:h-56 flex items-center justify-center text-muted-foreground">
-              <div className="text-center">
-                <BarChart3 className="h-12 w-12 sm:h-16 sm:w-16 opacity-30 mx-auto mb-3" />
-                <p className="text-sm text-muted-foreground">Chart visualization coming soon</p>
-              </div>
+            <CardContent>
+              {loading ? (
+                <div className="h-48 sm:h-56 flex items-center justify-center">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : severityDistribution.length === 0 ? (
+                <div className="h-48 sm:h-56 flex items-center justify-center text-muted-foreground">
+                  <div className="text-center">
+                    <BarChart3 className="h-12 w-12 sm:h-16 sm:w-16 opacity-30 mx-auto mb-3" />
+                    <p className="text-sm">No incident data available</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {severityDistribution.map((item) => {
+                    const maxCount = Math.max(...severityDistribution.map(s => s.count))
+                    return (
+                      <div key={item.label} className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-foreground">{item.label}</span>
+                          <span className="text-sm text-muted-foreground">{item.count}</span>
+                        </div>
+                        <div className="w-full bg-secondary rounded-full h-3 overflow-hidden">
+                          <div
+                            className={`${item.color} h-full rounded-full transition-all`}
+                            style={{ width: `${(item.count / maxCount) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

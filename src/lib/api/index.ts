@@ -168,6 +168,21 @@ export interface FireDetectionStats {
   alertRate: string;
 }
 
+export interface Hazard {
+  id: number;
+  type: string;
+  severity: string;
+  status: string;
+  description?: string;
+  created_at: string;
+  updated_at: string;
+  responded_at?: string;
+  resolved_at?: string;
+  apartment?: { id: number; unit_number: string };
+  room?: { id: number; name: string };
+  floor?: { id: number; name: string; level: number };
+}
+
 export interface FireAlertConfig {
   id: number;
   building_id: number;
@@ -501,8 +516,8 @@ class ApiService {
 
   // ==================== HAZARD ENDPOINTS ====================
 
-  async getHazards(): Promise<any[]> {
-    return this.request<any[]>('/hazards', {
+  async getHazards(): Promise<Hazard[]> {
+    return this.request<Hazard[]>('/hazards', {
       method: 'GET',
     });
   }
