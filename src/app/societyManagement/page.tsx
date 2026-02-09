@@ -5,11 +5,11 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useState } from 'react';
 
 export default function SocietyManagementDashboard() {
-  const { user } = useAuth();
+  const { user, dashboardRole, roleTitle } = useAuth();
 
   return (
-    <ProtectedRoute allowedRoles={['manager', 'admin']}>
-      <DashboardLayout role="manager" userName={user?.name || 'Sarah Connor'} userTitle="SOCIETY MANAGER" disablePadding={true}>
+    <ProtectedRoute allowedRoles={['management', 'building_authority', 'commander', 'admin']}>
+      <DashboardLayout role={dashboardRole} userName={user?.name || 'Manager'} userTitle={roleTitle} disablePadding={true}>
         <div className="flex h-full min-h-[calc(100vh-80px)] bg-[#f6f7f7] dark:bg-background-dark overflow-hidden">
 
           {/* Left Sidebar: Recent Activity Feed */}

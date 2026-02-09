@@ -43,7 +43,7 @@ interface ApartmentInfo {
 }
 
 function ResidentDashboardContent() {
-  const { user, isAuthenticated, loading: authLoading } = useAuth();
+  const { user, isAuthenticated, loading: authLoading, dashboardRole, roleTitle } = useAuth();
   const router = useRouter();
 
   const [apartmentInfo, setApartmentInfo] = useState<ApartmentInfo | null>(null);
@@ -137,7 +137,7 @@ function ResidentDashboardContent() {
 
   if (authLoading || loading) {
     return (
-      <DashboardLayout role="resident" userName={user?.name || 'Resident'} userTitle="RESIDENT">
+      <DashboardLayout role={dashboardRole} userName={user?.name || 'Resident'} userTitle={roleTitle}>
         <div className="flex items-center justify-center h-full min-h-[60vh]">
           <div className="text-center">
             <div className="rounded-full h-12 w-12 border-4 border-[#1f3d2f] border-t-transparent mx-auto mb-4 animate-spin" />
@@ -185,7 +185,7 @@ function ResidentDashboardContent() {
   ];
 
   return (
-    <DashboardLayout role="resident" userName={user?.name || 'Resident'} userTitle="RESIDENT">
+    <DashboardLayout role={dashboardRole} userName={user?.name || 'Resident'} userTitle={roleTitle}>
       <div className="flex-1 space-y-4 sm:space-y-6 overflow-auto p-3 sm:p-4 md:p-6 lg:p-8 w-full max-w-none">
         {/* Stats Cards */}
         <div className="grid gap-3 grid-cols-1 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4">

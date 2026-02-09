@@ -39,7 +39,7 @@ const reportsFeatures = [
 ]
 
 function ReportsContent() {
-  const { user } = useAuth()
+  const { user, dashboardRole, roleTitle } = useAuth()
   const [searchTerm, setSearchTerm] = useState("")
   const [showGuide, setShowGuide] = useState(false)
   const [showDownloadDialog, setShowDownloadDialog] = useState(false)
@@ -99,7 +99,7 @@ function ReportsContent() {
   ]
 
   return (
-    <DashboardLayout role="admin" userName={user?.name || "Admin"} userTitle="ADMINISTRATOR">
+    <DashboardLayout role={dashboardRole} userName={user?.name || "Admin"} userTitle={roleTitle}>
       <div className="flex-1 space-y-4 sm:space-y-6 overflow-auto p-3 sm:p-4 md:p-6 lg:p-8 w-full max-w-none">
         <FeatureGuideModal
           features={reportsFeatures}

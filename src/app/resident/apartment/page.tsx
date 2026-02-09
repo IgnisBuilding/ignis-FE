@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 
 export default function ApartmentDetailsPage() {
   const router = useRouter();
-  const { user, role } = useAuth();
+  const { user, role, dashboardRole, roleTitle } = useAuth();
   const [apartment, setApartment] = useState<Apartment | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -39,7 +39,7 @@ export default function ApartmentDetailsPage() {
 
   if (loading) {
     return (
-      <DashboardLayout role="resident" userName={user?.name || 'Resident'} userTitle="RESIDENT">
+      <DashboardLayout role={dashboardRole} userName={user?.name || 'Resident'} userTitle={roleTitle}>
         <div className="flex items-center justify-center h-full min-h-[60vh]">
           <div className="text-center">
             <div className="rounded-full h-12 w-12 border-4 border-[#1f3d2f] border-t-transparent mx-auto mb-4 animate-spin" />
@@ -52,7 +52,7 @@ export default function ApartmentDetailsPage() {
 
   if (!apartment) {
     return (
-      <DashboardLayout role="resident" userName={user?.name || 'Resident'} userTitle="RESIDENT">
+      <DashboardLayout role={dashboardRole} userName={user?.name || 'Resident'} userTitle={roleTitle}>
         <div className="flex items-center justify-center h-full min-h-[60vh]">
           <div className="text-center">
             <Home className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
@@ -65,7 +65,7 @@ export default function ApartmentDetailsPage() {
   }
 
   return (
-    <DashboardLayout role="resident" userName={user?.name || 'Resident'} userTitle="RESIDENT">
+    <DashboardLayout role={dashboardRole} userName={user?.name || 'Resident'} userTitle={roleTitle}>
       <div className="flex-1 space-y-4 sm:space-y-6 overflow-auto p-3 sm:p-4 md:p-6 lg:p-8 w-full max-w-none">
         {/* Header */}
         <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center w-full">

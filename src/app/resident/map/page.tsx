@@ -44,7 +44,7 @@ interface ApartmentInfo {
 }
 
 function ResidentMapContent() {
-    const { user } = useAuth();
+    const { user, dashboardRole, roleTitle } = useAuth();
     const [apartmentInfo, setApartmentInfo] = useState<ApartmentInfo | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -142,7 +142,7 @@ function ResidentMapContent() {
     }, []);
 
     return (
-        <DashboardLayout role="resident" userName={user?.name || 'Resident'} userTitle="RESIDENT" disablePadding={true}>
+        <DashboardLayout role={dashboardRole} userName={user?.name || 'Resident'} userTitle={roleTitle} disablePadding={true}>
             <div className="relative w-full h-full overflow-hidden min-h-[calc(100vh-64px)] flex">
                 {/* Floor Selector (left strip) */}
                 {floors.length > 0 && (

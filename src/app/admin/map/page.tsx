@@ -37,7 +37,7 @@ interface BuildingDisplay {
 }
 
 function AdminMapContent() {
-    const { user } = useAuth();
+    const { user, dashboardRole, roleTitle } = useAuth();
     const router = useRouter();
     const [selectedMarker, setSelectedMarker] = useState<MapMarker | null>(null);
     const [selectedBuilding, setSelectedBuilding] = useState<number | null>(null);
@@ -130,7 +130,7 @@ function AdminMapContent() {
     };
 
     return (
-        <DashboardLayout role="admin" userName={user?.name || 'Admin'} userTitle="ADMINISTRATOR" disablePadding={true}>
+        <DashboardLayout role={dashboardRole} userName={user?.name || 'Admin'} userTitle={roleTitle} disablePadding={true}>
             <div className="relative w-full h-full overflow-hidden min-h-[calc(100vh-64px)]">
                 {/* Real Map */}
                 <LiveMap

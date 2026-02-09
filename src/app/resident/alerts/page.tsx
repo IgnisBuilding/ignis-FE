@@ -24,7 +24,7 @@ interface DisplayAlert {
 }
 
 export default function AlertsPage() {
-  const { user, role } = useAuth();
+  const { user, role, dashboardRole, roleTitle } = useAuth();
   const [alerts, setAlerts] = useState<DisplayAlert[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'unread' | 'high' | 'critical'>('all');
@@ -112,7 +112,7 @@ export default function AlertsPage() {
 
   if (loading) {
     return (
-      <DashboardLayout role="resident" userName={user?.name || 'Resident'} userTitle="RESIDENT">
+      <DashboardLayout role={dashboardRole} userName={user?.name || 'Resident'} userTitle={roleTitle}>
         <div className="flex items-center justify-center py-12">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1f3d2f]"></div>
         </div>
@@ -137,7 +137,7 @@ export default function AlertsPage() {
   });
 
   return (
-    <DashboardLayout role="resident" userName={user?.name || 'Resident'} userTitle="RESIDENT">
+    <DashboardLayout role={dashboardRole} userName={user?.name || 'Resident'} userTitle={roleTitle}>
       <div className="flex-1 space-y-4 sm:space-y-6 overflow-auto p-3 sm:p-4 md:p-6 lg:p-8 w-full max-w-none">
         {/* Header */}
         <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center w-full">

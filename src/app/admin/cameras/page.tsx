@@ -9,7 +9,7 @@ import { api, Camera, CameraStats, Building, Floor, Room, FireAlertConfig } from
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 
 function CamerasManagementContent() {
-  const { user } = useAuth();
+  const { user, dashboardRole, roleTitle } = useAuth();
   const [cameras, setCameras] = useState<Camera[]>([]);
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [floors, setFloors] = useState<Floor[]>([]);
@@ -252,7 +252,7 @@ function CamerasManagementContent() {
   };
 
   return (
-    <DashboardLayout role="admin" userName={user?.name || 'Admin'} userTitle="ADMINISTRATOR">
+    <DashboardLayout role={dashboardRole} userName={user?.name || 'Admin'} userTitle={roleTitle}>
       <div className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 w-full max-w-none">
         <motion.div variants={fadeIn} initial="initial" animate="animate">
           {/* Header */}

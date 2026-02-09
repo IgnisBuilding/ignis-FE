@@ -55,7 +55,7 @@ interface DeleteState {
 }
 
 function BuildingsManagementContent() {
-  const { user } = useAuth()
+  const { user, dashboardRole, roleTitle } = useAuth()
   const { toast } = useToast()
   const [buildings, setBuildings] = useState<Building[]>([])
   const [filteredBuildings, setFilteredBuildings] = useState<Building[]>([])
@@ -250,7 +250,7 @@ function BuildingsManagementContent() {
   const avgFloors = totalBuildings > 0 ? (totalFloors / totalBuildings).toFixed(1) : "0"
 
   return (
-    <DashboardLayout role="admin" userName={user?.name || "Admin"} userTitle="ADMINISTRATOR">
+    <DashboardLayout role={dashboardRole} userName={user?.name || "Admin"} userTitle={roleTitle}>
       <div className="h-[calc(100vh-4rem)] w-full overflow-auto">
         <div className="p-3 sm:p-4 md:p-6 lg:p-8 w-full max-w-none">
             {/* Header */}

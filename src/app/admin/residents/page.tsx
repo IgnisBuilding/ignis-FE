@@ -37,7 +37,7 @@ const residentsFeatures = [
 ];
 
 function ResidentsManagementContent() {
-  const { user, role } = useAuth();
+  const { user, role, dashboardRole, roleTitle } = useAuth();
   const { setCurrentPage } = useTour();
   const { toast } = useToast();
 
@@ -214,7 +214,7 @@ function ResidentsManagementContent() {
   if (!user || (role !== 'building_authority' && role !== 'management')) return null;
 
   return (
-    <DashboardLayout role="admin" userName={user?.name || 'Admin'} userTitle="ADMINISTRATOR">
+    <DashboardLayout role={dashboardRole} userName={user?.name || 'Admin'} userTitle={roleTitle}>
       <div className="flex-1 space-y-4 sm:space-y-6 overflow-auto p-3 sm:p-4 md:p-6 lg:p-8 w-full max-w-none">
         <FeatureGuideModal
           features={residentsFeatures}

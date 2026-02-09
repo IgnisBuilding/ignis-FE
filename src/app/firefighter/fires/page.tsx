@@ -6,7 +6,7 @@ import { Flame, MapPin, Users, Clock, AlertTriangle, CheckCircle, Building2, Fil
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { fadeIn } from '@/lib/animations';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth, isFirefighterRole } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 
 interface Hazard {
@@ -36,13 +36,13 @@ interface Hazard {
 
 function FiresPage() {
   const router = useRouter();
-  const { user, role } = useAuth();
+  const { user, role, dashboardRole, roleTitle } = useAuth();
   const [hazards, setHazards] = useState<Hazard[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'active' | 'responding' | 'resolved'>('all');
 
   useEffect(() => {
-    if (user && role === 'firefighter') {
+    if (user && isFirefighterRole(role)) {
       fetchHazards();
     }
   }, [user, role]);
@@ -119,11 +119,11 @@ function FiresPage() {
     }
   };
 
-  if (!user || role !== 'firefighter') return null;
+  if (!user || !isFirefighterRole(role)) return null;
 
   if (loading) {
     return (
-      <DashboardLayout role="firefighter" userName={user?.name || 'Commander'} userTitle="FIREFIGHTER">
+      <DashboardLayout role={dashboardRole} userName={user?.name || 'Commander'} userTitle={roleTitle}>
         <div className="flex items-center justify-center h-[calc(100vh-100px)]">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
@@ -135,7 +135,7 @@ function FiresPage() {
   }
 
   return (
-    <DashboardLayout role="firefighter" userName={user?.name || 'Commander'} userTitle="FIREFIGHTER">
+    <DashboardLayout role={dashboardRole} userName={user?.name || 'Commander'} userTitle={roleTitle}>
       <div className="p-6 max-w-7xl mx-auto">
           <motion.div variants={fadeIn} initial="initial" animate="animate">
             <div className="mb-8">
@@ -308,7 +308,7 @@ function FiresPage() {
 
 function FiresPageWrapper() {
   return (
-    <ProtectedRoute allowedRoles={['firefighter']}>
+    <ProtectedRoute allowedRoles={['firefighter', 'firefighter_hq', 'firefighter_state', 'firefighter_district']}>
       <FiresPage />
     </ProtectedRoute>
   );

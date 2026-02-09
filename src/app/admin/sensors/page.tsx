@@ -9,7 +9,7 @@ import { api, Sensor as ApiSensor } from '@/lib/api';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 
 function SensorsManagementContent() {
-  const { user, role } = useAuth();
+  const { user, role, dashboardRole, roleTitle } = useAuth();
   const [sensors, setSensors] = useState<ApiSensor[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -124,7 +124,7 @@ function SensorsManagementContent() {
   };
 
   return (
-    <DashboardLayout role="admin" userName={user?.name || 'Admin'} userTitle="ADMINISTRATOR">
+    <DashboardLayout role={dashboardRole} userName={user?.name || 'Admin'} userTitle={roleTitle}>
       <div className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 w-full max-w-none">
           <motion.div variants={fadeIn} initial="initial" animate="animate">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">

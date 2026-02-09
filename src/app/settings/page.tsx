@@ -725,7 +725,7 @@ function SettingsContent() {
 
 export default function Settings() {
     return (
-        <ProtectedRoute allowedRoles={['management', 'building_authority', 'firefighter', 'resident']}>
+        <ProtectedRoute allowedRoles={['management', 'building_authority', 'commander', 'admin', 'firefighter', 'firefighter_hq', 'firefighter_state', 'firefighter_district', 'resident']}>
             <SettingsContent />
         </ProtectedRoute>
     );
