@@ -928,6 +928,7 @@ const EvacuationMap = memo(({
       setIsUsingImportedData(true);
 
       // Populate route nodes from the floor plan data for route calculation
+      // Only include rooms that have a valid node_id (from backend or matched node feature)
       const roomNodesForRoute = roomFeatures
         .filter((f: any) => f.properties?.name)
         .map((f: any) => {
@@ -937,6 +938,11 @@ const EvacuationMap = memo(({
             n.properties?.room_id === roomId ||
             String(n.properties?.room_id) === String(roomId)
           );
+
+          // Resolve node_id: prefer backend-provided node_id, then matched node feature
+          const resolvedNodeId = f.properties?.node_id
+            ? String(f.properties.node_id)
+            : (roomNode ? String(roomNode.properties?.db_id || roomNode.properties?.id) : null);
 
           // Get centroid from room properties or calculate from geometry
           let coordinates: [number, number] | undefined;
@@ -957,17 +963,15 @@ const EvacuationMap = memo(({
           return {
             id: String(roomId),
             name: f.properties?.name || 'Unknown',
-            // Use node_id from room properties (backend), or find from roomNode, or fall back to roomId
-            nodeId: f.properties?.node_id
-              ? String(f.properties.node_id)
-              : (roomNode ? String(roomNode.properties?.db_id || roomNode.properties?.id) : String(roomId)),
+            nodeId: resolvedNodeId,
             roomId: String(roomId),
             coordinates,
             floorId,
             floorLevel,
             apartmentId,
           };
-        });
+        })
+        .filter((n: any) => n.nodeId !== null);
 
       // Add navigation nodes (doorways, exits, etc.)
       const navNodesForRoute = nodeFeatures
@@ -1031,6 +1035,12 @@ const EvacuationMap = memo(({
             n.properties?.room_id === roomId ||
             String(n.properties?.room_id) === String(roomId)
           );
+
+          // Resolve node_id: prefer backend-provided node_id, then matched node feature
+          const resolvedNodeId = f.properties?.node_id
+            ? String(f.properties.node_id)
+            : (roomNode ? String(roomNode.properties?.db_id || roomNode.properties?.id) : null);
+
           let coordinates: [number, number] | undefined;
           if (f.properties?.centroid_lng && f.properties?.centroid_lat) {
             coordinates = [f.properties.centroid_lng, f.properties.centroid_lat];
@@ -1043,15 +1053,13 @@ const EvacuationMap = memo(({
           return {
             id: String(roomId),
             name: f.properties?.name || 'Unknown',
-            // Use node_id from room properties (backend), or find from roomNode, or fall back to roomId
-            nodeId: f.properties?.node_id
-              ? String(f.properties.node_id)
-              : (roomNode ? String(roomNode.properties?.db_id || roomNode.properties?.id) : String(roomId)),
+            nodeId: resolvedNodeId,
             roomId: String(roomId),
             coordinates,
             floorLevel: String(f.properties?.level || ''),
           };
-        });
+        })
+        .filter((n: any) => n.nodeId !== null);
       allFloorRouteNodesRef.current = allRoomNodesForRoute;
 
       // Store all rooms data (all floors) for fire zone polygon visualization
