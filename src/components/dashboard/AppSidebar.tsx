@@ -13,7 +13,6 @@ import {
   Map,
   Building2,
   Users,
-  Truck,
   BarChart3,
   Radio,
   Settings,
@@ -31,7 +30,6 @@ const getFirefighterNavItems = (t: any) => [
   { icon: MapPin, label: t.nav.societies, href: "/firefighter/societies" },
   { icon: Users, label: t.nav.team, href: "/firefighter/team" },
   { icon: AlertTriangle, label: t.nav.activeFires, href: "/firefighter/fires" },
-  { icon: Truck, label: t.nav.logistics, href: "/firefighter/logistics" },
   { icon: BarChart3, label: t.nav.reports, href: "/firefighter/reports" },
   { icon: Settings, label: t.nav.settings, href: "/settings" },
 ]

@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { LayoutDashboard, Map, Users, BarChart3, Settings, Bell, LogOut, Flame, Search, MapPin, Truck } from 'lucide-react';
+import { LayoutDashboard, Map, Users, BarChart3, Settings, Bell, LogOut, Flame, Search, MapPin } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
 interface SidebarLayoutProps {
@@ -23,7 +23,6 @@ export default function SidebarLayout({ children }: SidebarLayoutProps) {
     { icon: LayoutDashboard, label: 'Dashboard', href: '/firefighter' },
     { icon: Map, label: 'Live Map', href: '/emergency' },
     { icon: Users, label: 'Personnel', href: '/firefighter/personnel' },
-    { icon: Truck, label: 'Logistics', href: '/firefighter/logistics' },
     { icon: BarChart3, label: 'Reports', href: '/firefighter/reports' },
   ];
 
