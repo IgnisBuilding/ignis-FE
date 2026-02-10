@@ -59,6 +59,7 @@ export const enTranslations: Translations = {
     team: "Team",
     activeFires: "Active Fires",
     buildingMap: "Building Map",
+    stations: "Stations",
   },
   buttons: {
     save: "Save Changes",

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Building2, MapPin, Plus, Search, Shield, Users, AlertTriangle } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import DashboardLayout from "@/components/layout/DashboardLayout"
@@ -57,6 +58,7 @@ interface EmployeeInfo {
 }
 
 function SocietiesManagementContent() {
+  const router = useRouter()
   const { user, dashboardRole, roleTitle } = useAuth()
   const { toast } = useToast()
   const [societies, setSocieties] = useState<Society[]>([])
@@ -103,7 +105,7 @@ function SocietiesManagementContent() {
     try {
       setLoading(true)
 
-      // First check if user is an HQ firefighter
+      // Check user's jurisdiction level
       const empResponse = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/buildings/by-jurisdiction/${user?.id}`
       )
@@ -111,24 +113,29 @@ function SocietiesManagementContent() {
       if (empResponse.ok) {
         const data = await empResponse.json()
 
-        // Check if user has HQ level access
-        if (data.jurisdictionLevel !== "hq") {
+        // Support both response formats
+        const level = data.jurisdictionLevel || data.jurisdiction?.level
+        const emp = data.employee || {}
+
+        // Allow hq, state, and district firefighters
+        const allowedLevels = ["hq", "state", "district"]
+        if (!level || !allowedLevels.includes(level)) {
           setAccessDenied(true)
           setLoading(false)
           return
         }
 
         setEmployeeInfo({
-          id: data.employee?.id,
-          hq_id: data.employee?.hq_id,
-          state_id: data.employee?.state_id,
-          brigade_id: data.employee?.brigade_id,
-          hq_name: data.employee?.hq_name,
-          jurisdiction_level: data.jurisdictionLevel,
+          id: emp.id,
+          hq_id: emp.hq_id,
+          state_id: emp.state_id,
+          brigade_id: emp.brigade_id,
+          hq_name: emp.hq_name,
+          jurisdiction_level: level,
         })
 
         // Fetch societies and brigades
-        await Promise.all([fetchSocieties(), fetchBrigades()])
+        await Promise.all([fetchSocieties(level, emp), fetchBrigades(level, emp)])
       }
     } catch (err: any) {
       console.error("Error checking access:", err)
@@ -142,11 +149,21 @@ function SocietiesManagementContent() {
     }
   }
 
-  const fetchSocieties = async () => {
+  const fetchSocieties = async (jurisdictionLevel?: string, employee?: any) => {
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/buildings/societies`)
       if (response.ok) {
-        const data = await response.json()
+        let data = await response.json()
+
+        // Filter by jurisdiction level
+        if (jurisdictionLevel === "state" && employee?.state_id) {
+          // State-level: show societies under brigades belonging to their state
+          data = data.filter((s: Society) => s.state_name != null)
+        } else if (jurisdictionLevel === "district" && employee?.brigade_id) {
+          // District-level: show only societies linked to their brigade
+          data = data.filter((s: Society) => s.brigade_id === employee.brigade_id)
+        }
+
         setSocieties(data)
         setFilteredSocieties(data)
       }
@@ -160,11 +177,17 @@ function SocietiesManagementContent() {
     }
   }
 
-  const fetchBrigades = async () => {
+  const fetchBrigades = async (jurisdictionLevel?: string, employee?: any) => {
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/buildings/brigades`)
       if (response.ok) {
-        const data = await response.json()
+        let data = await response.json()
+
+        // Filter brigades by jurisdiction
+        if (jurisdictionLevel === "district" && employee?.brigade_id) {
+          data = data.filter((b: Brigade) => b.id === employee.brigade_id)
+        }
+
         setBrigades(data)
       }
     } catch (err) {
@@ -303,7 +326,7 @@ function SocietiesManagementContent() {
   const totalSocieties = societies.length
   const totalBuildings = societies.reduce((sum, s) => sum + s.building_count, 0)
 
-  // Access denied view for non-HQ firefighters
+  // Access denied view for firefighters without proper jurisdiction
   if (accessDenied) {
     return (
       <DashboardLayout role={dashboardRole} userName={user?.name || "Firefighter"} userTitle={roleTitle}>
@@ -314,10 +337,10 @@ function SocietiesManagementContent() {
                 <AlertTriangle className="h-16 w-16 text-yellow-500 mx-auto mb-4" />
                 <h2 className="text-2xl font-bold text-foreground mb-2">Access Restricted</h2>
                 <p className="text-muted-foreground mb-4">
-                  Society management is only available to HQ-level firefighters.
+                  Society management requires firefighter jurisdiction access.
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  Contact your HQ administrator if you need to add or modify societies.
+                  Contact your administrator if you need access to societies.
                 </p>
               </div>
             </Card>
@@ -326,6 +349,8 @@ function SocietiesManagementContent() {
       </DashboardLayout>
     )
   }
+
+  const canManageSocieties = employeeInfo?.jurisdiction_level === "hq"
 
   return (
     <DashboardLayout role={dashboardRole} userName={user?.name || "Firefighter"} userTitle={roleTitle}>
@@ -348,12 +373,14 @@ function SocietiesManagementContent() {
                   Manage societies and their fire brigade assignments
                 </p>
               </div>
-              <div className="flex items-center gap-2">
-                <Button size="sm" onClick={() => handleOpenModal()}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Society
-                </Button>
-              </div>
+              {canManageSocieties && (
+                <div className="flex items-center gap-2">
+                  <Button size="sm" onClick={() => handleOpenModal()}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Society
+                  </Button>
+                </div>
+              )}
             </div>
 
             {/* Stats Cards */}
@@ -428,7 +455,7 @@ function SocietiesManagementContent() {
                     ? "Try adjusting your search"
                     : "Get started by adding your first society"}
                 </p>
-                {!searchTerm && (
+                {!searchTerm && canManageSocieties && (
                   <Button onClick={() => handleOpenModal()}>
                     <Plus className="h-4 w-4 mr-2" />
                     Add Society
@@ -453,7 +480,7 @@ function SocietiesManagementContent() {
                     </thead>
                     <tbody>
                       {paginatedSocieties.map((society) => (
-                        <tr key={society.id} className="border-b border-border hover:bg-muted/30 transition-colors">
+                        <tr key={society.id} className="border-b border-border hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => router.push(`/firefighter/societies/${society.id}`)}>
                           <td className="p-4">
                             <div className="flex items-center gap-3">
                               <div className="size-10 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -493,23 +520,25 @@ function SocietiesManagementContent() {
                             </span>
                           </td>
                           <td className="p-4 text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleOpenModal(society)}
-                              >
-                                Edit
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                onClick={() => handleDeleteClick(society.id, society.name)}
-                              >
-                                Delete
-                              </Button>
-                            </div>
+                            {canManageSocieties && (
+                              <div className="flex items-center justify-end gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={(e) => { e.stopPropagation(); handleOpenModal(society); }}
+                                >
+                                  Edit
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  onClick={(e) => { e.stopPropagation(); handleDeleteClick(society.id, society.name); }}
+                                >
+                                  Delete
+                                </Button>
+                              </div>
+                            )}
                           </td>
                         </tr>
                       ))}

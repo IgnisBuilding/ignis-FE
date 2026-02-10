@@ -32,7 +32,7 @@ export interface ResponseTimeEntry {
   formatted: string;
 }
 
-export function useReportsData() {
+export function useReportsData(buildingIds?: number[]) {
   const [hazards, setHazards] = useState<Hazard[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -46,7 +46,16 @@ export function useReportsData() {
         setError(null);
         const data = await api.getHazards();
         if (!cancelled) {
-          setHazards(data);
+          // Filter by jurisdiction building IDs if provided
+          if (buildingIds && buildingIds.length > 0) {
+            const filtered = data.filter(h => {
+              const bid = h.apartment?.floor?.building?.id || h.floor?.building?.id || null;
+              return bid !== null && buildingIds.includes(bid);
+            });
+            setHazards(filtered);
+          } else {
+            setHazards(data);
+          }
         }
       } catch (err) {
         if (!cancelled) {
@@ -61,7 +70,7 @@ export function useReportsData() {
 
     fetchData();
     return () => { cancelled = true; };
-  }, []);
+  }, [buildingIds?.join(',')]);
 
   // Compute stats
   const stats: ReportsStats = (() => {

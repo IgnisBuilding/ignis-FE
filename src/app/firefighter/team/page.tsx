@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import DashboardLayout from '@/components/layout/DashboardLayout';
@@ -18,6 +18,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import { api } from '@/lib/api';
 import {
   Search,
   Filter,
@@ -27,60 +28,24 @@ import {
   CheckCircle,
   AlertCircle,
   Clock,
+  Loader2,
+  Inbox,
 } from 'lucide-react';
 
-const personnelData = [
-  {
-    id: 1,
-    name: 'Chief Marcus',
-    role: 'Incident Commander',
-    unit: 'IC-01',
-    status: 'On Duty',
-    certifications: ['Haz-Mat', 'Swift Water'],
-    availability: 'Available',
-    hours: '12h',
-  },
-  {
-    id: 2,
-    name: 'Lt. Sarah Chen',
-    role: 'Squad Leader',
-    unit: 'SQ-42',
-    status: 'On Duty',
-    certifications: ['Rope Rescue', 'Confined Space'],
-    availability: 'Deployed',
-    hours: '8h',
-  },
-  {
-    id: 3,
-    name: 'FF Jackson',
-    role: 'Firefighter',
-    unit: 'EN-12',
-    status: 'On Duty',
-    certifications: ['Basic Life Support'],
-    availability: 'Available',
-    hours: '10h',
-  },
-  {
-    id: 4,
-    name: 'Paramedic Davis',
-    role: 'Rescue Specialist',
-    unit: 'RE-02',
-    status: 'Standby',
-    certifications: ['Advanced Life Support', 'Tactical Combat Casualty Care'],
-    availability: 'Available',
-    hours: '0h',
-  },
-  {
-    id: 5,
-    name: 'FF Thompson',
-    role: 'Firefighter',
-    unit: 'EN-15',
-    status: 'Off Duty',
-    certifications: ['Basic Life Support'],
-    availability: 'Off Duty',
-    hours: '0h',
-  },
-];
+interface EmployeeData {
+  id: number;
+  userId: number;
+  name: string;
+  email: string;
+  role: string;
+  position: string;
+  rank: string;
+  badgeNumber: string;
+  status: string;
+  hireDate: string;
+  brigadeName: string | null;
+  stateName: string | null;
+}
 
 function PersonnelPageContent() {
   const { user, dashboardRole, roleTitle } = useAuth();
@@ -91,7 +56,29 @@ function PersonnelPageContent() {
     id: number;
     name: string;
   } | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [callLoading, setCallLoading] = useState(false);
+  const [employees, setEmployees] = useState<EmployeeData[]>([]);
+  const [jurisdiction, setJurisdiction] = useState<{ level: string; name: string; id: number } | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchEmployees();
+    }
+  }, [user?.id]);
+
+  const fetchEmployees = async () => {
+    try {
+      setLoading(true);
+      const data = await api.getEmployeesByJurisdiction(Number(user!.id));
+      setEmployees(data.employees);
+      setJurisdiction(data.jurisdiction);
+    } catch (error) {
+      console.error('Failed to fetch employees:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleCall = (person: { id: number; name: string }) => {
     setSelectedPersonnel(person);
@@ -99,14 +86,14 @@ function PersonnelPageContent() {
   };
 
   const handleConfirmCall = async () => {
-    setLoading(true);
+    setCallLoading(true);
     await new Promise((resolve) => setTimeout(resolve, 500));
     toast({
       title: 'Call Initiated',
       description: `Calling ${selectedPersonnel?.name}...`,
       duration: 3000,
     });
-    setLoading(false);
+    setCallLoading(false);
     setShowCallDialog(false);
   };
 
@@ -118,20 +105,23 @@ function PersonnelPageContent() {
     });
   };
 
-  const filteredPersonnel = personnelData.filter(
+  const filteredPersonnel = employees.filter(
     (p) =>
       p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.role.toLowerCase().includes(searchTerm.toLowerCase())
+      (p.position || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (p.rank || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'On Duty':
-        return <Badge className="bg-green-500 text-white">On Duty</Badge>;
-      case 'Standby':
-        return <Badge className="bg-amber-500 text-white">Standby</Badge>;
+    switch (status?.toLowerCase()) {
+      case 'active':
+        return <Badge className="bg-green-500 text-white">Active</Badge>;
+      case 'on_leave':
+        return <Badge className="bg-amber-500 text-white">On Leave</Badge>;
+      case 'inactive':
+        return <Badge className="bg-gray-500 text-white">Inactive</Badge>;
       default:
-        return <Badge className="bg-gray-500 text-white">Off Duty</Badge>;
+        return <Badge className="bg-gray-500 text-white">{status || 'Unknown'}</Badge>;
     }
   };
 
@@ -145,12 +135,18 @@ function PersonnelPageContent() {
         {/* Header */}
         <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
-              Personnel Management
-            </h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
+                Personnel Management
+              </h1>
+              {jurisdiction && (
+                <Badge variant="outline" className="text-xs font-medium border-[#1f3d2f] text-[#1f3d2f]">
+                  {jurisdiction.level.toUpperCase()}: {jurisdiction.name}
+                </Badge>
+              )}
+            </div>
             <p className="text-sm text-muted-foreground">
-              Active personnel: {filteredPersonnel.length} /{' '}
-              {personnelData.length}
+              {loading ? 'Loading...' : `${filteredPersonnel.length} personnel in jurisdiction`}
             </p>
           </div>
         </div>
@@ -160,7 +156,7 @@ function PersonnelPageContent() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search by name or role..."
+              placeholder="Search by name, position, or rank..."
               className="pl-10 w-full"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -183,87 +179,109 @@ function PersonnelPageContent() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {filteredPersonnel.map((person) => (
-                <div
-                  key={person.id}
-                  className="flex flex-col items-start gap-4 sm:items-center sm:flex-row sm:justify-between lg:gap-3 p-3 rounded-lg border border-border hover:bg-secondary/30 transition-colors"
-                >
-                  <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
-                    <Avatar className="flex-shrink-0">
-                      <AvatarImage
-                        src={`https://avatar.vercel.sh/${person.name}`}
-                      />
-                      <AvatarFallback>
-                        {person.name
-                          .split(' ')
-                          .map((n) => n[0])
-                          .join('')}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold text-foreground">
-                          {person.name}
-                        </span>
-                        {person.status === 'On Duty' && (
-                          <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
-                        )}
-                        {person.status === 'Standby' && (
-                          <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0" />
-                        )}
-                      </div>
-                      <p className="text-sm text-muted-foreground truncate">
-                        {person.role} • {person.unit}
-                      </p>
-                      <div className="mt-1 flex gap-1 flex-wrap">
-                        {person.certifications.map((cert) => (
-                          <Badge key={cert} variant="outline" className="text-xs">
-                            {cert}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <div className="text-right flex-1 sm:flex-none">
-                      {getStatusBadge(person.status)}
-                      {person.hours && (
-                        <p className="mt-1 text-xs text-muted-foreground flex items-center gap-1 justify-end">
-                          <Clock className="h-3 w-3" />
-                          {person.hours}
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                <span className="ml-3 text-sm text-muted-foreground">Loading personnel...</span>
+              </div>
+            ) : filteredPersonnel.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                <Inbox className="h-12 w-12 opacity-30 mb-3" />
+                <p className="text-sm">{searchTerm ? 'No personnel match your search' : 'No personnel found in your jurisdiction'}</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {filteredPersonnel.map((person) => (
+                  <div
+                    key={person.id}
+                    className="flex flex-col items-start gap-4 sm:items-center sm:flex-row sm:justify-between lg:gap-3 p-3 rounded-lg border border-border hover:bg-secondary/30 transition-colors"
+                  >
+                    <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+                      <Avatar className="flex-shrink-0">
+                        <AvatarImage
+                          src={`https://avatar.vercel.sh/${person.name}`}
+                        />
+                        <AvatarFallback>
+                          {person.name
+                            .split(' ')
+                            .map((n) => n[0])
+                            .join('')}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-semibold text-foreground">
+                            {person.name}
+                          </span>
+                          {person.status === 'active' && (
+                            <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                          )}
+                          {person.status === 'on_leave' && (
+                            <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0" />
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground truncate">
+                          {person.position || 'No position'} {person.badgeNumber ? `• ${person.badgeNumber}` : ''}
                         </p>
-                      )}
+                        <div className="mt-1 flex gap-1 flex-wrap">
+                          {person.rank && (
+                            <Badge variant="outline" className="text-xs">
+                              {person.rank}
+                            </Badge>
+                          )}
+                          {person.brigadeName && (
+                            <Badge variant="outline" className="text-xs">
+                              {person.brigadeName}
+                            </Badge>
+                          )}
+                          {person.stateName && (
+                            <Badge variant="outline" className="text-xs">
+                              {person.stateName}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-muted-foreground hover:text-foreground h-8 w-8"
-                        onClick={() => handleCall(person)}
-                      >
-                        <Phone className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-muted-foreground hover:text-foreground h-8 w-8"
-                        onClick={() => handleMessage(person)}
-                      >
-                        <MessageSquare className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-muted-foreground hover:text-foreground h-8 w-8"
-                      >
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                      <div className="text-right flex-1 sm:flex-none">
+                        {getStatusBadge(person.status)}
+                        {person.hireDate && (
+                          <p className="mt-1 text-xs text-muted-foreground flex items-center gap-1 justify-end">
+                            <Clock className="h-3 w-3" />
+                            Since {new Date(person.hireDate).toLocaleDateString()}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-muted-foreground hover:text-foreground h-8 w-8"
+                          onClick={() => handleCall(person)}
+                        >
+                          <Phone className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-muted-foreground hover:text-foreground h-8 w-8"
+                          onClick={() => handleMessage(person)}
+                        >
+                          <MessageSquare className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-muted-foreground hover:text-foreground h-8 w-8"
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -282,12 +300,12 @@ function PersonnelPageContent() {
               <Button
                 variant="outline"
                 onClick={() => setShowCallDialog(false)}
-                disabled={loading}
+                disabled={callLoading}
               >
                 Cancel
               </Button>
-              <Button onClick={handleConfirmCall} disabled={loading}>
-                {loading ? 'Processing...' : 'Call'}
+              <Button onClick={handleConfirmCall} disabled={callLoading}>
+                {callLoading ? 'Processing...' : 'Call'}
               </Button>
             </DialogFooter>
           </DialogContent>

@@ -8,7 +8,7 @@ import { useAuth } from '@/context/AuthContext';
 import { api, Sensor as ApiSensor } from '@/lib/api';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 
-function SensorsManagementContent() {
+export function SensorsManagementContent() {
   const { user, role, dashboardRole, roleTitle } = useAuth();
   const [sensors, setSensors] = useState<ApiSensor[]>([]);
   const [loading, setLoading] = useState(true);
@@ -280,7 +280,7 @@ function SensorsManagementContent() {
 
 export default function SensorsManagementPage() {
   return (
-    <ProtectedRoute allowedRoles={['management', 'building_authority']}>
+    <ProtectedRoute allowedRoles={['admin']}>
       <SensorsManagementContent />
     </ProtectedRoute>
   );

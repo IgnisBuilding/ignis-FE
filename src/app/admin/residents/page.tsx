@@ -36,7 +36,7 @@ const residentsFeatures = [
   { id: "communication", title: "Direct Communication", description: "Use the phone and email buttons to communicate directly with residents. Quick communication ensures efficient resident services and emergency coordination." },
 ];
 
-function ResidentsManagementContent() {
+export function ResidentsManagementContent() {
   const { user, role, dashboardRole, roleTitle } = useAuth();
   const { setCurrentPage } = useTour();
   const { toast } = useToast();
@@ -519,7 +519,7 @@ function ResidentsManagementContent() {
 
 export default function ResidentsManagementPage() {
   return (
-    <ProtectedRoute allowedRoles={['management', 'building_authority']}>
+    <ProtectedRoute allowedRoles={['admin']}>
       <ResidentsManagementContent />
     </ProtectedRoute>
   );

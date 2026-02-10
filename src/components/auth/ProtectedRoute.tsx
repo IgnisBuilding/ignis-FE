@@ -31,7 +31,7 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
         case 'commander':
         case 'management':
         case 'building_authority':
-          dashboardRoute = '/admin';
+          dashboardRoute = '/manager';
           break;
         case 'firefighter':
         case 'firefighter_hq':

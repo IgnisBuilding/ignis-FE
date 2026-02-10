@@ -1,6 +1,7 @@
 ﻿'use client';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTheme } from 'next-themes';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/providers/LanguageProvider';
 
@@ -8,8 +9,23 @@ export default function LoginPage() {
   const router = useRouter();
   const { login } = useAuth();
   const { t } = useLanguage();
+  const { theme, setTheme } = useTheme();
+  const previousTheme = useRef(theme);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+
+  // Force light theme on login page
+  useEffect(() => {
+    previousTheme.current = theme;
+    if (theme !== 'light') {
+      setTheme('light');
+    }
+    return () => {
+      if (previousTheme.current && previousTheme.current !== 'light') {
+        setTheme(previousTheme.current);
+      }
+    };
+  }, []);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -30,10 +46,12 @@ export default function LoginPage() {
           // Route based on role
           switch (role) {
             case 'admin':
+              router.push('/admin');
+              break;
             case 'commander':
             case 'management':
             case 'building_authority':
-              router.push('/admin');
+              router.push('/manager');
               break;
             case 'firefighter':
             case 'firefighter_hq':
@@ -63,9 +81,9 @@ export default function LoginPage() {
     const credentials = {
       admin: { email: 'admin@ignis.com', password: 'admin123' },
       management: { email: 'management@ignis.com', password: 'admin123' },
-      firefighter_hq: { email: 'firefighter@ignis.com', password: 'firefighter123' },
-      firefighter_state: { email: 'firefighter.state@ignis.com', password: 'firefighter123' },
-      firefighter_district: { email: 'firefighter.district@ignis.com', password: 'firefighter123' },
+      firefighter_hq: { email: 'firefighter_hq@ignis.com', password: 'firefighter123' },
+      firefighter_state: { email: 'firefighter_state@ignis.com', password: 'firefighter123' },
+      firefighter_district: { email: 'firefighter@ignis.com', password: 'firefighter123' },
       resident: { email: 'resident@ignis.com', password: 'resident123' },
     };
     setEmail(credentials[role].email);

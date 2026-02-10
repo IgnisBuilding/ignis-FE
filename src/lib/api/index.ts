@@ -178,9 +178,22 @@ export interface Hazard {
   updated_at: string;
   responded_at?: string;
   resolved_at?: string;
-  apartment?: { id: number; unit_number: string };
+  apartment?: {
+    id: number;
+    unit_number: string;
+    floor?: {
+      id: number;
+      level: number;
+      building?: { id: number; name: string; address: string };
+    };
+  };
   room?: { id: number; name: string };
-  floor?: { id: number; name: string; level: number };
+  floor?: {
+    id: number;
+    name: string;
+    level: number;
+    building?: { id: number; name: string; address: string };
+  };
 }
 
 export interface FireAlertConfig {
@@ -700,6 +713,58 @@ class ApiService {
     return this.request<FireAlertConfig>(`/fire-detection/config/${buildingId}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
+    });
+  }
+
+  // ==================== EMPLOYEE ENDPOINTS ====================
+
+  async getEmployeesByJurisdiction(userId: number): Promise<{
+    employees: Array<{
+      id: number;
+      userId: number;
+      name: string;
+      email: string;
+      role: string;
+      position: string;
+      rank: string;
+      badgeNumber: string;
+      status: string;
+      hireDate: string;
+      brigadeName: string | null;
+      stateName: string | null;
+    }>;
+    jurisdiction: { level: string; name: string; id: number } | null;
+    count: number;
+  }> {
+    return this.request(`/employees/by-jurisdiction/${userId}`, {
+      method: 'GET',
+    });
+  }
+
+  // ==================== JURISDICTION ENDPOINTS ====================
+
+  async getBuildingsByJurisdiction(userId: number): Promise<{
+    buildings: Array<{
+      id: number;
+      name: string;
+      address: string;
+      type: string;
+      total_floors: number;
+      apartments_per_floor: number;
+      has_floor_plan: boolean;
+      floor_plan_updated_at: string | null;
+      center_lat: number | null;
+      center_lng: number | null;
+      society_name?: string;
+      brigade_name?: string;
+      state_name?: string;
+      created_at: string;
+    }>;
+    jurisdiction: { level: string; name: string; id: number } | null;
+    count: number;
+  }> {
+    return this.request(`/buildings/by-jurisdiction/${userId}`, {
+      method: 'GET',
     });
   }
 }

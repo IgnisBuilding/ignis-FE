@@ -556,7 +556,7 @@ function SocietiesManagementContent() {
 
 export default function SocietiesManagementPage() {
   return (
-    <ProtectedRoute allowedRoles={["management", "building_authority"]}>
+    <ProtectedRoute allowedRoles={["admin"]}>
       <SocietiesManagementContent />
     </ProtectedRoute>
   )

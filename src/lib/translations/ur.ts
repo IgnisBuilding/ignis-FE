@@ -59,6 +59,7 @@ export const urTranslations: Translations = {
     team: "ٹیم",
     activeFires: "فعال آگ",
     buildingMap: "عمارت کا نقشہ",
+    stations: "اسٹیشنز",
   },
   buttons: {
     save: "تبدیلیاں محفوظ کریں",

@@ -7,39 +7,23 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { fadeIn } from '@/lib/animations';
 import { useAuth, isFirefighterRole } from '@/context/AuthContext';
-import { api } from '@/lib/api';
+import { api, Hazard } from '@/lib/api';
+import { useJurisdiction } from '@/hooks/useJurisdiction';
+import { Badge } from '@/components/ui/badge';
 
-interface Hazard {
-  id: number;
-  type: string;
-  severity: string;
-  status: string;
-  apartment: {
-    id: number;
-    unit_number: string;
-    floor: {
-      id: number;
-      name: string;
-      level: number;
-      building: {
-        name: string;
-        address: string;
-      };
-    };
-  };
-  node?: {
-    id: number;
-  };
-  created_at: string;
-  updated_at: string;
+function getHazardBuildingId(hazard: Hazard): number | null {
+  return hazard.apartment?.floor?.building?.id || hazard.floor?.building?.id || null;
 }
 
 function FiresPage() {
   const router = useRouter();
   const { user, role, dashboardRole, roleTitle } = useAuth();
-  const [hazards, setHazards] = useState<Hazard[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [allHazards, setAllHazards] = useState<Hazard[]>([]);
+  const [hazardsLoading, setHazardsLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'active' | 'responding' | 'resolved'>('all');
+  const { buildingIds, jurisdiction, loading: jurisdictionLoading } = useJurisdiction();
+
+  const loading = hazardsLoading || jurisdictionLoading;
 
   useEffect(() => {
     if (user && isFirefighterRole(role)) {
@@ -50,14 +34,21 @@ function FiresPage() {
   const fetchHazards = async () => {
     try {
       const data = await api.getHazards();
-      console.log('Fetched hazards:', JSON.stringify(data, null, 2));
-      setHazards(data);
+      setAllHazards(data);
     } catch (error) {
       console.error('Failed to fetch hazards:', error);
     } finally {
-      setLoading(false);
+      setHazardsLoading(false);
     }
   };
+
+  // Filter hazards by jurisdiction buildings
+  const hazards = buildingIds.length > 0
+    ? allHazards.filter(h => {
+        const bid = getHazardBuildingId(h);
+        return bid !== null && buildingIds.includes(bid);
+      })
+    : allHazards;
 
   const filteredHazards = filter === 'all' ? hazards : hazards.filter(h => h.status?.toLowerCase() === filter);
   const activeCount = hazards.filter(h => h.status?.toLowerCase() === 'active' || h.status?.toLowerCase() === 'reported').length;
@@ -90,9 +81,9 @@ function FiresPage() {
   const handleUpdateStatus = async (id: number, newStatus: string) => {
     try {
       if (newStatus === 'responding') {
-        await api.respondToHazard(id);
+        await api.respondToHazard(id, { status: 'responding' });
       } else if (newStatus === 'resolved') {
-        await api.resolveHazard(id);
+        await api.resolveHazard(id, { resolution: 'resolved' });
       }
       await fetchHazards();
     } catch (error) {
@@ -139,7 +130,14 @@ function FiresPage() {
       <div className="p-6 max-w-7xl mx-auto">
           <motion.div variants={fadeIn} initial="initial" animate="animate">
             <div className="mb-8">
-              <h1 className="text-4xl font-bold gradient-text mb-2">Fire Incident Management</h1>
+              <div className="flex items-center gap-3 mb-2">
+                <h1 className="text-4xl font-bold gradient-text">Fire Incident Management</h1>
+                {jurisdiction && (
+                  <Badge variant="outline" className="text-xs font-medium border-[#1f3d2f] text-[#1f3d2f]">
+                    {jurisdiction.level.toUpperCase()}: {jurisdiction.name}
+                  </Badge>
+                )}
+              </div>
               <p className="text-dark-green-600">Monitor and manage all fire incidents in real-time</p>
             </div>
 
@@ -237,7 +235,7 @@ function FiresPage() {
                               <span>{hazard.apartment?.floor?.building?.address || 'N/A'}</span>
                             </p>
                             <p className="text-sm text-dark-green-500 mt-1">
-                              Unit {hazard.apartment?.unit_number || 'N/A'} - {hazard.apartment?.floor?.name || `Floor ${hazard.apartment?.floor?.level}`}
+                              Unit {hazard.apartment?.unit_number || 'N/A'} - Floor {hazard.apartment?.floor?.level ?? 'N/A'}
                             </p>
                           </div>
                         </div>

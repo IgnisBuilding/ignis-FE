@@ -43,7 +43,7 @@ const defaultIncidentsData = [
   { id: "#4920-R", status: "CLEARING", statusColor: "green", title: "Medical Assist - Residential", desc: "Patient stabilized and transported", resources: ["M1", "R2"], duration: "22m 04s" },
 ];
 
-function AdminDashboardContent() {
+export function AdminDashboardContent() {
   const { user, dashboardRole, roleTitle } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
@@ -51,10 +51,14 @@ function AdminDashboardContent() {
   // UI State
   const [filter, setFilter] = useState<"all" | "priority">("all");
   const [showIncidentModal, setShowIncidentModal] = useState(false);
-  const [respondingIncident, setRespondingIncident] = useState({
+  const [respondingIncident, setRespondingIncident] = useState<{
+    id: string;
+    title: string;
+    severity: 'critical' | 'high' | 'medium' | 'low';
+  }>({
     id: "#4922-A",
     title: "Structure Fire - Central Plaza Complex",
-    severity: "critical" as const
+    severity: "critical"
   });
 
   // Data State
@@ -421,7 +425,7 @@ function AdminDashboardContent() {
 
 export default function AdminDashboard() {
   return (
-    <ProtectedRoute allowedRoles={['management', 'building_authority']}>
+    <ProtectedRoute allowedRoles={['admin']}>
       <AdminDashboardContent />
     </ProtectedRoute>
   );

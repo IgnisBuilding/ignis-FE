@@ -1,35 +1,71 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Home, MapPin, Users, Activity, Calendar, Shield, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Home, MapPin, Users, Activity, Calendar, Shield, AlertTriangle, CheckCircle, Radio } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useAuth } from '@/context/AuthContext';
-import { api } from '@/lib/api';
+import { api, Sensor } from '@/lib/api';
 import { Apartment } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
+function timeAgo(dateString: string): string {
+  const now = new Date();
+  const date = new Date(dateString);
+  const diffMs = now.getTime() - date.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return '1 day ago';
+  return `${diffDays} days ago`;
+}
+
+function getSensorStatusColor(status: string) {
+  switch (status?.toLowerCase()) {
+    case 'active': return { badge: 'bg-green-500', border: 'border-green-200 dark:border-green-900/30', bg: 'bg-green-50 dark:bg-green-950/20' };
+    case 'maintenance': return { badge: 'bg-yellow-500', border: 'border-yellow-200 dark:border-yellow-900/30', bg: 'bg-yellow-50 dark:bg-yellow-950/20' };
+    case 'inactive': return { badge: 'bg-red-500', border: 'border-red-200 dark:border-red-900/30', bg: 'bg-red-50 dark:bg-red-950/20' };
+    default: return { badge: 'bg-gray-500', border: 'border-gray-200 dark:border-gray-900/30', bg: 'bg-gray-50 dark:bg-gray-950/20' };
+  }
+}
+
 export default function ApartmentDetailsPage() {
   const router = useRouter();
   const { user, role, dashboardRole, roleTitle } = useAuth();
   const [apartment, setApartment] = useState<Apartment | null>(null);
+  const [sensors, setSensors] = useState<Sensor[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (user && role === 'resident') {
-      const fetchApartment = async () => {
+      const fetchData = async () => {
         try {
-          const data = await api.getMyApartment();
-          setApartment(data);
+          const [aptData, sensorData] = await Promise.all([
+            api.getMyApartment(),
+            api.getSensors(),
+          ]);
+          setApartment(aptData);
+
+          // Filter sensors relevant to this apartment's building/floor
+          if (aptData && sensorData) {
+            const buildingId = aptData.building?.id;
+            const floorId = aptData.floor?.id;
+            const filtered = sensorData.filter((s: any) => {
+              if (s.buildingId && buildingId && s.buildingId === buildingId) return true;
+              if (s.floorId && floorId && s.floorId === floorId) return true;
+              if (s.room?.id && aptData.id) return true;
+              return false;
+            });
+            setSensors(filtered.length > 0 ? filtered : sensorData);
+          }
         } catch (error) {
-          console.error('Failed to fetch apartment:', error);
+          console.error('Failed to fetch data:', error);
         } finally {
           setLoading(false);
         }
       };
 
-      fetchApartment();
+      fetchData();
     } else {
       setLoading(false);
     }
@@ -197,45 +233,33 @@ export default function ApartmentDetailsPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="p-3 border border-green-200 dark:border-green-900/30 bg-green-50 dark:bg-green-950/20 rounded-lg">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="font-semibold text-foreground text-sm">Smoke Detector</span>
-                  <Badge className="bg-green-500 text-white text-xs">Active</Badge>
+              {sensors.length === 0 ? (
+                <div className="text-center py-6">
+                  <Radio className="h-10 w-10 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">No sensors assigned to your area</p>
                 </div>
-                <p className="text-xs text-muted-foreground mb-2">Last checked: 2 days ago</p>
-                <div className="flex items-center gap-2">
-                  <div className="w-full h-2 bg-gray-200 dark:bg-muted rounded-full overflow-hidden">
-                    <div className="h-full bg-green-500 w-[95%]" />
-                  </div>
-                  <span className="text-xs text-muted-foreground font-medium">95%</span>
-                </div>
-              </div>
-              <div className="p-3 border border-green-200 dark:border-green-900/30 bg-green-50 dark:bg-green-950/20 rounded-lg">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="font-semibold text-foreground text-sm">Heat Sensor</span>
-                  <Badge className="bg-green-500 text-white text-xs">Active</Badge>
-                </div>
-                <p className="text-xs text-muted-foreground mb-2">Last checked: 1 day ago</p>
-                <div className="flex items-center gap-2">
-                  <div className="w-full h-2 bg-gray-200 dark:bg-muted rounded-full overflow-hidden">
-                    <div className="h-full bg-green-500 w-[98%]" />
-                  </div>
-                  <span className="text-xs text-muted-foreground font-medium">98%</span>
-                </div>
-              </div>
-              <div className="p-3 border border-yellow-200 dark:border-yellow-900/30 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="font-semibold text-foreground text-sm">CO2 Monitor</span>
-                  <Badge className="bg-yellow-500 text-white text-xs">Maintenance Due</Badge>
-                </div>
-                <p className="text-xs text-muted-foreground mb-2">Last checked: 28 days ago</p>
-                <div className="flex items-center gap-2">
-                  <div className="w-full h-2 bg-gray-200 dark:bg-muted rounded-full overflow-hidden">
-                    <div className="h-full bg-yellow-500 w-[78%]" />
-                  </div>
-                  <span className="text-xs text-muted-foreground font-medium">78%</span>
-                </div>
-              </div>
+              ) : (
+                sensors.map((sensor) => {
+                  const colors = getSensorStatusColor(sensor.status);
+                  return (
+                    <div key={sensor.id} className={`p-3 border ${colors.border} ${colors.bg} rounded-lg`}>
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="font-semibold text-foreground text-sm">{sensor.name}</span>
+                        <Badge className={`${colors.badge} text-white text-xs capitalize`}>{sensor.status}</Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground mb-1">
+                        Type: {sensor.type}{sensor.room ? ` • ${sensor.room.name}` : ''}
+                      </p>
+                      {sensor.lastReading && (
+                        <p className="text-xs text-muted-foreground mb-2">
+                          Last reading: {timeAgo(sensor.lastReading)}
+                          {sensor.value != null && sensor.unit ? ` — ${sensor.value} ${sensor.unit}` : ''}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })
+              )}
             </CardContent>
           </Card>
 

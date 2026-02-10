@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useReportsData } from '@/hooks/useReportsData';
+import { useJurisdiction } from '@/hooks/useJurisdiction';
 import {
   Search,
   Download,
@@ -41,7 +42,11 @@ function ReportsPageContent() {
     incident: string;
   } | null>(null);
   const [downloadLoading, setDownloadLoading] = useState(false);
-  const { reports, stats, loading, error, severityDistribution, responseTimeEntries } = useReportsData();
+  const { buildingIds, jurisdiction, loading: jurisdictionLoading } = useJurisdiction();
+  const { reports, stats, loading: reportsLoading, error, severityDistribution, responseTimeEntries } = useReportsData(
+    buildingIds.length > 0 ? buildingIds : undefined
+  );
+  const loading = reportsLoading || jurisdictionLoading;
 
   const handleDownload = (report: { id: number; incident: string }) => {
     setSelectedReport(report);
@@ -120,9 +125,16 @@ function ReportsPageContent() {
         {/* Header */}
         <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <div className="flex-1">
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground">
-              Reports & Analytics
-            </h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground">
+                Reports & Analytics
+              </h1>
+              {jurisdiction && (
+                <Badge variant="outline" className="text-xs font-medium border-[#1f3d2f] text-[#1f3d2f]">
+                  {jurisdiction.level.toUpperCase()}: {jurisdiction.name}
+                </Badge>
+              )}
+            </div>
             <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-muted-foreground">
               Incident reports and hazard analytics
             </p>

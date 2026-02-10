@@ -324,7 +324,7 @@ function ReportsContent() {
 
 export default function ReportsPage() {
   return (
-    <ProtectedRoute allowedRoles={["management", "building_authority"]}>
+    <ProtectedRoute allowedRoles={["admin"]}>
       <ReportsContent />
     </ProtectedRoute>
   )

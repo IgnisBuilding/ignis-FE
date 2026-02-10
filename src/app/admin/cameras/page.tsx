@@ -8,7 +8,7 @@ import { useAuth } from '@/context/AuthContext';
 import { api, Camera, CameraStats, Building, Floor, Room, FireAlertConfig } from '@/lib/api';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 
-function CamerasManagementContent() {
+export function CamerasManagementContent() {
   const { user, dashboardRole, roleTitle } = useAuth();
   const [cameras, setCameras] = useState<Camera[]>([]);
   const [buildings, setBuildings] = useState<Building[]>([]);
@@ -760,7 +760,7 @@ function CamerasManagementContent() {
 
 export default function CamerasManagementPage() {
   return (
-    <ProtectedRoute allowedRoles={['management', 'building_authority']}>
+    <ProtectedRoute allowedRoles={['admin']}>
       <CamerasManagementContent />
     </ProtectedRoute>
   );

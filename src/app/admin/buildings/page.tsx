@@ -54,7 +54,7 @@ interface DeleteState {
   buildingName: string
 }
 
-function BuildingsManagementContent() {
+export function BuildingsManagementContent() {
   const { user, dashboardRole, roleTitle } = useAuth()
   const { toast } = useToast()
   const [buildings, setBuildings] = useState<Building[]>([])
@@ -530,7 +530,7 @@ function BuildingsManagementContent() {
 
 export default function BuildingsManagementPage() {
   return (
-    <ProtectedRoute allowedRoles={["management", "building_authority"]}>
+    <ProtectedRoute allowedRoles={["admin"]}>
       <BuildingsManagementContent />
     </ProtectedRoute>
   )

@@ -22,6 +22,7 @@ import {
   CheckCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useJurisdiction } from '@/hooks/useJurisdiction';
 
 interface Hazard {
   id: number;
@@ -29,17 +30,26 @@ interface Hazard {
   severity: string;
   status: string;
   description?: string;
-  apartment: {
+  apartment?: {
     id: number;
     unit_number: string;
-    floor: {
+    floor?: {
       id: number;
       level: number;
-      building: {
+      building?: {
         id: number;
         name: string;
         address: string;
       };
+    };
+  };
+  floor?: {
+    id: number;
+    level: number;
+    building?: {
+      id: number;
+      name: string;
+      address: string;
     };
   };
   node?: {
@@ -67,13 +77,18 @@ function getStatusColor(status: string) {
   }
 }
 
+function getHazardBuildingId(hazard: Hazard): number | null {
+  return hazard.apartment?.floor?.building?.id || hazard.floor?.building?.id || null;
+}
+
 function FirefighterDashboardContent() {
   const { user, dashboardRole, roleTitle } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
-  const [hazards, setHazards] = useState<Hazard[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [allHazards, setAllHazards] = useState<Hazard[]>([]);
+  const [hazardsLoading, setHazardsLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'priority'>('all');
+  const { buildingIds, jurisdiction, loading: jurisdictionLoading } = useJurisdiction();
 
   useEffect(() => {
     fetchHazards();
@@ -86,15 +101,24 @@ function FirefighterDashboardContent() {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await response.json();
-      console.log('Fetched active hazards:', JSON.stringify(data, null, 2));
-      setHazards(Array.isArray(data) ? data : []);
+      setAllHazards(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Failed to fetch hazards:', error);
-      setHazards([]);
+      setAllHazards([]);
     } finally {
-      setLoading(false);
+      setHazardsLoading(false);
     }
   };
+
+  // Filter hazards by jurisdiction buildings
+  const hazards = buildingIds.length > 0
+    ? allHazards.filter(h => {
+        const bid = getHazardBuildingId(h);
+        return bid !== null && buildingIds.includes(bid);
+      })
+    : allHazards;
+
+  const loading = hazardsLoading || jurisdictionLoading;
 
   const activeIncidents = hazards.filter((e) => {
     const status = e.status?.toLowerCase();
@@ -191,6 +215,18 @@ function FirefighterDashboardContent() {
       userTitle={roleTitle}
     >
       <div className="flex-1 space-y-4 sm:space-y-6 overflow-auto p-3 sm:p-4 md:p-6 lg:p-8 lg:space-y-8 w-full max-w-none">
+        {/* Jurisdiction Badge */}
+        {jurisdiction && (
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="text-xs font-medium border-[#1f3d2f] text-[#1f3d2f]">
+              {jurisdiction.level.toUpperCase()}: {jurisdiction.name}
+            </Badge>
+            <span className="text-xs text-muted-foreground">
+              {buildingIds.length} building{buildingIds.length !== 1 ? 's' : ''} in jurisdiction
+            </span>
+          </div>
+        )}
+
         {/* Stats Cards */}
         <div className="grid gap-3 grid-cols-1 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {statsData.map((stat) => (

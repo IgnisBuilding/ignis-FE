@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Building2, ChevronRight, MapPin, Phone, Mail, Plus, Search, Shield, Users, Flame } from "lucide-react"
+import { Building2, ChevronRight, MapPin, Phone, Mail, Plus, Search, Shield, Flame, Copy, Check } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import DashboardLayout from "@/components/layout/DashboardLayout"
 import ProtectedRoute from "@/components/auth/ProtectedRoute"
@@ -11,18 +11,6 @@ import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-
-interface HQ {
-  id: number
-  name: string
-  address: string
-  phone: string
-  email: string
-  status: string
-  state_count: number
-  employee_count: number
-  created_at: string
-}
 
 interface State {
   id: number
@@ -57,7 +45,16 @@ interface Station {
   created_at: string
 }
 
-type EntityType = "hq" | "state" | "station"
+interface EmployeeInfo {
+  id: number
+  hq_id: number | null
+  state_id: number | null
+  brigade_id: number | null
+  hq_name: string | null
+  jurisdiction_level: "hq" | "state" | "district" | null
+}
+
+type EntityType = "state" | "station"
 
 interface DeleteState {
   isOpen: boolean
@@ -66,22 +63,20 @@ interface DeleteState {
   entityName: string
 }
 
-function FireBrigadeManagementContent() {
+function StationsManagementContent() {
   const { user, dashboardRole, roleTitle } = useAuth()
   const { toast } = useToast()
-  const [activeTab, setActiveTab] = useState<EntityType>("hq")
-  const [hqs, setHqs] = useState<HQ[]>([])
+  const [activeTab, setActiveTab] = useState<EntityType>("station")
   const [states, setStates] = useState<State[]>([])
   const [stations, setStations] = useState<Station[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
+  const [employeeInfo, setEmployeeInfo] = useState<EmployeeInfo | null>(null)
 
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingEntity, setEditingEntity] = useState<any>(null)
-  const [modalType, setModalType] = useState<EntityType>("hq")
-
-  // Form data
+  const [modalType, setModalType] = useState<EntityType>("station")
   const [formData, setFormData] = useState<any>({})
 
   // Delete state
@@ -93,49 +88,123 @@ function FireBrigadeManagementContent() {
   })
   const [deleteLoading, setDeleteLoading] = useState(false)
 
+  // Credentials modal state
+  const [credentialsModal, setCredentialsModal] = useState<{
+    isOpen: boolean
+    email: string
+    password: string
+    role: string
+    entityName: string
+  }>({ isOpen: false, email: "", password: "", role: "", entityName: "" })
+  const [copiedField, setCopiedField] = useState<string | null>(null)
+
   useEffect(() => {
-    fetchAll()
-  }, [])
+    if (user?.id) {
+      checkAccessAndFetchData()
+    }
+  }, [user?.id])
 
-  const fetchAll = async () => {
-    setLoading(true)
-    await Promise.all([fetchHQs(), fetchStates(), fetchStations()])
-    setLoading(false)
-  }
-
-  const fetchHQs = async () => {
+  const checkAccessAndFetchData = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/buildings/fire-brigade-hqs`)
-      if (response.ok) {
-        const data = await response.json()
-        setHqs(data)
+      setLoading(true)
+      const empResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/buildings/by-jurisdiction/${user?.id}`
+      )
+
+      if (empResponse.ok) {
+        const data = await empResponse.json()
+
+        // Support both response formats
+        const level = data.jurisdictionLevel || data.jurisdiction?.level
+        const emp = data.employee || {}
+
+        const info: EmployeeInfo = {
+          id: emp.id,
+          hq_id: emp.hq_id,
+          state_id: emp.state_id,
+          brigade_id: emp.brigade_id,
+          hq_name: emp.hq_name,
+          jurisdiction_level: level,
+        }
+        setEmployeeInfo(info)
+
+        if (level === "hq") {
+          setActiveTab("state")
+          await Promise.all([
+            fetchStatesForHQ(emp.hq_id),
+            fetchStationsForHQ(emp.hq_id),
+          ])
+        } else if (level === "state") {
+          setActiveTab("station")
+          await fetchStationsForState(emp.state_id)
+        }
       }
     } catch (err) {
-      console.error("Error fetching HQs:", err)
+      console.error("Error checking access:", err)
+      toast({ title: "Error", description: "Failed to verify access", variant: "destructive" })
+    } finally {
+      setLoading(false)
     }
   }
 
-  const fetchStates = async () => {
+  const fetchStatesForHQ = async (hqId: number) => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/buildings/fire-brigade-states`)
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/buildings/fire-brigade-states/by-hq/${hqId}`)
       if (response.ok) {
-        const data = await response.json()
-        setStates(data)
+        setStates(await response.json())
+      } else {
+        // Fallback: fetch all states and filter
+        const allResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/buildings/fire-brigade-states`)
+        if (allResponse.ok) {
+          const allStates = await allResponse.json()
+          setStates(allStates.filter((s: State) => s.hq_id === hqId))
+        }
       }
     } catch (err) {
       console.error("Error fetching states:", err)
     }
   }
 
-  const fetchStations = async () => {
+  const fetchStationsForHQ = async (hqId: number) => {
     try {
+      // Fetch all stations then filter by hq_id
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/buildings/fire-brigade-stations`)
       if (response.ok) {
-        const data = await response.json()
-        setStations(data)
+        const allStations = await response.json()
+        setStations(allStations.filter((s: Station) => s.hq_id === hqId))
       }
     } catch (err) {
       console.error("Error fetching stations:", err)
+    }
+  }
+
+  const fetchStationsForState = async (stateId: number) => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/buildings/fire-brigade-stations/by-state/${stateId}`)
+      if (response.ok) {
+        setStations(await response.json())
+      } else {
+        // Fallback: fetch all stations and filter
+        const allResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/buildings/fire-brigade-stations`)
+        if (allResponse.ok) {
+          const allStations = await allResponse.json()
+          setStations(allStations.filter((s: Station) => s.state_id === stateId))
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching stations:", err)
+    }
+  }
+
+  const refreshData = async () => {
+    if (!employeeInfo) return
+    if (employeeInfo.jurisdiction_level === "hq" && employeeInfo.hq_id) {
+      await Promise.all([
+        fetchStatesForHQ(employeeInfo.hq_id),
+        fetchStationsForHQ(employeeInfo.hq_id),
+      ])
+    } else if (employeeInfo.jurisdiction_level === "state" && employeeInfo.state_id) {
+      await fetchStationsForState(employeeInfo.state_id)
     }
   }
 
@@ -146,12 +215,18 @@ function FireBrigadeManagementContent() {
     if (entity) {
       setFormData({ ...entity })
     } else {
-      if (type === "hq") {
-        setFormData({ name: "", address: "", phone: "", email: "" })
-      } else if (type === "state") {
-        setFormData({ name: "", state: "", hq_id: hqs[0]?.id, address: "", phone: "" })
+      if (type === "state") {
+        setFormData({ name: "", state: "", hq_id: employeeInfo?.hq_id, address: "", phone: "" })
       } else {
-        setFormData({ name: "", location: "", state_id: states[0]?.id, address: "", phone: "", email: "", capacity: 10 })
+        setFormData({
+          name: "",
+          location: "",
+          state_id: states[0]?.id || employeeInfo?.state_id,
+          address: "",
+          phone: "",
+          email: "",
+          capacity: 10,
+        })
       }
     }
     setIsModalOpen(true)
@@ -165,16 +240,11 @@ function FireBrigadeManagementContent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-
     try {
       let url = ""
-      let method = editingEntity ? "PATCH" : "POST"
+      const method = editingEntity ? "PATCH" : "POST"
 
-      if (modalType === "hq") {
-        url = editingEntity
-          ? `${process.env.NEXT_PUBLIC_API_URL}/buildings/fire-brigade-hqs/${editingEntity.id}`
-          : `${process.env.NEXT_PUBLIC_API_URL}/buildings/fire-brigade-hqs`
-      } else if (modalType === "state") {
+      if (modalType === "state") {
         url = editingEntity
           ? `${process.env.NEXT_PUBLIC_API_URL}/buildings/fire-brigade-states/${editingEntity.id}`
           : `${process.env.NEXT_PUBLIC_API_URL}/buildings/fire-brigade-states`
@@ -193,19 +263,22 @@ function FireBrigadeManagementContent() {
       const data = await response.json()
       if (data.error) throw new Error(data.error)
 
-      toast({
-        title: "Success",
-        description: editingEntity ? "Updated successfully!" : "Created successfully!",
-      })
-
-      await fetchAll()
+      toast({ title: "Success", description: editingEntity ? "Updated successfully!" : "Created successfully!" })
+      await refreshData()
       handleCloseModal()
+
+      // Show credentials if a new entity was created
+      if (!editingEntity && data.credentials) {
+        setCredentialsModal({
+          isOpen: true,
+          email: data.credentials.email,
+          password: data.credentials.password,
+          role: data.credentials.role,
+          entityName: formData.name,
+        })
+      }
     } catch (err: any) {
-      toast({
-        title: "Error",
-        description: err.message || "Failed to save",
-        variant: "destructive",
-      })
+      toast({ title: "Error", description: err.message || "Failed to save", variant: "destructive" })
     }
   }
 
@@ -215,92 +288,79 @@ function FireBrigadeManagementContent() {
 
   const handleDeleteConfirm = async () => {
     if (!deleteState.entityId || !deleteState.entityType) return
-
     try {
       setDeleteLoading(true)
-      let url = ""
-      if (deleteState.entityType === "hq") {
-        url = `${process.env.NEXT_PUBLIC_API_URL}/buildings/fire-brigade-hqs/${deleteState.entityId}`
-      } else if (deleteState.entityType === "state") {
-        url = `${process.env.NEXT_PUBLIC_API_URL}/buildings/fire-brigade-states/${deleteState.entityId}`
-      } else {
-        url = `${process.env.NEXT_PUBLIC_API_URL}/buildings/fire-brigade-stations/${deleteState.entityId}`
-      }
+      const url = deleteState.entityType === "state"
+        ? `${process.env.NEXT_PUBLIC_API_URL}/buildings/fire-brigade-states/${deleteState.entityId}`
+        : `${process.env.NEXT_PUBLIC_API_URL}/buildings/fire-brigade-stations/${deleteState.entityId}`
 
       const response = await fetch(url, { method: "DELETE" })
       const data = await response.json()
-
       if (data.error) throw new Error(data.error)
 
       toast({ title: "Success", description: "Deleted successfully!" })
-      await fetchAll()
+      await refreshData()
       setDeleteState({ isOpen: false, entityType: null, entityId: null, entityName: "" })
     } catch (err: any) {
-      toast({
-        title: "Error",
-        description: err.message || "Failed to delete",
-        variant: "destructive",
-      })
+      toast({ title: "Error", description: err.message || "Failed to delete", variant: "destructive" })
     } finally {
       setDeleteLoading(false)
     }
   }
 
-  const filteredHQs = hqs.filter(h => h.name.toLowerCase().includes(searchTerm.toLowerCase()))
+  const isHQ = employeeInfo?.jurisdiction_level === "hq"
   const filteredStates = states.filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.state.toLowerCase().includes(searchTerm.toLowerCase()))
-  const filteredStations = stations.filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.location.toLowerCase().includes(searchTerm.toLowerCase()))
+  const filteredStations = stations.filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.location?.toLowerCase().includes(searchTerm.toLowerCase()))
 
   const getModalTitle = () => {
     const action = editingEntity ? "Edit" : "Add"
-    if (modalType === "hq") return `${action} Fire Brigade HQ`
-    if (modalType === "state") return `${action} State/Region Office`
-    return `${action} Fire Station`
+    return modalType === "state" ? `${action} State/Region Office` : `${action} Fire Station`
   }
 
+  // Available states for station form dropdown
+  const availableStates = states
+
   return (
-    <DashboardLayout role={dashboardRole} userName={user?.name || "Admin"} userTitle={roleTitle}>
+    <DashboardLayout role={dashboardRole} userName={user?.name || "Firefighter"} userTitle={roleTitle}>
       <div className="h-[calc(100vh-4rem)] w-full overflow-auto">
         <div className="p-3 sm:p-4 md:p-6 lg:p-8 w-full max-w-none">
           {/* Header */}
           <div className="mb-6">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h1 className="text-3xl font-bold text-foreground mb-1">Fire Brigade Management</h1>
+                <div className="flex items-center gap-3 mb-1">
+                  <h1 className="text-3xl font-bold text-foreground">Fire Stations</h1>
+                  {employeeInfo?.hq_name && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+                      <Shield className="h-3 w-3" />
+                      {employeeInfo.hq_name}
+                    </span>
+                  )}
+                </div>
                 <p className="text-sm text-muted-foreground">
-                  Manage fire brigade hierarchy: HQs, States, and Stations
+                  {isHQ ? "Manage state offices and district fire stations" : "Manage fire stations under your jurisdiction"}
                 </p>
               </div>
             </div>
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-              <Card className="p-4 cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setActiveTab("hq")}>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Fire Brigade HQs</p>
-                    <p className="text-2xl font-bold text-foreground">{hqs.length}</p>
-                    <p className="text-xs text-muted-foreground mt-1">Regional headquarters</p>
+            <div className={`grid grid-cols-1 ${isHQ ? "md:grid-cols-2" : "md:grid-cols-1"} gap-4 mb-6`}>
+              {isHQ && (
+                <Card className="p-4 cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setActiveTab("state")}>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">State Offices</p>
+                      <p className="text-2xl font-bold text-foreground">{states.length}</p>
+                      <p className="text-xs text-muted-foreground mt-1">Under your HQ</p>
+                    </div>
+                    <div className={`rounded-lg p-2.5 h-10 w-10 flex items-center justify-center ${activeTab === "state" ? "bg-primary text-primary-foreground" : "bg-secondary"}`}>
+                      <Building2 className="h-5 w-5" />
+                    </div>
                   </div>
-                  <div className={`rounded-lg p-2.5 h-10 w-10 flex items-center justify-center ${activeTab === "hq" ? "bg-primary text-primary-foreground" : "bg-secondary"}`}>
-                    <Flame className="h-5 w-5" />
-                  </div>
-                </div>
-              </Card>
+                </Card>
+              )}
 
-              <Card className="p-4 cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setActiveTab("state")}>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">State Offices</p>
-                    <p className="text-2xl font-bold text-foreground">{states.length}</p>
-                    <p className="text-xs text-muted-foreground mt-1">State/Region level</p>
-                  </div>
-                  <div className={`rounded-lg p-2.5 h-10 w-10 flex items-center justify-center ${activeTab === "state" ? "bg-primary text-primary-foreground" : "bg-secondary"}`}>
-                    <Building2 className="h-5 w-5" />
-                  </div>
-                </div>
-              </Card>
-
-              <Card className="p-4 cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setActiveTab("station")}>
+              <Card className={`p-4 cursor-pointer hover:bg-muted/50 transition-colors`} onClick={() => setActiveTab("station")}>
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground mb-1">Fire Stations</p>
@@ -320,7 +380,7 @@ function FireBrigadeManagementContent() {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                 <Input
                   type="text"
-                  placeholder={`Search ${activeTab === "hq" ? "HQs" : activeTab === "state" ? "states" : "stations"}...`}
+                  placeholder={`Search ${activeTab === "state" ? "states" : "stations"}...`}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -328,12 +388,12 @@ function FireBrigadeManagementContent() {
               </div>
               <Button onClick={() => handleOpenModal(activeTab)}>
                 <Plus className="h-4 w-4 mr-2" />
-                Add {activeTab === "hq" ? "HQ" : activeTab === "state" ? "State" : "Station"}
+                Add {activeTab === "state" ? "State" : "Station"}
               </Button>
             </div>
           </div>
 
-          {/* Content based on active tab */}
+          {/* Content */}
           {loading ? (
             <Card className="p-12">
               <div className="text-center">
@@ -343,86 +403,14 @@ function FireBrigadeManagementContent() {
             </Card>
           ) : (
             <>
-              {/* HQs Tab */}
-              {activeTab === "hq" && (
-                <Card>
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b border-border bg-muted/50">
-                          <th className="text-left p-4 font-medium text-muted-foreground">HQ Name</th>
-                          <th className="text-left p-4 font-medium text-muted-foreground">Contact</th>
-                          <th className="text-center p-4 font-medium text-muted-foreground">States</th>
-                          <th className="text-center p-4 font-medium text-muted-foreground">Employees</th>
-                          <th className="text-center p-4 font-medium text-muted-foreground">Status</th>
-                          <th className="text-right p-4 font-medium text-muted-foreground">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredHQs.map((hq) => (
-                          <tr key={hq.id} className="border-b border-border hover:bg-muted/30 transition-colors">
-                            <td className="p-4">
-                              <div className="flex items-center gap-3">
-                                <div className="size-10 rounded-lg bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-                                  <Flame className="h-5 w-5 text-red-600" />
-                                </div>
-                                <div>
-                                  <p className="font-medium text-foreground">{hq.name}</p>
-                                  {hq.address && <p className="text-xs text-muted-foreground">{hq.address}</p>}
-                                </div>
-                              </div>
-                            </td>
-                            <td className="p-4">
-                              <div className="text-sm space-y-1">
-                                {hq.phone && <p className="flex items-center gap-1 text-muted-foreground"><Phone className="h-3 w-3" />{hq.phone}</p>}
-                                {hq.email && <p className="flex items-center gap-1 text-muted-foreground"><Mail className="h-3 w-3" />{hq.email}</p>}
-                              </div>
-                            </td>
-                            <td className="p-4 text-center">
-                              <span className="inline-flex items-center justify-center min-w-[2rem] px-2 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
-                                {hq.state_count}
-                              </span>
-                            </td>
-                            <td className="p-4 text-center">
-                              <span className="inline-flex items-center justify-center min-w-[2rem] px-2 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                                {hq.employee_count}
-                              </span>
-                            </td>
-                            <td className="p-4 text-center">
-                              <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${hq.status === "active" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-gray-100 text-gray-700 dark:bg-muted dark:text-muted-foreground"}`}>
-                                {hq.status}
-                              </span>
-                            </td>
-                            <td className="p-4 text-right">
-                              <div className="flex items-center justify-end gap-2">
-                                <Button variant="outline" size="sm" onClick={() => handleOpenModal("hq", hq)}>Edit</Button>
-                                <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => handleDeleteClick("hq", hq.id, hq.name)}>Delete</Button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                        {filteredHQs.length === 0 && (
-                          <tr>
-                            <td colSpan={6} className="p-8 text-center text-muted-foreground">
-                              No HQs found. Click "Add HQ" to create one.
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </Card>
-              )}
-
-              {/* States Tab */}
-              {activeTab === "state" && (
+              {/* States Tab (HQ only) */}
+              {activeTab === "state" && isHQ && (
                 <Card>
                   <div className="overflow-x-auto">
                     <table className="w-full">
                       <thead>
                         <tr className="border-b border-border bg-muted/50">
                           <th className="text-left p-4 font-medium text-muted-foreground">State Office</th>
-                          <th className="text-left p-4 font-medium text-muted-foreground">Parent HQ</th>
                           <th className="text-left p-4 font-medium text-muted-foreground">Contact</th>
                           <th className="text-center p-4 font-medium text-muted-foreground">Stations</th>
                           <th className="text-center p-4 font-medium text-muted-foreground">Status</th>
@@ -442,12 +430,6 @@ function FireBrigadeManagementContent() {
                                   <p className="text-xs text-muted-foreground">{state.state}</p>
                                 </div>
                               </div>
-                            </td>
-                            <td className="p-4">
-                              <span className="inline-flex items-center gap-1 text-sm text-muted-foreground">
-                                <Flame className="h-3 w-3 text-red-500" />
-                                {state.hq_name || "No HQ"}
-                              </span>
                             </td>
                             <td className="p-4">
                               <div className="text-sm">
@@ -475,8 +457,8 @@ function FireBrigadeManagementContent() {
                         ))}
                         {filteredStates.length === 0 && (
                           <tr>
-                            <td colSpan={6} className="p-8 text-center text-muted-foreground">
-                              No states found. Click "Add State" to create one.
+                            <td colSpan={5} className="p-8 text-center text-muted-foreground">
+                              No state offices found.
                             </td>
                           </tr>
                         )}
@@ -586,37 +568,21 @@ function FireBrigadeManagementContent() {
                 required
                 value={formData.name || ""}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder={modalType === "hq" ? "e.g., Karachi Fire Brigade HQ" : modalType === "state" ? "e.g., Sindh Fire Service" : "e.g., Model Colony Fire Station"}
+                placeholder={modalType === "state" ? "e.g., Sindh Fire Service" : "e.g., Model Colony Fire Station"}
               />
             </div>
 
             {modalType === "state" && (
-              <>
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">State/Province *</label>
-                  <Input
-                    type="text"
-                    required
-                    value={formData.state || ""}
-                    onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                    placeholder="e.g., Sindh"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Parent HQ *</label>
-                  <select
-                    required
-                    value={formData.hq_id || ""}
-                    onChange={(e) => setFormData({ ...formData, hq_id: parseInt(e.target.value) })}
-                    className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                  >
-                    <option value="">-- Select HQ --</option>
-                    {hqs.map((hq) => (
-                      <option key={hq.id} value={hq.id}>{hq.name}</option>
-                    ))}
-                  </select>
-                </div>
-              </>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">State/Province *</label>
+                <Input
+                  type="text"
+                  required
+                  value={formData.state || ""}
+                  onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                  placeholder="e.g., Sindh"
+                />
+              </div>
             )}
 
             {modalType === "station" && (
@@ -631,20 +597,22 @@ function FireBrigadeManagementContent() {
                     placeholder="e.g., Model Colony, Karachi"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Parent State *</label>
-                  <select
-                    required
-                    value={formData.state_id || ""}
-                    onChange={(e) => setFormData({ ...formData, state_id: parseInt(e.target.value) })}
-                    className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                  >
-                    <option value="">-- Select State --</option>
-                    {states.map((state) => (
-                      <option key={state.id} value={state.id}>{state.name} ({state.state})</option>
-                    ))}
-                  </select>
-                </div>
+                {availableStates.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">Parent State *</label>
+                    <select
+                      required
+                      value={formData.state_id || ""}
+                      onChange={(e) => setFormData({ ...formData, state_id: parseInt(e.target.value) })}
+                      className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                    >
+                      <option value="">-- Select State --</option>
+                      {availableStates.map((state) => (
+                        <option key={state.id} value={state.id}>{state.name} ({state.state})</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">Capacity</label>
                   <Input
@@ -677,7 +645,7 @@ function FireBrigadeManagementContent() {
                   placeholder="+92-XXX-XXXXXXX"
                 />
               </div>
-              {(modalType === "hq" || modalType === "station") && (
+              {modalType === "station" && (
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">Email</label>
                   <Input
@@ -701,7 +669,7 @@ function FireBrigadeManagementContent() {
       {/* Delete Confirmation */}
       <ConfirmDialog
         open={deleteState.isOpen}
-        title={`Delete ${deleteState.entityType === "hq" ? "HQ" : deleteState.entityType === "state" ? "State" : "Station"}`}
+        title={`Delete ${deleteState.entityType === "state" ? "State Office" : "Station"}`}
         description={`Are you sure you want to delete "${deleteState.entityName}"? This action cannot be undone.`}
         confirmText="Delete"
         cancelText="Cancel"
@@ -710,14 +678,74 @@ function FireBrigadeManagementContent() {
         onConfirm={handleDeleteConfirm}
         onCancel={() => setDeleteState({ isOpen: false, entityType: null, entityId: null, entityName: "" })}
       />
+
+      {/* Credentials Modal */}
+      <Dialog open={credentialsModal.isOpen} onOpenChange={(open) => !open && setCredentialsModal(prev => ({ ...prev, isOpen: false }))}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Login Credentials Created</DialogTitle>
+            <DialogDescription>
+              Save these credentials for <strong>{credentialsModal.entityName}</strong>. The password cannot be retrieved later.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="rounded-lg border border-border bg-muted/50 p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Email</p>
+                  <p className="text-sm font-mono font-semibold text-foreground mt-1">{credentialsModal.email}</p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    navigator.clipboard.writeText(credentialsModal.email)
+                    setCopiedField("email")
+                    setTimeout(() => setCopiedField(null), 2000)
+                  }}
+                >
+                  {copiedField === "email" ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                </Button>
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Password</p>
+                  <p className="text-sm font-mono font-semibold text-foreground mt-1">{credentialsModal.password}</p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    navigator.clipboard.writeText(credentialsModal.password)
+                    setCopiedField("password")
+                    setTimeout(() => setCopiedField(null), 2000)
+                  }}
+                >
+                  {copiedField === "password" ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                </Button>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Role</p>
+                <p className="text-sm font-semibold text-foreground mt-1">{credentialsModal.role}</p>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              This user can now log in and see data scoped to their jurisdiction.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setCredentialsModal(prev => ({ ...prev, isOpen: false }))}>Done</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   )
 }
 
-export default function FireBrigadeManagementPage() {
+export default function FirefighterStationsPage() {
   return (
-    <ProtectedRoute allowedRoles={["admin"]}>
-      <FireBrigadeManagementContent />
+    <ProtectedRoute allowedRoles={["firefighter_hq", "firefighter_state", "admin"]}>
+      <StationsManagementContent />
     </ProtectedRoute>
   )
 }

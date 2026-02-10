@@ -329,7 +329,7 @@ function AdminMapContent() {
 
 export default function AdminMapPage() {
     return (
-        <ProtectedRoute allowedRoles={['management', 'building_authority']}>
+        <ProtectedRoute allowedRoles={['admin']}>
             <AdminMapContent />
         </ProtectedRoute>
     );

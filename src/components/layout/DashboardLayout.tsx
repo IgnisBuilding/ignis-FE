@@ -35,7 +35,6 @@ import {
   MapPin,
   Menu,
   X,
-  BookOpen,
   Bell,
   User,
   ChevronDown,
@@ -73,12 +72,12 @@ function getRoleConfig(t: any): Record<string, {
         { label: t.nav.dashboard, href: "/firefighter", icon: LayoutDashboard },
         { label: t.nav.liveMap, href: "/firefighter/map", icon: Map },
         { label: t.nav.societies, href: "/firefighter/societies", icon: MapPin },
+        { label: t.nav.stations, href: "/firefighter/stations", icon: Building2 },
         { label: t.nav.personnel, href: "/firefighter/team", icon: Users },
         { label: t.nav.reports, href: "/firefighter/reports", icon: BarChart3 },
-        { label: t.nav.directory, href: "/firefighter/directory", icon: BookOpen },
         { label: t.nav.settings, href: "/settings", icon: Settings },
       ],
-      dispatchButton: true,
+      dispatchButton: false,
     },
     // Firefighter State - No Personnel access
     firefighter_state: {
@@ -88,12 +87,12 @@ function getRoleConfig(t: any): Record<string, {
         { label: t.nav.dashboard, href: "/firefighter", icon: LayoutDashboard },
         { label: t.nav.liveMap, href: "/firefighter/map", icon: Map },
         { label: t.nav.societies, href: "/firefighter/societies", icon: MapPin },
+        { label: t.nav.stations, href: "/firefighter/stations", icon: Building2 },
         { label: t.nav.personnel, href: "/firefighter/team", icon: Users },
         { label: t.nav.reports, href: "/firefighter/reports", icon: BarChart3 },
-        { label: t.nav.directory, href: "/firefighter/directory", icon: BookOpen },
         { label: t.nav.settings, href: "/settings", icon: Settings },
       ],
-      dispatchButton: true,
+      dispatchButton: false,
     },
     // Firefighter District - Limited access (no Personnel, Reports)
     firefighter_district: {
@@ -103,10 +102,9 @@ function getRoleConfig(t: any): Record<string, {
         { label: t.nav.dashboard, href: "/firefighter", icon: LayoutDashboard },
         { label: t.nav.liveMap, href: "/firefighter/map", icon: Map },
         { label: t.nav.societies, href: "/firefighter/societies", icon: MapPin },
-        { label: t.nav.directory, href: "/firefighter/directory", icon: BookOpen },
         { label: t.nav.settings, href: "/settings", icon: Settings },
       ],
-      dispatchButton: true,
+      dispatchButton: false,
     },
     // Legacy firefighter role - maps to district level
     firefighter: {
@@ -116,10 +114,9 @@ function getRoleConfig(t: any): Record<string, {
         { label: t.nav.dashboard, href: "/firefighter", icon: LayoutDashboard },
         { label: t.nav.liveMap, href: "/firefighter/map", icon: Map },
         { label: t.nav.societies, href: "/firefighter/societies", icon: MapPin },
-        { label: t.nav.directory, href: "/firefighter/directory", icon: BookOpen },
         { label: t.nav.settings, href: "/settings", icon: Settings },
       ],
-      dispatchButton: true,
+      dispatchButton: false,
     },
     resident: {
       title: "IGNIS SAFETY",
@@ -137,11 +134,11 @@ function getRoleConfig(t: any): Record<string, {
       title: "IGNIS CONTROL",
       subtitle: t.sidebar.buildingMgmt,
       navItems: [
-        { label: t.nav.dashboard, href: "/admin", icon: LayoutDashboard },
-        { label: t.nav.buildings, href: "/admin/buildings", icon: Building2 },
-        { label: t.nav.cameras, href: "/admin/cameras", icon: Video },
-        { label: t.nav.residents, href: "/admin/residents", icon: Users },
-        { label: t.nav.sensors, href: "/admin/sensors", icon: Radio },
+        { label: t.nav.dashboard, href: "/manager", icon: LayoutDashboard },
+        { label: t.nav.buildings, href: "/manager/buildings", icon: Building2 },
+        { label: t.nav.cameras, href: "/manager/cameras", icon: Video },
+        { label: t.nav.residents, href: "/manager/residents", icon: Users },
+        { label: t.nav.sensors, href: "/manager/sensors", icon: Radio },
         { label: t.nav.settings, href: "/settings", icon: Settings },
       ],
       dispatchButton: false,
@@ -192,7 +189,7 @@ export default function DashboardLayout({ children, role, userName, userTitle }:
   const config = getRoleConfig(t)[role];
 
   const isActive = (href: string) => {
-    if (href === "/firefighter" || href === "/admin" || href === "/resident") {
+    if (href === "/firefighter" || href === "/admin" || href === "/manager" || href === "/resident") {
       return pathname === href;
     }
     return pathname.startsWith(href) && href !== "/settings";

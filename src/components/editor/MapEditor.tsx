@@ -591,6 +591,9 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
   const [currentOpeningType, setCurrentOpeningType] = useState("door");
   const [openingStart, setOpeningStart] = useState(null);
 
+  // Image Visibility State
+  const [showImage, setShowImage] = useState(true);
+
   // Routing & Preview State
   const [showPreview, setShowPreview] = useState(false);
   const [routingGraph, setRoutingGraph] = useState(null);
@@ -634,6 +637,9 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
 
   // Default Room Type for Corridor Support (Feature 3)
   const [defaultRoomType, setDefaultRoomType] = useState("common");
+
+  // Right Sidebar Tab State
+  const [rightSidebarTab, setRightSidebarTab] = useState<"rooms" | "doors">("rooms");
 
   // API Connection State (Feature 5)
   const [isUploading, setIsUploading] = useState(false);
@@ -3350,19 +3356,6 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
               <span>Location</span>
             </button>
 
-            {/* Preview Toggle */}
-            <button
-              onClick={() => setShowPreview(!showPreview)}
-              className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all border ${
-                showPreview
-                  ? "green-gradient text-white border-transparent shadow-md"
-                  : "bg-dark-green-50 border-dark-green-200 hover:bg-dark-green-100 text-dark-green-700"
-              }`}
-              title="Toggle Map Preview"
-            >
-              <MapIcon size={16} />
-              <span>Preview</span>
-            </button>
           </div>
 
           {/* Center: Edit Controls */}
@@ -3416,28 +3409,6 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
                 <Download size={18} />
               </button>
             </div>
-            <button
-              onClick={exportRoutingGraph}
-              disabled={rooms.length === 0 || openings.length === 0}
-              className="flex items-center gap-2 px-3 py-2 bg-dark-green-50 rounded-xl text-sm font-medium hover:bg-dark-green-100 transition-all border border-dark-green-200 text-dark-green-700 disabled:opacity-30 disabled:cursor-not-allowed"
-              title="Export Routing Graph"
-            >
-              <Route size={16} />
-              <span>Routing</span>
-            </button>
-            <button
-              onClick={uploadToEmergencySystem}
-              disabled={rooms.length === 0 || isUploading}
-              className="flex items-center gap-2 px-4 py-2 green-gradient text-white rounded-xl text-sm font-semibold hover:scale-105 hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-              title="Upload to Emergency System"
-            >
-              {isUploading ? (
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <Target size={16} />
-              )}
-              <span>Emergency</span>
-            </button>
           </div>
         </div>
       </div>
@@ -3488,14 +3459,6 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
             </select>
             {selectedBuildingId && (
               <div className="flex gap-2">
-                <button
-                  onClick={loadFromDatabase}
-                  disabled={isLoadingFromDatabase}
-                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-dark-green-50 hover:bg-dark-green-100 text-dark-green-700 rounded-xl text-xs font-medium transition-all border border-dark-green-200 disabled:opacity-50"
-                >
-                  {isLoadingFromDatabase ? <RefreshCw size={14} className="animate-spin" /> : <Database size={14} />}
-                  Load
-                </button>
                 <button
                   onClick={saveToDatabase}
                   disabled={isSavingToDatabase || rooms.length === 0}
@@ -3765,6 +3728,18 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
             <p className="text-xs text-gray-500 mt-1">
               Hold Space + drag to pan
             </p>
+            <button
+              onClick={() => setShowImage(!showImage)}
+              className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition-all border ${
+                showImage
+                  ? "bg-dark-green-50 border-dark-green-200 text-dark-green-700 hover:bg-dark-green-100"
+                  : "bg-gray-100 border-gray-300 text-gray-500 hover:bg-gray-200"
+              }`}
+              title={showImage ? "Hide Floor Plan Image" : "Show Floor Plan Image"}
+            >
+              {showImage ? <Eye size={14} /> : <EyeOff size={14} />}
+              {showImage ? "Image Visible" : "Image Hidden"}
+            </button>
           </div>
 
           {/* Levels */}
@@ -4023,7 +3998,7 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
                   y="0"
                   width={imageSize.width}
                   height={imageSize.height}
-                  style={{ opacity: 0.8 }}
+                  style={{ opacity: showImage ? 0.8 : 0 }}
                 />
 
                 {/* Calibration line */}
@@ -4998,76 +4973,108 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
                   );
                 })()
               ) : (
-                // Room list
+                // Room & Doors/Openings tabbed list
                 <div className="space-y-2">
-                  {rooms.filter((r) => r.level === currentLevel).length ===
-                  0 ? (
-                    <div className="text-center py-8 text-dark-green-400 text-sm">
-                      No rooms on Level {currentLevel}.<br />
-                      {scaleCalibrated
-                        ? "Start drawing to add rooms."
-                        : "Calibrate scale first."}
-                    </div>
-                  ) : (
-                    rooms
-                      .filter((r) => r.level === currentLevel)
-                      .map((room) => (
-                        <div
-                          key={room.id}
-                          className="p-3 bg-white/50 rounded-lg border border-gray-200 hover:bg-white cursor-pointer transition-all"
-                          onClick={() => setSelectedRoom(room.id)}
-                        >
-                          <div className="flex items-center gap-2">
-                            <div
-                              className="w-3 h-3 rounded-full"
-                              style={{
-                                backgroundColor:
-                                  ROOM_TYPES[room.room_type]?.color,
-                              }}
-                            />
-                            <span className="text-sm font-medium">
-                              {room.name}
-                            </span>
-                            <span className="text-xs text-dark-green-500 ml-auto">
-                              {room.area_sqm.toFixed(1)} m²
-                            </span>
-                          </div>
+                  {/* Tab Toggle */}
+                  <div className="flex rounded-xl bg-gray-100 p-0.5 mb-3">
+                    <button
+                      onClick={() => setRightSidebarTab("rooms")}
+                      className={`flex-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                        rightSidebarTab === "rooms"
+                          ? "bg-white text-dark-green-700 shadow-sm"
+                          : "text-gray-500 hover:text-gray-700"
+                      }`}
+                    >
+                      Rooms ({rooms.filter((r) => r.level === currentLevel).length})
+                    </button>
+                    <button
+                      onClick={() => setRightSidebarTab("doors")}
+                      className={`flex-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                        rightSidebarTab === "doors"
+                          ? "bg-white text-dark-green-700 shadow-sm"
+                          : "text-gray-500 hover:text-gray-700"
+                      }`}
+                    >
+                      Doors ({openings.filter((op) => op.level === currentLevel).length})
+                    </button>
+                  </div>
+
+                  {/* Rooms Tab */}
+                  {rightSidebarTab === "rooms" && (
+                    <>
+                      {rooms.filter((r) => r.level === currentLevel).length ===
+                      0 ? (
+                        <div className="text-center py-8 text-dark-green-400 text-sm">
+                          No rooms on Level {currentLevel}.<br />
+                          {scaleCalibrated
+                            ? "Start drawing to add rooms."
+                            : "Calibrate scale first."}
                         </div>
-                      ))
+                      ) : (
+                        rooms
+                          .filter((r) => r.level === currentLevel)
+                          .map((room) => (
+                            <div
+                              key={room.id}
+                              className="p-3 bg-white/50 rounded-lg border border-gray-200 hover:bg-white cursor-pointer transition-all"
+                              onClick={() => setSelectedRoom(room.id)}
+                            >
+                              <div className="flex items-center gap-2">
+                                <div
+                                  className="w-3 h-3 rounded-full"
+                                  style={{
+                                    backgroundColor:
+                                      ROOM_TYPES[room.room_type]?.color,
+                                  }}
+                                />
+                                <span className="text-sm font-medium">
+                                  {room.name}
+                                </span>
+                                <span className="text-xs text-dark-green-500 ml-auto">
+                                  {room.area_sqm.toFixed(1)} m²
+                                </span>
+                              </div>
+                            </div>
+                          ))
+                      )}
+                    </>
                   )}
 
-                  {/* Openings list */}
-                  {openings.filter((op) => op.level === currentLevel).length >
-                    0 && (
+                  {/* Doors/Openings Tab */}
+                  {rightSidebarTab === "doors" && (
                     <>
-                      <h4 className="text-xs font-semibold text-dark-green-500 uppercase tracking-wider mt-4 mb-2">
-                        Openings
-                      </h4>
-                      {openings
-                        .filter((op) => op.level === currentLevel)
-                        .map((op) => (
-                          <div
-                            key={op.id}
-                            className="p-2 bg-white/50 rounded-lg border border-gray-200 hover:bg-white cursor-pointer transition-all flex items-center gap-2"
-                            onClick={() => {
-                              setSelectedOpening(op.id);
-                              setSelectedRoom(null);
-                            }}
-                          >
+                      {openings.filter((op) => op.level === currentLevel).length === 0 ? (
+                        <div className="text-center py-8 text-dark-green-400 text-sm">
+                          No openings on Level {currentLevel}.<br />
+                          Switch to Door mode to add openings.
+                        </div>
+                      ) : (
+                        openings
+                          .filter((op) => op.level === currentLevel)
+                          .map((op) => (
                             <div
-                              className="w-3 h-3 rounded"
-                              style={{
-                                backgroundColor: OPENING_TYPES[op.type]?.color,
+                              key={op.id}
+                              className="p-2 bg-white/50 rounded-lg border border-gray-200 hover:bg-white cursor-pointer transition-all flex items-center gap-2"
+                              onClick={() => {
+                                setSelectedOpening(op.id);
+                                setSelectedRoom(null);
                               }}
-                            />
-                            <span className="text-xs">
-                              {OPENING_TYPES[op.type]?.label}
-                            </span>
-                            <span className="text-xs text-dark-green-500 ml-auto">
-                              {op.connects.length} rooms
-                            </span>
-                          </div>
-                        ))}
+                            >
+                              <div
+                                className="w-3 h-3 rounded"
+                                style={{
+                                  backgroundColor: OPENING_TYPES[op.type]?.color,
+                                }}
+                              />
+                              <span className="text-xs">
+                                {OPENING_TYPES[op.type]?.label}
+                              </span>
+                              <span className="text-xs text-dark-green-500 ml-auto">
+                                {op.connects.length} rooms
+                              </span>
+                            </div>
+                          ))
+                      )}
                     </>
                   )}
                 </div>
