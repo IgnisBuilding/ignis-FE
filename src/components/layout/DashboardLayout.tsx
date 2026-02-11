@@ -72,6 +72,7 @@ function getRoleConfig(t: any): Record<string, {
         { label: t.nav.dashboard, href: "/firefighter", icon: LayoutDashboard },
         { label: t.nav.liveMap, href: "/firefighter/map", icon: Map },
         { label: t.nav.societies, href: "/firefighter/societies", icon: MapPin },
+<<<<<<< HEAD
         { label: t.nav.stations, href: "/firefighter/stations", icon: Building2 },
         { label: t.nav.personnel, href: "/firefighter/team", icon: Users },
         { label: t.nav.reports, href: "/firefighter/reports", icon: BarChart3 },
@@ -80,6 +81,17 @@ function getRoleConfig(t: any): Record<string, {
       dispatchButton: false,
     },
     // Firefighter State - No Personnel access
+=======
+        { label: t.nav.personnel, href: "/firefighter/team", icon: Users },
+        { label: t.nav.logistics, href: "/firefighter/logistics", icon: Truck },
+        { label: t.nav.reports, href: "/firefighter/reports", icon: BarChart3 },
+        { label: t.nav.directory, href: "/firefighter/directory", icon: BookOpen },
+        { label: t.nav.settings, href: "/settings", icon: Settings },
+      ],
+      dispatchButton: true,
+    },
+    // Firefighter State - No Logistics access
+>>>>>>> 80e3bb81186e2ea2b4fb1054b5ad8733a1e716f8
     firefighter_state: {
       title: "IGNIS COMMAND",
       subtitle: t.sidebar.stateOps,
@@ -87,6 +99,7 @@ function getRoleConfig(t: any): Record<string, {
         { label: t.nav.dashboard, href: "/firefighter", icon: LayoutDashboard },
         { label: t.nav.liveMap, href: "/firefighter/map", icon: Map },
         { label: t.nav.societies, href: "/firefighter/societies", icon: MapPin },
+<<<<<<< HEAD
         { label: t.nav.stations, href: "/firefighter/stations", icon: Building2 },
         { label: t.nav.personnel, href: "/firefighter/team", icon: Users },
         { label: t.nav.reports, href: "/firefighter/reports", icon: BarChart3 },
@@ -95,6 +108,16 @@ function getRoleConfig(t: any): Record<string, {
       dispatchButton: false,
     },
     // Firefighter District - Limited access (no Personnel, Reports)
+=======
+        { label: t.nav.personnel, href: "/firefighter/team", icon: Users },
+        { label: t.nav.reports, href: "/firefighter/reports", icon: BarChart3 },
+        { label: t.nav.directory, href: "/firefighter/directory", icon: BookOpen },
+        { label: t.nav.settings, href: "/settings", icon: Settings },
+      ],
+      dispatchButton: true,
+    },
+    // Firefighter District - Limited access (no Personnel, Logistics, Reports)
+>>>>>>> 80e3bb81186e2ea2b4fb1054b5ad8733a1e716f8
     firefighter_district: {
       title: "IGNIS COMMAND",
       subtitle: t.sidebar.districtOps,
@@ -102,9 +125,16 @@ function getRoleConfig(t: any): Record<string, {
         { label: t.nav.dashboard, href: "/firefighter", icon: LayoutDashboard },
         { label: t.nav.liveMap, href: "/firefighter/map", icon: Map },
         { label: t.nav.societies, href: "/firefighter/societies", icon: MapPin },
+<<<<<<< HEAD
         { label: t.nav.settings, href: "/settings", icon: Settings },
       ],
       dispatchButton: false,
+=======
+        { label: t.nav.directory, href: "/firefighter/directory", icon: BookOpen },
+        { label: t.nav.settings, href: "/settings", icon: Settings },
+      ],
+      dispatchButton: true,
+>>>>>>> 80e3bb81186e2ea2b4fb1054b5ad8733a1e716f8
     },
     // Legacy firefighter role - maps to district level
     firefighter: {
@@ -114,9 +144,16 @@ function getRoleConfig(t: any): Record<string, {
         { label: t.nav.dashboard, href: "/firefighter", icon: LayoutDashboard },
         { label: t.nav.liveMap, href: "/firefighter/map", icon: Map },
         { label: t.nav.societies, href: "/firefighter/societies", icon: MapPin },
+<<<<<<< HEAD
         { label: t.nav.settings, href: "/settings", icon: Settings },
       ],
       dispatchButton: false,
+=======
+        { label: t.nav.directory, href: "/firefighter/directory", icon: BookOpen },
+        { label: t.nav.settings, href: "/settings", icon: Settings },
+      ],
+      dispatchButton: true,
+>>>>>>> 80e3bb81186e2ea2b4fb1054b5ad8733a1e716f8
     },
     resident: {
       title: "IGNIS SAFETY",
@@ -134,11 +171,19 @@ function getRoleConfig(t: any): Record<string, {
       title: "IGNIS CONTROL",
       subtitle: t.sidebar.buildingMgmt,
       navItems: [
+<<<<<<< HEAD
         { label: t.nav.dashboard, href: "/manager", icon: LayoutDashboard },
         { label: t.nav.buildings, href: "/manager/buildings", icon: Building2 },
         { label: t.nav.cameras, href: "/manager/cameras", icon: Video },
         { label: t.nav.residents, href: "/manager/residents", icon: Users },
         { label: t.nav.sensors, href: "/manager/sensors", icon: Radio },
+=======
+        { label: t.nav.dashboard, href: "/admin", icon: LayoutDashboard },
+        { label: t.nav.buildings, href: "/admin/buildings", icon: Building2 },
+        { label: t.nav.cameras, href: "/admin/cameras", icon: Video },
+        { label: t.nav.residents, href: "/admin/residents", icon: Users },
+        { label: t.nav.sensors, href: "/admin/sensors", icon: Radio },
+>>>>>>> 80e3bb81186e2ea2b4fb1054b5ad8733a1e716f8
         { label: t.nav.settings, href: "/settings", icon: Settings },
       ],
       dispatchButton: false,
@@ -155,6 +200,10 @@ function getRoleConfig(t: any): Record<string, {
         { label: t.nav.cameras, href: "/admin/cameras", icon: Video },
         { label: t.nav.residents, href: "/admin/residents", icon: Users },
         { label: t.nav.sensors, href: "/admin/sensors", icon: Radio },
+<<<<<<< HEAD
+=======
+        { label: t.nav.logistics, href: "/admin/logistics", icon: Truck },
+>>>>>>> 80e3bb81186e2ea2b4fb1054b5ad8733a1e716f8
         { label: t.nav.reports, href: "/admin/reports", icon: BarChart3 },
         { label: t.nav.settings, href: "/settings", icon: Settings },
       ],

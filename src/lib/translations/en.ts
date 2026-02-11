@@ -59,7 +59,10 @@ export const enTranslations: Translations = {
     team: "Team",
     activeFires: "Active Fires",
     buildingMap: "Building Map",
+<<<<<<< HEAD
     stations: "Stations",
+=======
+>>>>>>> 80e3bb81186e2ea2b4fb1054b5ad8733a1e716f8
   },
   buttons: {
     save: "Save Changes",
