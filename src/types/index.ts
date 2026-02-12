@@ -9,7 +9,8 @@ export type UserRole =
   | 'commander'
   | 'management'
   | 'building_authority'
-  | 'resident';
+  | 'resident'
+  | 'evacuee';
 
 export interface User {
   id: string;

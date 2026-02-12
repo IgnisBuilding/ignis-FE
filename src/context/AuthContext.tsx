@@ -30,6 +30,8 @@ export function mapToDashboardRole(role: UserRole | null | undefined): Dashboard
       return 'manager';
     case 'resident':
       return 'resident';
+    case 'evacuee':
+      return 'resident';
     default:
       return 'firefighter';
   }
@@ -57,6 +59,8 @@ export function getRoleTitle(role: UserRole | null | undefined): string {
       return 'BUILDING AUTHORITY';
     case 'management':
       return 'MANAGEMENT';
+    case 'evacuee':
+      return 'EVACUEE';
     default:
       return 'USER';
   }
@@ -95,10 +99,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   // Check for existing session on mount (client-side only)
+  // Supports URL-based token for Android WebView: ?token=X&user=Y
   useEffect(() => {
     if (typeof window === 'undefined') {
       setLoading(false);
       return;
+    }
+
+    // Check URL params first (Android WebView injects token via URL)
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlToken = urlParams.get('token');
+    const urlUser = urlParams.get('user');
+
+    if (urlToken && urlUser) {
+      try {
+        const parsedUser = JSON.parse(decodeURIComponent(urlUser));
+        api.setToken(urlToken);
+        localStorage.setItem('ignis_token', urlToken);
+        localStorage.setItem('ignis_user', JSON.stringify(parsedUser));
+        setUser(parsedUser);
+        setLoading(false);
+        return;
+      } catch (error) {
+        console.error('Error parsing URL token/user:', error);
+      }
     }
 
     const storedUser = localStorage.getItem('ignis_user');
@@ -106,6 +130,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     if (storedUser && token) {
       try {
+        api.setToken(token);
         setUser(JSON.parse(storedUser));
       } catch (error) {
         console.error('Error parsing stored user:', error);
