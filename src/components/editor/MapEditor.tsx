@@ -2341,10 +2341,7 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
             level: room.level,
             name: room.name,
             room_type: room.room_type,
-<<<<<<< HEAD
             color: ROOM_TYPES[room.room_type]?.color || null,
-=======
->>>>>>> 80e3bb81186e2ea2b4fb1054b5ad8733a1e716f8
             type: "room"
           },
           geometry: { type: "Polygon", coordinates },
@@ -2354,13 +2351,10 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
       const openingToFeature = (op: any) => {
         const startGeo = pixelToGeo(op.start.x, op.start.y);
         const endGeo = pixelToGeo(op.end.x, op.end.y);
-<<<<<<< HEAD
         // Resolve connected room DB IDs
         const connectsDbIds = (op.connects || [])
           .map((roomId: string) => rooms.find((r: any) => r.id === roomId)?.db_id)
           .filter(Boolean);
-=======
->>>>>>> 80e3bb81186e2ea2b4fb1054b5ad8733a1e716f8
         return {
           type: "Feature",
           properties: {
@@ -2368,15 +2362,11 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
             db_id: op.db_id, // Include database ID if exists
             level: op.level,
             type: "opening",
-<<<<<<< HEAD
             name: op.name || null,
             opening_type: op.type,
             width_meters: OPENING_TYPES[op.type]?.width || null,
             connects: op.connects || [],           // Frontend room IDs
             connects_db_ids: connectsDbIds,        // Resolved DB room IDs
-=======
-            opening_type: op.type
->>>>>>> 80e3bb81186e2ea2b4fb1054b5ad8733a1e716f8
           },
           geometry: { type: "LineString", coordinates: [[startGeo.lng, startGeo.lat], [endGeo.lng, endGeo.lat]] },
         };
@@ -2384,13 +2374,10 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
 
       const cameraToFeature = (cam: any) => {
         const geo = pixelToGeo(cam.position.x, cam.position.y);
-<<<<<<< HEAD
         // Resolve linked room's DB ID for the backend
         const linkedRoom = cam.linked_room_id
           ? rooms.find((r: any) => r.id === cam.linked_room_id)
           : null;
-=======
->>>>>>> 80e3bb81186e2ea2b4fb1054b5ad8733a1e716f8
         return {
           type: "Feature",
           properties: {
@@ -2454,7 +2441,6 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
           },
         },
         // Include routing graph (nodes/edges are always regenerated from rooms/openings)
-<<<<<<< HEAD
         routingGraph: (() => {
           const rg = buildRoutingGraph;
           console.log(`[SaveToDatabase] Routing graph: ${rg.nodes.length} nodes, ${rg.edges.length} edges`);
@@ -2464,9 +2450,6 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
           }
           return rg;
         })(),
-=======
-        routingGraph: buildRoutingGraph,
->>>>>>> 80e3bb81186e2ea2b4fb1054b5ad8733a1e716f8
         // Building properties
         properties: {
           building_name: buildings.find(b => b.id === selectedBuildingId)?.name || "Unknown",
@@ -3745,7 +3728,6 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
             <p className="text-xs text-gray-500 mt-1">
               Hold Space + drag to pan
             </p>
-<<<<<<< HEAD
             <button
               onClick={() => setShowImage(!showImage)}
               className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition-all border ${
@@ -3758,8 +3740,6 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
               {showImage ? <Eye size={14} /> : <EyeOff size={14} />}
               {showImage ? "Image Visible" : "Image Hidden"}
             </button>
-=======
->>>>>>> 80e3bb81186e2ea2b4fb1054b5ad8733a1e716f8
           </div>
 
           {/* Levels */}

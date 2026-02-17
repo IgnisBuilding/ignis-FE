@@ -398,7 +398,6 @@ const EvacuationMap = memo(({
           const filterByFloor = (features: any[]) => {
             // Prefer floor_id filtering for precise matching
             if (activeFloorId) {
-<<<<<<< HEAD
               const filtered = features.filter((f: any) =>
                 Number(f.properties?.floor_id) === Number(activeFloorId) ||
                 Number(f.properties?.floorId) === Number(activeFloorId) ||
@@ -410,13 +409,6 @@ const EvacuationMap = memo(({
                   'sample floor_id:', features[0]?.properties?.floor_id, '(type:', typeof features[0]?.properties?.floor_id, ')');
               }
               return filtered;
-=======
-              return features.filter((f: any) =>
-                f.properties?.floor_id === activeFloorId ||
-                f.properties?.floorId === activeFloorId ||
-                (!f.properties?.floor_id && !f.properties?.floorId)
-              );
->>>>>>> 80e3bb81186e2ea2b4fb1054b5ad8733a1e716f8
             }
             // Fallback to level filtering
             if (!activeFloorLevel) return features;
@@ -628,17 +620,10 @@ const EvacuationMap = memo(({
           .map(f => {
             const roomId = f.properties?.id || f.id;
             // Use node_id directly from room properties (added by backend)
-<<<<<<< HEAD
             // Fall back to room-nodes mapping, then null (don't use roomId as nodeId)
             const nodeIdFromProps = f.properties?.node_id;
             const mapping = roomToNodeMap.get(Number(roomId));
             const nodeId = nodeIdFromProps || (mapping ? mapping.nodeId : null);
-=======
-            // Fall back to room-nodes mapping, then to room ID
-            const nodeIdFromProps = f.properties?.node_id;
-            const mapping = roomToNodeMap.get(Number(roomId));
-            const nodeId = nodeIdFromProps || (mapping ? mapping.nodeId : roomId);
->>>>>>> 80e3bb81186e2ea2b4fb1054b5ad8733a1e716f8
 
             // Get centroid of the room for visualization
             let coordinates: [number, number] | undefined;
@@ -655,11 +640,7 @@ const EvacuationMap = memo(({
               id: String(roomId),
               name: f.properties?.name || 'Unknown',
               // CRITICAL: Use node_id from room properties for route computation
-<<<<<<< HEAD
               nodeId: nodeId ? String(nodeId) : null,
-=======
-              nodeId: String(nodeId),
->>>>>>> 80e3bb81186e2ea2b4fb1054b5ad8733a1e716f8
               roomId: String(roomId),
               coordinates,
               nodeType: mapping?.nodeType,
@@ -835,37 +816,27 @@ const EvacuationMap = memo(({
     const map = mapRef.current;
 
     try {
-<<<<<<< HEAD
       console.log('[EvacuationMap] useEffect updating map data:',
         'features:', floorPlanData.features.length,
         'activeFloorId:', activeFloorId, '(type:', typeof activeFloorId, ')',
         'activeFloorLevel:', activeFloorLevel,
         'center:', floorPlanData.properties?.center_lat, floorPlanData.properties?.center_lng);
 
-=======
->>>>>>> 80e3bb81186e2ea2b4fb1054b5ad8733a1e716f8
       // Filter features by active floor ID (preferred) or level (fallback)
       const filterByFloor = (features: any[]) => {
         // Prefer floor_id filtering for precise matching
         if (activeFloorId) {
-<<<<<<< HEAD
           const filtered = features.filter((f: any) =>
-=======
-          return features.filter((f: any) =>
->>>>>>> 80e3bb81186e2ea2b4fb1054b5ad8733a1e716f8
             f.properties?.floor_id === activeFloorId ||
             f.properties?.floorId === activeFloorId ||
             (!f.properties?.floor_id && !f.properties?.floorId) // Include features without floor_id
           );
-<<<<<<< HEAD
           if (filtered.length === 0 && features.length > 0) {
             console.warn('[EvacuationMap] useEffect: Floor filter removed ALL features!',
               'activeFloorId:', activeFloorId, '(type:', typeof activeFloorId, ')',
               'sample floor_id:', features[0]?.properties?.floor_id, '(type:', typeof features[0]?.properties?.floor_id, ')');
           }
           return filtered;
-=======
->>>>>>> 80e3bb81186e2ea2b4fb1054b5ad8733a1e716f8
         }
         // Fallback to level filtering
         if (!activeFloorLevel) return features;
@@ -1041,14 +1012,7 @@ const EvacuationMap = memo(({
           return {
             id: String(roomId),
             name: f.properties?.name || 'Unknown',
-<<<<<<< HEAD
             nodeId: resolvedNodeId,
-=======
-            // Use node_id from room properties (backend), or find from roomNode, or fall back to roomId
-            nodeId: f.properties?.node_id
-              ? String(f.properties.node_id)
-              : (roomNode ? String(roomNode.properties?.db_id || roomNode.properties?.id) : String(roomId)),
->>>>>>> 80e3bb81186e2ea2b4fb1054b5ad8733a1e716f8
             roomId: String(roomId),
             coordinates,
             floorId,
@@ -1120,15 +1084,12 @@ const EvacuationMap = memo(({
             n.properties?.room_id === roomId ||
             String(n.properties?.room_id) === String(roomId)
           );
-<<<<<<< HEAD
 
           // Resolve node_id: prefer backend-provided node_id, then matched node feature
           const resolvedNodeId = f.properties?.node_id
             ? String(f.properties.node_id)
             : (roomNode ? String(roomNode.properties?.db_id || roomNode.properties?.id) : null);
 
-=======
->>>>>>> 80e3bb81186e2ea2b4fb1054b5ad8733a1e716f8
           let coordinates: [number, number] | undefined;
           if (f.properties?.centroid_lng && f.properties?.centroid_lat) {
             coordinates = [f.properties.centroid_lng, f.properties.centroid_lat];
@@ -1141,24 +1102,13 @@ const EvacuationMap = memo(({
           return {
             id: String(roomId),
             name: f.properties?.name || 'Unknown',
-<<<<<<< HEAD
             nodeId: resolvedNodeId,
-=======
-            // Use node_id from room properties (backend), or find from roomNode, or fall back to roomId
-            nodeId: f.properties?.node_id
-              ? String(f.properties.node_id)
-              : (roomNode ? String(roomNode.properties?.db_id || roomNode.properties?.id) : String(roomId)),
->>>>>>> 80e3bb81186e2ea2b4fb1054b5ad8733a1e716f8
             roomId: String(roomId),
             coordinates,
             floorLevel: String(f.properties?.level || ''),
           };
-<<<<<<< HEAD
         })
         .filter((n: any) => n.nodeId !== null);
-=======
-        });
->>>>>>> 80e3bb81186e2ea2b4fb1054b5ad8733a1e716f8
       allFloorRouteNodesRef.current = allRoomNodesForRoute;
 
       // Store all rooms data (all floors) for fire zone polygon visualization

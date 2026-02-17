@@ -30,10 +30,6 @@ const getFirefighterNavItems = (t: any) => [
   { icon: MapPin, label: t.nav.societies, href: "/firefighter/societies" },
   { icon: Users, label: t.nav.team, href: "/firefighter/team" },
   { icon: AlertTriangle, label: t.nav.activeFires, href: "/firefighter/fires" },
-<<<<<<< HEAD
-=======
-  { icon: Truck, label: t.nav.logistics, href: "/firefighter/logistics" },
->>>>>>> 80e3bb81186e2ea2b4fb1054b5ad8733a1e716f8
   { icon: BarChart3, label: t.nav.reports, href: "/firefighter/reports" },
   { icon: Settings, label: t.nav.settings, href: "/settings" },
 ]
