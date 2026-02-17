@@ -135,6 +135,7 @@ function getRoleConfig(t: any): Record<string, {
       subtitle: t.sidebar.buildingMgmt,
       navItems: [
         { label: t.nav.dashboard, href: "/manager", icon: LayoutDashboard },
+        { label: t.nav.liveMap, href: "/manager/map", icon: Map },
         { label: t.nav.buildings, href: "/manager/buildings", icon: Building2 },
         { label: t.nav.cameras, href: "/manager/cameras", icon: Video },
         { label: t.nav.residents, href: "/manager/residents", icon: Users },

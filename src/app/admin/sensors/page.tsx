@@ -16,6 +16,11 @@ export function SensorsManagementContent() {
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingSensor, setEditingSensor] = useState<ApiSensor | null>(null);
+  const [buildings, setBuildings] = useState<any[]>([]);
+  const [floors, setFloors] = useState<any[]>([]);
+  const [rooms, setRooms] = useState<any[]>([]);
+  const [selectedBuilding, setSelectedBuilding] = useState<number | undefined>();
+  const [selectedFloor, setSelectedFloor] = useState<number | undefined>();
   const [formData, setFormData] = useState({
     name: '',
     type: 'smoke',
@@ -23,6 +28,8 @@ export function SensorsManagementContent() {
     unit: 'ppm',
     status: 'active',
     roomId: undefined as number | undefined,
+    buildingId: undefined as number | undefined,
+    floorId: undefined as number | undefined,
     latitude: undefined as number | undefined,
     longitude: undefined as number | undefined,
   });
@@ -30,8 +37,68 @@ export function SensorsManagementContent() {
   useEffect(() => {
     if (user && (role === 'building_authority' || role === 'management')) {
       loadSensors();
+      loadBuildings();
     }
   }, [user, role]);
+
+  const loadBuildings = async () => {
+    try {
+      const data = await api.getBuildings();
+      setBuildings(data);
+    } catch (err: any) {
+      console.error('Failed to load buildings:', err);
+    }
+  };
+
+  const loadFloors = async (buildingId: number) => {
+    try {
+      const data = await api.getBuildingFloors(buildingId);
+      setFloors(data);
+      setRooms([]);
+      setSelectedFloor(undefined);
+    } catch (err: any) {
+      console.error('Failed to load floors:', err);
+      setFloors([]);
+    }
+  };
+
+  const loadRooms = async (floorId: number) => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/floors/${floorId}/rooms`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('ignis_token')}`,
+        },
+      });
+      const data = await response.json();
+      setRooms(data);
+    } catch (err: any) {
+      console.error('Failed to load rooms:', err);
+      setRooms([]);
+    }
+  };
+
+  const handleBuildingChange = (buildingId: string) => {
+    const id = buildingId ? parseInt(buildingId) : undefined;
+    setSelectedBuilding(id);
+    setFormData({ ...formData, buildingId: id, floorId: undefined, roomId: undefined });
+    if (id) {
+      loadFloors(id);
+    } else {
+      setFloors([]);
+      setRooms([]);
+    }
+  };
+
+  const handleFloorChange = (floorId: string) => {
+    const id = floorId ? parseInt(floorId) : undefined;
+    setSelectedFloor(id);
+    setFormData({ ...formData, floorId: id, roomId: undefined });
+    if (id) {
+      loadRooms(id);
+    } else {
+      setRooms([]);
+    }
+  };
 
   const loadSensors = async () => {
     try {
@@ -69,6 +136,10 @@ export function SensorsManagementContent() {
 
   const handleAdd = () => {
     setEditingSensor(null);
+    setSelectedBuilding(undefined);
+    setSelectedFloor(undefined);
+    setFloors([]);
+    setRooms([]);
     setFormData({
       name: '',
       type: 'smoke',
@@ -76,21 +147,42 @@ export function SensorsManagementContent() {
       unit: 'ppm',
       status: 'active',
       roomId: undefined,
+      buildingId: undefined,
+      floorId: undefined,
       latitude: undefined,
       longitude: undefined,
     });
     setShowModal(true);
   };
 
-  const handleEdit = (sensor: ApiSensor) => {
+  const handleEdit = async (sensor: ApiSensor) => {
     setEditingSensor(sensor);
+    
+    // Pre-populate building, floor, room
+    const buildingId = sensor.building?.id || sensor.floor?.building?.id || sensor.room?.floor?.building?.id;
+    const floorId = sensor.floor?.id || sensor.room?.floor?.id;
+    const roomId = sensor.room?.id;
+    
+    setSelectedBuilding(buildingId);
+    setSelectedFloor(floorId);
+    
+    // Load floors and rooms if needed
+    if (buildingId) {
+      await loadFloors(buildingId);
+    }
+    if (floorId) {
+      await loadRooms(floorId);
+    }
+    
     setFormData({
       name: sensor.name,
       type: sensor.type,
       value: sensor.value || 0,
       unit: sensor.unit || 'ppm',
       status: sensor.status,
-      roomId: sensor.roomId,
+      roomId: roomId,
+      buildingId: buildingId,
+      floorId: floorId,
       latitude: sensor.latitude,
       longitude: sensor.longitude,
     });
@@ -163,7 +255,7 @@ export function SensorsManagementContent() {
                         <th className="px-6 py-4 text-left text-sm font-bold text-dark-green-800">Type</th>
                         <th className="px-6 py-4 text-left text-sm font-bold text-dark-green-800">Name</th>
                         <th className="px-6 py-4 text-left text-sm font-bold text-dark-green-800">Value</th>
-                        <th className="px-6 py-4 text-left text-sm font-bold text-dark-green-800">Room ID</th>
+                        <th className="px-6 py-4 text-left text-sm font-bold text-dark-green-800">Location</th>
                         <th className="px-6 py-4 text-left text-sm font-bold text-dark-green-800">Status</th>
                         <th className="px-6 py-4 text-left text-sm font-bold text-dark-green-800">Last Reading</th>
                         <th className="px-6 py-4 text-left text-sm font-bold text-dark-green-800">Actions</th>
@@ -182,7 +274,30 @@ export function SensorsManagementContent() {
                           </td>
                           <td className="px-6 py-4 text-dark-green-600">{sensor.name || 'Unnamed Sensor'}</td>
                           <td className="px-6 py-4 text-dark-green-600">{sensor.value ?? 'N/A'} {sensor.unit || ''}</td>
-                          <td className="px-6 py-4 text-dark-green-600">{sensor.room?.name || sensor.roomId || 'N/A'}</td>
+                          <td className="px-6 py-4">
+                            {sensor.room ? (
+                              <div className="text-dark-green-600 text-sm">
+                                <div className="font-semibold">{sensor.room.name}</div>
+                                {sensor.room.floor && (
+                                  <div className="text-xs text-dark-green-400">
+                                    {sensor.room.floor.name || `Floor ${sensor.room.floor.level}`}
+                                    {sensor.room.floor.building && ` • ${sensor.room.floor.building.name}`}
+                                  </div>
+                                )}
+                              </div>
+                            ) : sensor.floor ? (
+                              <div className="text-dark-green-600 text-sm">
+                                <div className="font-semibold">{sensor.floor.name || `Floor ${sensor.floor.level}`}</div>
+                                {sensor.floor.building && (
+                                  <div className="text-xs text-dark-green-400">{sensor.floor.building.name}</div>
+                                )}
+                              </div>
+                            ) : sensor.building ? (
+                              <div className="text-dark-green-600 text-sm font-semibold">{sensor.building.name}</div>
+                            ) : (
+                              <span className="text-dark-green-400 text-sm italic">Not assigned</span>
+                            )}
+                          </td>
                           <td className="px-6 py-4">
                             <span className={`px-3 py-1.5 rounded-full text-xs font-bold ${sensor.status === 'active' ? 'bg-gradient-to-r from-green-100 to-green-50 text-green-700 border border-green-200' : sensor.status === 'alert' ? 'bg-gradient-to-r from-red-100 to-red-50 text-red-700 border border-red-200' : 'bg-gradient-to-r from-gray-100 to-gray-50 text-gray-700 border border-gray-200'}`}>
                               {sensor.status || 'unknown'}
@@ -239,8 +354,31 @@ export function SensorsManagementContent() {
                           <input type="number" step="0.01" value={formData.value} onChange={(e) => setFormData({...formData, value: parseFloat(e.target.value)})} className="w-full px-4 py-2 border-2 border-dark-green-200 rounded-xl focus:border-dark-green-500 focus:outline-none" />
                         </div>
                         <div>
-                          <label className="block text-sm font-semibold text-dark-green-700 mb-2">Room ID (Optional)</label>
-                          <input type="number" value={formData.roomId || ''} onChange={(e) => setFormData({...formData, roomId: e.target.value ? parseInt(e.target.value) : undefined})} placeholder="Leave empty if not assigned" className="w-full px-4 py-2 border-2 border-dark-green-200 rounded-xl focus:border-dark-green-500 focus:outline-none" />
+                          <label className="block text-sm font-semibold text-dark-green-700 mb-2">Building</label>
+                          <select value={selectedBuilding || ''} onChange={(e) => handleBuildingChange(e.target.value)} className="w-full px-4 py-2 border-2 border-dark-green-200 rounded-xl focus:border-dark-green-500 focus:outline-none">
+                            <option value="">Select Building</option>
+                            {buildings.map(building => (
+                              <option key={building.id} value={building.id}>{building.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-dark-green-700 mb-2">Floor</label>
+                          <select value={selectedFloor || ''} onChange={(e) => handleFloorChange(e.target.value)} disabled={!selectedBuilding} className="w-full px-4 py-2 border-2 border-dark-green-200 rounded-xl focus:border-dark-green-500 focus:outline-none disabled:bg-gray-100 disabled:cursor-not-allowed">
+                            <option value="">Select Floor</option>
+                            {floors.map(floor => (
+                              <option key={floor.id} value={floor.id}>{floor.name || `Floor ${floor.level}`}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="col-span-2">
+                          <label className="block text-sm font-semibold text-dark-green-700 mb-2">Room</label>
+                          <select value={formData.roomId || ''} onChange={(e) => setFormData({...formData, roomId: e.target.value ? parseInt(e.target.value) : undefined})} disabled={!selectedFloor} className="w-full px-4 py-2 border-2 border-dark-green-200 rounded-xl focus:border-dark-green-500 focus:outline-none disabled:bg-gray-100 disabled:cursor-not-allowed">
+                            <option value="">Select Room</option>
+                            {rooms.map(room => (
+                              <option key={room.id} value={room.id}>{room.name}</option>
+                            ))}
+                          </select>
                         </div>
                         <div>
                           <label className="block text-sm font-semibold text-dark-green-700 mb-2">Latitude (Optional)</label>

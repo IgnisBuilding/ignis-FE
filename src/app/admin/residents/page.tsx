@@ -48,9 +48,17 @@ export function ResidentsManagementContent() {
   const [showModal, setShowModal] = useState(false);
   const [selectedResident, setSelectedResident] = useState<ApiResident | null>(null);
   const [editingResident, setEditingResident] = useState<ApiResident | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
+
+  // Filter State
+  const [selectedBuilding, setSelectedBuilding] = useState<string>('all');
+  const [selectedSociety, setSelectedSociety] = useState<string>('all');
+  const [selectedType, setSelectedType] = useState<string>('all');
+  const [selectedStatus, setSelectedStatus] = useState<string>('all');
 
   // Data State
   const [residents, setResidents] = useState<ApiResident[]>([]);
+  const [buildings, setBuildings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -70,10 +78,11 @@ export function ResidentsManagementContent() {
 
   // Load residents from API
   useEffect(() => {
-    if (user && (role === 'building_authority' || role === 'management')) {
+    if (user) {
       loadResidents();
+      loadBuildings();
     }
-  }, [user, role]);
+  }, [user]);
 
   const loadResidents = async () => {
     try {
@@ -86,6 +95,15 @@ export function ResidentsManagementContent() {
       setError(err.message || 'Failed to load residents');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadBuildings = async () => {
+    try {
+      const data = await api.getBuildings();
+      setBuildings(data);
+    } catch (err: any) {
+      console.error('Failed to load buildings:', err);
     }
   };
 
@@ -184,11 +202,35 @@ export function ResidentsManagementContent() {
     }
   };
 
-  const filteredResidents = residents.filter((r) =>
-    (r.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (r.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (r.type || '').toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredResidents = residents.filter((r) => {
+    // Search filter
+    const matchesSearch = 
+      (r.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (r.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (r.type || '').toLowerCase().includes(searchTerm.toLowerCase());
+
+    // Building filter
+    const matchesBuilding = selectedBuilding === 'all' || 
+      (r.apartment?.building_id && r.apartment.building_id === Number(selectedBuilding));
+
+    // Type filter
+    const matchesType = selectedType === 'all' || 
+      (r.type || '').toLowerCase() === selectedType.toLowerCase();
+
+    // Status filter
+    const matchesStatus = selectedStatus === 'all' || 
+      (selectedStatus === 'active' && r.isActive) ||
+      (selectedStatus === 'inactive' && !r.isActive);
+
+    return matchesSearch && matchesBuilding && matchesType && matchesStatus;
+  });
+
+  // Get unique societies from buildings
+  const societies = Array.from(new Set(buildings.map(b => b.society_id).filter(Boolean)))
+    .map(id => {
+      const building = buildings.find(b => b.society_id === id);
+      return { id, name: building?.society_name || `Society ${id}` };
+    });
 
   const getStatusBadge = (resident: ApiResident) => {
     if (resident.isActive) {
@@ -211,8 +253,6 @@ export function ResidentsManagementContent() {
     }
   };
 
-  if (!user || (role !== 'building_authority' && role !== 'management')) return null;
-
   return (
     <DashboardLayout role={dashboardRole} userName={user?.name || 'Admin'} userTitle={roleTitle}>
       <div className="flex-1 space-y-4 sm:space-y-6 overflow-auto p-3 sm:p-4 md:p-6 lg:p-8 w-full max-w-none">
@@ -228,7 +268,8 @@ export function ResidentsManagementContent() {
           <div className="flex-1">
             <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Residents Management</h1>
             <p className="text-sm text-muted-foreground">
-              Active residents: {filteredResidents.filter(r => r.isActive).length} / {residents.length} total
+              Showing {filteredResidents.length} of {residents.length} residents
+              {filteredResidents.length > 0 && ` (${filteredResidents.filter(r => r.isActive).length} active)`}
             </p>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
@@ -241,20 +282,97 @@ export function ResidentsManagementContent() {
         </div>
 
         {/* Search and Filter */}
-        <div className="flex flex-col gap-2 sm:flex-row sm:gap-4 w-full">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by name, email, or type..."
-              className="pl-10 w-full"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+        <div className="flex flex-col gap-2 w-full">
+          <div className="flex flex-col gap-2 sm:flex-row sm:gap-4 w-full">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by name, email, or type..."
+                className="pl-10 w-full"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <Button 
+              variant="outline" 
+              className="gap-2 bg-transparent flex-shrink-0"
+              onClick={() => setShowFilters(!showFilters)}
+            >
+              <Filter className="h-4 w-4" />
+              {showFilters ? 'Hide Filters' : 'Show Filters'}
+            </Button>
           </div>
-          <Button variant="outline" className="gap-2 bg-transparent flex-shrink-0">
-            <Filter className="h-4 w-4" />
-            Filter
-          </Button>
+
+          {/* Filter Dropdowns */}
+          {showFilters && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 p-4 border border-border rounded-lg bg-muted/20">
+              <div>
+                <label className="block text-xs font-semibold text-foreground mb-1.5">
+                  Building
+                </label>
+                <select
+                  value={selectedBuilding}
+                  onChange={(e) => setSelectedBuilding(e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-border rounded-md focus:border-[#1f3d2f] focus:ring-2 focus:ring-[#1f3d2f]/20 focus:outline-none bg-background"
+                >
+                  <option value="all">All Buildings</option>
+                  {buildings.map((building) => (
+                    <option key={building.id} value={building.id}>
+                      {building.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-foreground mb-1.5">
+                  Type
+                </label>
+                <select
+                  value={selectedType}
+                  onChange={(e) => setSelectedType(e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-border rounded-md focus:border-[#1f3d2f] focus:ring-2 focus:ring-[#1f3d2f]/20 focus:outline-none bg-background"
+                >
+                  <option value="all">All Types</option>
+                  <option value="owner">Owner</option>
+                  <option value="tenant">Tenant</option>
+                  <option value="resident">Resident</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-foreground mb-1.5">
+                  Status
+                </label>
+                <select
+                  value={selectedStatus}
+                  onChange={(e) => setSelectedStatus(e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-border rounded-md focus:border-[#1f3d2f] focus:ring-2 focus:ring-[#1f3d2f]/20 focus:outline-none bg-background"
+                >
+                  <option value="all">All Status</option>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </div>
+
+              <div className="flex items-end">
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => {
+                    setSelectedBuilding('all');
+                    setSelectedSociety('all');
+                    setSelectedType('all');
+                    setSelectedStatus('all');
+                    setSearchTerm('');
+                  }}
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Clear Filters
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Residents List */}
@@ -300,17 +418,25 @@ export function ResidentsManagementContent() {
                           <Mail className="h-3 w-3 flex-shrink-0" />
                           <span className="truncate">{resident.email || 'No email'}</span>
                         </div>
-                        <div className="flex items-center gap-2 mt-1 flex-wrap">
-                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <Home className="h-3 w-3 flex-shrink-0" />
-                            <span>Apt: {resident.apartment?.unit_number || resident.apartmentId || 'N/A'}</span>
-                          </div>
-                          {resident.phone && (
+                        <div className="flex flex-col gap-1 mt-1">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                              <Phone className="h-3 w-3 flex-shrink-0" />
-                              <span>{resident.phone}</span>
+                              <Home className="h-3 w-3 flex-shrink-0" />
+                              <span>Apt: {resident.apartment?.unit_number || resident.apartmentId || 'N/A'}</span>
                             </div>
-                          )}
+                            {resident.apartment?.building_name && (
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                <span>•</span>
+                                <span>{resident.apartment.building_name}</span>
+                              </div>
+                            )}
+                            {resident.phone && (
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                <Phone className="h-3 w-3 flex-shrink-0" />
+                                <span>{resident.phone}</span>
+                              </div>
+                            )}
+                          </div>
                         </div>
                         <div className="mt-1 flex gap-1 flex-wrap">
                           {getTypeBadge(resident.type)}

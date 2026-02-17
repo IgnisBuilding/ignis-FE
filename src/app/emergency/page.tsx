@@ -326,9 +326,10 @@ function EmergencyPageContent() {
   };
 
   const content = (
+      <>
       <div className="flex-1 flex flex-col h-full">
         <div className="flex flex-1 min-h-0">
-          {/* Floor Selector — minimal on mobile, full on desktop */}
+          {/* Floor Selector - minimal on mobile, full on desktop */}
           <div className={`flex-shrink-0 flex flex-col items-center gap-1 border-r border-border bg-card px-3 py-4 ${isMobileMode ? 'py-2 px-1.5' : ''}`}>
             {isLoadingFloors ? (
               <div className="animate-pulse h-10 w-10 bg-muted rounded-lg" />
@@ -350,7 +351,7 @@ function EmergencyPageContent() {
                 </button>
               ))
             )}
-            {/* Stack toggle — desktop only */}
+            {/* Stack toggle - desktop only */}
             {!isMobileMode && (
               <div className="mt-2 flex flex-col items-center gap-1">
                 <Switch checked={stackMode} onCheckedChange={setStackMode} />
@@ -361,7 +362,7 @@ function EmergencyPageContent() {
 
           {/* Map View Area */}
           <div className="relative flex-1 min-w-0">
-            {/* Critical Alert Card — desktop only */}
+            {/* Critical Alert Card - desktop only */}
             {!isMobileMode && (
               <AnimatePresence>
                 {criticalAlert && !criticalAlert.acknowledged && (
@@ -401,7 +402,7 @@ function EmergencyPageContent() {
               </AnimatePresence>
             )}
 
-            {/* Evacuation Map — no emergency controls on mobile */}
+            {/* Evacuation Map - no emergency controls on mobile */}
             <EvacuationMap
               className="absolute inset-0"
               showControls={true}
@@ -421,7 +422,7 @@ function EmergencyPageContent() {
               currentUserId={user?.id}
             />
 
-            {/* Tactical Overlay Legend — compact on mobile */}
+            {/* Tactical Overlay Legend - compact on mobile */}
             <Card className={`absolute ${isMobileMode ? 'bottom-2 left-2 right-2' : 'bottom-4 left-1/2 -translate-x-1/2'} shadow-lg`}>
               <CardContent className={`flex items-center gap-4 ${isMobileMode ? 'gap-2 px-2 py-1.5 flex-wrap justify-center' : 'px-4 py-2'}`}>
                 {!isMobileMode && (
@@ -459,7 +460,7 @@ function EmergencyPageContent() {
         </div>
       </div>
 
-      {/* AI Agent Button & Chat — desktop only */}
+      {/* AI Agent Button and Chat - desktop only */}
       {!isMobileMode && (
         <>
           <motion.button
@@ -515,6 +516,7 @@ function EmergencyPageContent() {
           </AnimatePresence>
         </>
       )}
+      </>
   );
 
   // Mobile mode (Android WebView): skip DashboardLayout wrapper

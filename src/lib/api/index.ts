@@ -29,7 +29,34 @@ export interface Sensor {
   unit?: string;
   status: string;
   roomId?: number;
-  room?: { id: number; name: string };
+  room?: { 
+    id: number; 
+    name: string;
+    floor?: {
+      id: number;
+      name?: string;
+      level?: number;
+      building?: {
+        id: number;
+        name: string;
+      };
+    };
+  };
+  floorId?: number;
+  floor?: {
+    id: number;
+    name?: string;
+    level?: number;
+    building?: {
+      id: number;
+      name: string;
+    };
+  };
+  buildingId?: number;
+  building?: {
+    id: number;
+    name: string;
+  };
   latitude?: number;
   longitude?: number;
   lastReading?: string;
@@ -43,7 +70,14 @@ export interface Resident {
   email: string;
   phone?: string;
   apartmentId?: number;
-  apartment?: { id: number; unit_number: string };
+  apartment?: { 
+    id: number; 
+    unit_number: string;
+    floor_level?: number;
+    building_id?: number;
+    building_name?: string;
+    society_id?: number;
+  };
   type: string;
   isActive: boolean;
   emergencyContact?: string;
