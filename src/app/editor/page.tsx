@@ -42,7 +42,7 @@ function EditorPageContent() {
 
 export default function EditorPage() {
   return (
-    <ProtectedRoute allowedRoles={['management', 'building_authority']}>
+    <ProtectedRoute allowedRoles={['admin', 'management', 'building_authority']}>
       <Suspense fallback={<FullScreenLoader />}>
         <EditorPageContent />
       </Suspense>
