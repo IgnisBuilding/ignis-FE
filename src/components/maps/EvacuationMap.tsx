@@ -681,7 +681,7 @@ const EvacuationMap = memo(({
 
         setRouteNodes([...deduplicatedRoomNodes, ...deduplicatedNavNodes]);
 
-        // Store data globally for debugging
+        // Store data globally for debugging and Android bridge access
         if (typeof window !== 'undefined') {
           (window as any)._mapInstance = map;
           (window as any)._roomsData = roomsData;
@@ -689,6 +689,15 @@ const EvacuationMap = memo(({
           (window as any)._roomNodesMapping = roomNodesMapping;
           (window as any)._sensors = sensors;
           (window as any)._occupancy = occupancy;
+
+          // Notify Android WebView bridge that map is ready
+          if (typeof (window as any).AndroidBridge !== 'undefined') {
+            try {
+              (window as any).AndroidBridge.onMapReady();
+            } catch (e) {
+              console.warn('[EvacuationMap] AndroidBridge.onMapReady() failed:', e);
+            }
+          }
         }
 
         // Add controls
