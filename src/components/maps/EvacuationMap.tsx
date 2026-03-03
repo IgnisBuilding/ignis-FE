@@ -684,6 +684,7 @@ const EvacuationMap = memo(({
         // Store data globally for debugging and Android bridge access
         if (typeof window !== 'undefined') {
           (window as any)._mapInstance = map;
+          (window as any).maplibregl = maplibregl; // Expose for Android POSITION_TRACKING_JS
           (window as any)._roomsData = roomsData;
           (window as any)._nodesData = nodesData;
           (window as any)._roomNodesMapping = roomNodesMapping;
