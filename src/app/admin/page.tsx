@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import DashboardLayout from '@/components/layout/DashboardLayout';
@@ -240,11 +241,16 @@ export function AdminDashboardContent() {
           <Card className="overflow-hidden border border-border">
             <CardContent className="p-0">
               <div className="flex flex-col lg:flex-row">
-                {/* Image placeholder - matching screenshot with grey background and "300x300" text */}
-                <div className="relative h-48 w-full flex-shrink-0 bg-neutral-200 sm:h-56 lg:h-auto lg:w-80">
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-sm text-neutral-400">300x300</span>
-                  </div>
+                {/* Building image */}
+                <div className="relative h-48 w-full flex-shrink-0 bg-neutral-200 sm:h-56 lg:h-auto lg:w-80 border-r border-border">
+                  <Image
+                    src="/ignispng.jpeg"
+                    alt="Building incident"
+                    fill
+                    className="object-cover border-2 border-border"
+                    unoptimized
+                    priority
+                  />
                   <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4">
                     <Badge variant="secondary" className="gap-1.5 bg-white dark:bg-card px-3 py-1.5 text-sm font-medium text-foreground shadow-sm rounded-full">
                       <MapPin className="h-3.5 w-3.5 text-red-500 flex-shrink-0" />

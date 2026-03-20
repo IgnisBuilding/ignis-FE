@@ -7,6 +7,7 @@ import { fadeIn } from '@/lib/animations';
 import { useAuth } from '@/context/AuthContext';
 import { api, Sensor as ApiSensor } from '@/lib/api';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import { useSensorStream, SensorReadingEvent } from '@/hooks/use-sensor-stream';
 
 export function SensorsManagementContent() {
   const { user, role, dashboardRole, roleTitle } = useAuth();
@@ -32,6 +33,31 @@ export function SensorsManagementContent() {
     floorId: undefined as number | undefined,
     latitude: undefined as number | undefined,
     longitude: undefined as number | undefined,
+  });
+
+  const applyLiveReading = (event: SensorReadingEvent) => {
+    setSensors((prev) =>
+      prev.map((sensor) => {
+        if (sensor.id !== event.sensor_id) {
+          return sensor;
+        }
+
+        return {
+          ...sensor,
+          value: event.value,
+          unit: event.unit,
+          status: event.status,
+          lastReading: new Date(event.timestamp).toISOString(),
+          updatedAt: new Date(event.timestamp).toISOString(),
+        };
+      }),
+    );
+  };
+
+  const { isConnected: isSensorSocketConnected, latestConnection } = useSensorStream({
+    autoConnect: true,
+    onSensorReading: applyLiveReading,
+    onSensorAlert: applyLiveReading,
   });
 
   useEffect(() => {
@@ -134,6 +160,20 @@ export function SensorsManagementContent() {
     }
   };
 
+  const getStatusBadgeClass = (status?: string) => {
+    switch ((status || '').toLowerCase()) {
+      case 'safe':
+      case 'active':
+        return 'bg-gradient-to-r from-green-100 to-green-50 text-green-700 border border-green-200';
+      case 'warning':
+        return 'bg-gradient-to-r from-amber-100 to-amber-50 text-amber-700 border border-amber-200';
+      case 'alert':
+        return 'bg-gradient-to-r from-red-100 to-red-50 text-red-700 border border-red-200';
+      default:
+        return 'bg-gradient-to-r from-gray-100 to-gray-50 text-gray-700 border border-gray-200';
+    }
+  };
+
   const handleAdd = () => {
     setEditingSensor(null);
     setSelectedBuilding(undefined);
@@ -223,6 +263,18 @@ export function SensorsManagementContent() {
               <div>
                 <h1 className="text-4xl font-bold gradient-text mb-2">Sensor Management</h1>
                 <p className="text-dark-green-600">Monitor and manage all fire safety sensors</p>
+                <div className="mt-2 flex items-center gap-2 text-sm">
+                  <span
+                    className={`inline-block h-2.5 w-2.5 rounded-full ${
+                      isSensorSocketConnected ? 'bg-green-500' : 'bg-red-500'
+                    }`}
+                  />
+                  <span className="text-dark-green-700">
+                    Live stream: {isSensorSocketConnected ? 'Connected' : 'Disconnected'}
+                    {latestConnection?.mode ? ` (${latestConnection.mode})` : ''}
+                    {latestConnection?.port ? ` • ${latestConnection.port}` : ''}
+                  </span>
+                </div>
               </div>
               <button onClick={handleAdd} className="flex items-center space-x-2 px-6 py-3 green-gradient text-white rounded-xl hover:scale-105 hover:shadow-xl transition-all">
                 <Plus className="w-5 h-5" />
@@ -299,7 +351,7 @@ export function SensorsManagementContent() {
                             )}
                           </td>
                           <td className="px-6 py-4">
-                            <span className={`px-3 py-1.5 rounded-full text-xs font-bold ${sensor.status === 'active' ? 'bg-gradient-to-r from-green-100 to-green-50 text-green-700 border border-green-200' : sensor.status === 'alert' ? 'bg-gradient-to-r from-red-100 to-red-50 text-red-700 border border-red-200' : 'bg-gradient-to-r from-gray-100 to-gray-50 text-gray-700 border border-gray-200'}`}>
+                            <span className={`px-3 py-1.5 rounded-full text-xs font-bold ${getStatusBadgeClass(sensor.status)}`}>
                               {sensor.status || 'unknown'}
                             </span>
                           </td>
