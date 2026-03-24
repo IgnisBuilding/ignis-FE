@@ -39,7 +39,7 @@ export function CamerasManagementContent() {
   const [configLoading, setConfigLoading] = useState(false);
   const [configSaving, setConfigSaving] = useState(false);
   const [configFormData, setConfigFormData] = useState({
-    min_confidence: 0.7,
+    min_confidence: 0.4,
     consecutive_detections: 3,
     cooldown_seconds: 60,
     auto_create_hazard: true,
@@ -123,7 +123,7 @@ export function CamerasManagementContent() {
       console.error('Failed to load fire alert config:', err);
       // If config doesn't exist, use defaults
       setConfigFormData({
-        min_confidence: 0.7,
+        min_confidence: 0.4,
         consecutive_detections: 3,
         cooldown_seconds: 60,
         auto_create_hazard: true,
@@ -388,7 +388,7 @@ export function CamerasManagementContent() {
                     <div className="flex items-center space-x-3">
                       <input
                         type="range"
-                        min="0.5"
+                        min="0.3"
                         max="0.99"
                         step="0.01"
                         value={configFormData.min_confidence}
