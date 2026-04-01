@@ -25,6 +25,7 @@ export interface Sensor {
   id: number;
   name: string;
   type: string;
+  hardwareUid?: string;
   value?: number;
   unit?: string;
   status: string;
@@ -180,6 +181,7 @@ export interface Camera {
   status: string;
   location_description?: string;
   is_fire_detection_enabled: boolean;
+  privacy_mode?: boolean;
   building?: Building;
   floor?: Floor;
   room?: Room;
@@ -397,6 +399,12 @@ class ApiService {
 
   async getSensorStats(): Promise<any> {
     return this.request<any>('/sensors/stats', {
+      method: 'GET',
+    });
+  }
+
+  async getArduinoSensorHealth(): Promise<any> {
+    return this.request<any>('/sensors/arduino/health', {
       method: 'GET',
     });
   }

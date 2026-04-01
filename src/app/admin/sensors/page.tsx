@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, Edit2, Trash2, Search, Activity, Thermometer, Wind, Droplets, AlertCircle } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
@@ -22,9 +22,13 @@ export function SensorsManagementContent() {
   const [rooms, setRooms] = useState<any[]>([]);
   const [selectedBuilding, setSelectedBuilding] = useState<number | undefined>();
   const [selectedFloor, setSelectedFloor] = useState<number | undefined>();
+  const [availableSystemSensors, setAvailableSystemSensors] = useState<ApiSensor[]>([]);
+  const [hardwareConnected, setHardwareConnected] = useState(false);
+  const [mappedSensorId, setMappedSensorId] = useState<number | undefined>();
   const [formData, setFormData] = useState({
     name: '',
     type: 'smoke',
+    hardwareUid: '',
     value: 0,
     unit: 'ppm',
     status: 'active',
@@ -35,9 +39,36 @@ export function SensorsManagementContent() {
     longitude: undefined as number | undefined,
   });
 
+  const linkableSystemSensors = useMemo(() => {
+    const filtered = availableSystemSensors.filter((sensor) => {
+      const status = String(sensor?.status || '').toLowerCase();
+      return status !== 'offline' && status !== 'inactive' && status !== 'disconnected';
+    });
+    return filtered.length > 0 ? filtered : availableSystemSensors;
+  }, [availableSystemSensors]);
+
   const applyLiveReading = (event: SensorReadingEvent) => {
-    setSensors((prev) =>
-      prev.map((sensor) => {
+    setSensors((prev) => {
+      const exists = prev.some(s => s.id === event.sensor_id);
+      if (!exists) {
+        // Append newly discovered sensor
+        return [...prev, {
+          id: event.sensor_id,
+          name: event.name || 'Arduino Sensor',
+          type: event.type || 'gas',
+          value: event.value,
+          unit: event.unit || 'ppm',
+          status: event.status,
+          lastReading: new Date(event.timestamp).toISOString(),
+          createdAt: new Date(event.timestamp).toISOString(),
+          updatedAt: new Date(event.timestamp).toISOString(),
+          building: undefined,
+          floor: undefined,
+          room: undefined,
+        } as ApiSensor];
+      }
+
+      return prev.map((sensor) => {
         if (sensor.id !== event.sensor_id) {
           return sensor;
         }
@@ -50,8 +81,8 @@ export function SensorsManagementContent() {
           lastReading: new Date(event.timestamp).toISOString(),
           updatedAt: new Date(event.timestamp).toISOString(),
         };
-      }),
-    );
+      });
+    });
   };
 
   const { isConnected: isSensorSocketConnected, latestConnection } = useSensorStream({
@@ -60,12 +91,57 @@ export function SensorsManagementContent() {
     onSensorAlert: applyLiveReading,
   });
 
+  const loadConnectedHardwareSensors = useCallback(async () => {
+    try {
+      const [health, allSensors] = await Promise.all([
+        api.getArduinoSensorHealth(),
+        api.getSensors(),
+      ]);
+
+      const isConnected = Boolean(health?.connected);
+      setHardwareConnected(isConnected);
+
+      if (!isConnected) {
+        setAvailableSystemSensors([]);
+        return;
+      }
+
+      const mappedIds = Object.values(health?.sensorMapping || {})
+        .map((id) => Number(id))
+        .filter((id) => !Number.isNaN(id));
+
+      if (mappedIds.length === 0) {
+        setAvailableSystemSensors([]);
+        return;
+      }
+
+      const connectedSensors = allSensors.filter((sensor: ApiSensor) =>
+        mappedIds.includes(Number(sensor?.id))
+      );
+
+      setAvailableSystemSensors(connectedSensors);
+    } catch (err) {
+      console.error('Failed to load connected hardware sensors:', err);
+      setHardwareConnected(false);
+      setAvailableSystemSensors([]);
+    }
+  }, []);
+
   useEffect(() => {
-    if (user && (role === 'building_authority' || role === 'management')) {
+    if (user) {
       loadSensors();
       loadBuildings();
+      loadConnectedHardwareSensors();
     }
-  }, [user, role]);
+  }, [user, loadConnectedHardwareSensors]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      void loadConnectedHardwareSensors();
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [loadConnectedHardwareSensors]);
 
   const loadBuildings = async () => {
     try {
@@ -176,6 +252,7 @@ export function SensorsManagementContent() {
 
   const handleAdd = () => {
     setEditingSensor(null);
+    setMappedSensorId(undefined);
     setSelectedBuilding(undefined);
     setSelectedFloor(undefined);
     setFloors([]);
@@ -183,6 +260,7 @@ export function SensorsManagementContent() {
     setFormData({
       name: '',
       type: 'smoke',
+      hardwareUid: '',
       value: 0,
       unit: 'ppm',
       status: 'active',
@@ -197,6 +275,7 @@ export function SensorsManagementContent() {
 
   const handleEdit = async (sensor: ApiSensor) => {
     setEditingSensor(sensor);
+    setMappedSensorId(sensor.id);
     
     // Pre-populate building, floor, room
     const buildingId = sensor.building?.id || sensor.floor?.building?.id || sensor.room?.floor?.building?.id;
@@ -217,6 +296,7 @@ export function SensorsManagementContent() {
     setFormData({
       name: sensor.name,
       type: sensor.type,
+      hardwareUid: sensor.hardwareUid || '',
       value: sensor.value || 0,
       unit: sensor.unit || 'ppm',
       status: sensor.status,
@@ -245,10 +325,13 @@ export function SensorsManagementContent() {
     try {
       if (editingSensor) {
         await api.updateSensor(editingSensor.id, formData);
+      } else if (mappedSensorId) {
+        await api.updateSensor(mappedSensorId, formData);
       } else {
         await api.createSensor(formData);
       }
       setShowModal(false);
+      setMappedSensorId(undefined);
       await loadSensors();
     } catch (err: any) {
       alert('Failed to save sensor: ' + err.message);
@@ -384,8 +467,56 @@ export function SensorsManagementContent() {
                     <form onSubmit={handleSubmit} className="space-y-4">
                       <div className="grid grid-cols-2 gap-4">
                         <div className="col-span-2">
+                          <label className="block text-sm font-semibold text-dark-green-700 mb-2">Link to Connected Hardware Sensor</label>
+                          <select
+                            value={mappedSensorId || ''}
+                            onChange={(e) => {
+                              const id = e.target.value ? parseInt(e.target.value, 10) : undefined;
+                              setMappedSensorId(id);
+                              const mapped = linkableSystemSensors.find((s) => s.id === id);
+                              if (mapped) {
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  name: prev.name || mapped.name,
+                                  type: mapped.type || prev.type,
+                                  unit: mapped.unit || prev.unit,
+                                  hardwareUid: mapped.hardwareUid || prev.hardwareUid,
+                                }));
+                              }
+                            }}
+                            className="w-full px-4 py-2 border-2 border-dark-green-200 rounded-xl focus:border-dark-green-500 focus:outline-none"
+                          >
+                            <option value="">-- Create New Sensor Record --</option>
+                            {!hardwareConnected && (
+                              <option value="" disabled>
+                                No hardware port connected
+                              </option>
+                            )}
+                            {hardwareConnected && linkableSystemSensors.length === 0 && (
+                              <option value="" disabled>
+                                No mapped hardware sensors found
+                              </option>
+                            )}
+                            {linkableSystemSensors.map((sensor) => (
+                              <option key={sensor.id} value={sensor.id}>
+                                {sensor.name} ({sensor.type} - ID:{sensor.id})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="col-span-2">
                           <label className="block text-sm font-semibold text-dark-green-700 mb-2">Sensor Name</label>
                           <input type="text" required value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} placeholder="e.g., Smoke Detector - Lobby" className="w-full px-4 py-2 border-2 border-dark-green-200 rounded-xl focus:border-dark-green-500 focus:outline-none" />
+                        </div>
+                        <div className="col-span-2">
+                          <label className="block text-sm font-semibold text-dark-green-700 mb-2">Unique Hardware ID</label>
+                          <input
+                            type="text"
+                            value={formData.hardwareUid}
+                            onChange={(e) => setFormData({...formData, hardwareUid: e.target.value.toUpperCase().replace(/\s/g, '-')})}
+                            placeholder="e.g., SENSOR-MQ5-001"
+                            className="w-full px-4 py-2 border-2 border-dark-green-200 rounded-xl focus:border-dark-green-500 focus:outline-none"
+                          />
                         </div>
                         <div>
                           <label className="block text-sm font-semibold text-dark-green-700 mb-2">Sensor Type</label>

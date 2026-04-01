@@ -31,6 +31,7 @@ export function CamerasManagementContent() {
     status: 'active',
     location_description: '',
     is_fire_detection_enabled: true,
+    privacy_mode: false,
   });
 
   // Fire Alert Config State
@@ -179,6 +180,7 @@ export function CamerasManagementContent() {
       status: 'active',
       location_description: '',
       is_fire_detection_enabled: true,
+      privacy_mode: false,
     });
     setShowModal(true);
   };
@@ -195,6 +197,7 @@ export function CamerasManagementContent() {
       status: camera.status,
       location_description: camera.location_description || '',
       is_fire_detection_enabled: camera.is_fire_detection_enabled,
+      privacy_mode: camera.privacy_mode || false,
     });
     // Pre-load floors and rooms for the camera's building/floor
     if (camera.building_id) {
@@ -729,6 +732,17 @@ export function CamerasManagementContent() {
                             className="w-5 h-5 text-dark-green-600 rounded focus:ring-dark-green-500"
                           />
                           <span className="text-sm font-semibold text-dark-green-700">Enable Fire Detection</span>
+                        </label>
+                      </div>
+                      <div className="flex items-center">
+                        <label className="flex items-center space-x-3 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={formData.privacy_mode}
+                            onChange={(e) => setFormData({...formData, privacy_mode: e.target.checked})}
+                            className="w-5 h-5 text-dark-green-600 rounded focus:ring-dark-green-500"
+                          />
+                          <span className="text-sm font-semibold text-dark-green-700">Privacy mode (only capture when triggered)</span>
                         </label>
                       </div>
                     </div>
