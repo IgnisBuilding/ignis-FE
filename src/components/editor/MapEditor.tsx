@@ -43,6 +43,9 @@ import {
   Target,
   Video,
   Building2,
+  Activity,
+  Thermometer,
+  Wind,
   Database,
   CloudUpload,
   RefreshCw,
@@ -89,6 +92,18 @@ interface SafePoint {
   capacity: number;
 }
 
+interface SensorData {
+  id: string;
+  db_id?: number;
+  position: Point;
+  level: string;
+  name: string;
+  type: string;
+  unit: string;
+  linked_room_id?: string;
+  hardware_uid?: string;
+}
+
 interface Camera {
   id: string;
   db_id?: number; // Database primary key (set after save)
@@ -108,7 +123,7 @@ interface ErrorState {
   timestamp: number;
 }
 
-type EditorMode = 'calibrate' | 'draw' | 'door' | 'select' | 'pan' | 'route_test' | 'safe_point' | 'camera';
+type EditorMode = 'calibrate' | 'draw' | 'door' | 'select' | 'pan' | 'route_test' | 'safe_point' | 'camera' | 'sensor';
 
 
 // ==================== CONSTANTS ====================
@@ -607,7 +622,20 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
 
   // Camera State (Phase 6 - Fire Detection Integration)
   const [cameras, setCameras] = useState<Camera[]>([]);
+  const [sensors, setSensors] = useState<SensorData[]>([]);
+  const [availableSystemSensors, setAvailableSystemSensors] = useState<any[]>([]);
+  const linkableSystemSensors = useMemo(() => {
+    const filtered = availableSystemSensors.filter((sensor) => {
+      const status = String(sensor?.status || "").toLowerCase();
+      return status !== "offline" && status !== "inactive" && status !== "disconnected";
+    });
+    return filtered.length > 0 ? filtered : availableSystemSensors;
+  }, [availableSystemSensors]);
+  const [selectedSensor, setSelectedSensor] = useState<string | null>(null);
+  const [currentSensorType, setCurrentSensorType] = useState<string>("gas");
   const [selectedCamera, setSelectedCamera] = useState<string | null>(null);
+  const [hoveredItem, setHoveredItem] = useState<string | null>(null);
+  const [hardwareConnected, setHardwareConnected] = useState(false);
 
   // Building Selection & Database Integration State
   const [buildings, setBuildings] = useState<APIBuilding[]>([]);
@@ -622,14 +650,16 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
     rooms: any[];
     openings: any[];
     cameras: any[];
+    sensors: any[];
     safePoints: any[];
   } | null>(null);
   const [deletedItems, setDeletedItems] = useState<{
     rooms: string[];
     openings: string[];
     cameras: string[];
+    sensors: string[];
     safePoints: string[];
-  }>({ rooms: [], openings: [], cameras: [], safePoints: [] });
+  }>({ rooms: [], openings: [], cameras: [], sensors: [], safePoints: [] });
 
   // Point-Level History for Drawing (Feature 4)
   const [pointHistory, setPointHistory] = useState([]);
@@ -672,6 +702,7 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
       openings,
       safePoints,
       cameras,
+      sensors,
       levels,
       currentLevel,
       buildingLocation,
@@ -684,6 +715,7 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
       openings,
       safePoints,
       cameras,
+      sensors,
       levels,
       currentLevel,
       buildingLocation,
@@ -700,6 +732,7 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
     setOpenings(snapshot.openings || []);
     setSafePoints(snapshot.safePoints || []);
     setCameras(snapshot.cameras || []);
+    setSensors(snapshot.sensors || []);
     setLevels(snapshot.levels || ["1"]);
     setCurrentLevel(snapshot.currentLevel || "1");
     setBuildingLocation(
@@ -877,19 +910,83 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
 
   // ==================== EFFECTS ====================
 
+  const loadConnectedHardwareSensors = useCallback(async () => {
+    try {
+      const [health, allSensors] = await Promise.all([
+        api.getArduinoSensorHealth(),
+        api.getSensors(),
+      ]);
+
+      const isConnected = Boolean(health?.connected);
+      setHardwareConnected(isConnected);
+
+      if (!isConnected) {
+        setAvailableSystemSensors([]);
+        return;
+      }
+
+      const mappedIds = Object.values(health?.sensorMapping || {})
+        .map((id) => Number(id))
+        .filter((id) => !Number.isNaN(id));
+
+      if (mappedIds.length === 0) {
+        setAvailableSystemSensors([]);
+        return;
+      }
+
+      const connectedSensors = allSensors.filter((sensor: any) =>
+        mappedIds.includes(Number(sensor?.id))
+      );
+      const activeWindowMs = Number(process.env.NEXT_PUBLIC_HARDWARE_SENSOR_ACTIVE_WINDOW_MS || 120000);
+      const now = Date.now();
+
+      const activeConnectedSensors = connectedSensors.filter((sensor: any) => {
+        const status = String(sensor?.status || '').toLowerCase();
+        if (status === 'offline' || status === 'inactive' || status === 'disconnected') {
+          return false;
+        }
+
+        const readingTime = sensor?.lastReading || sensor?.updatedAt;
+        if (!readingTime) {
+          return false;
+        }
+
+        const timestamp = new Date(readingTime).getTime();
+        return Number.isFinite(timestamp) && now - timestamp <= activeWindowMs;
+      });
+
+      setAvailableSystemSensors(
+        activeConnectedSensors.length > 0 ? activeConnectedSensors : connectedSensors
+      );
+    } catch (err) {
+      console.error("Failed to load connected hardware sensors:", err);
+      setHardwareConnected(false);
+      setAvailableSystemSensors([]);
+    }
+  }, []);
+
   // Load buildings from API on mount
   useEffect(() => {
     const loadBuildings = async () => {
       try {
         const buildingsData = await api.getBuildings();
         setBuildings(buildingsData);
+        await loadConnectedHardwareSensors();
       } catch (err) {
         console.error('Failed to load buildings:', err);
         errorHandler.warn('Could not connect to server. Working in offline mode.');
       }
     };
     loadBuildings();
-  }, []);
+  }, [loadConnectedHardwareSensors]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      void loadConnectedHardwareSensors();
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [loadConnectedHardwareSensors]);
 
   // Auto-select building if initialBuildingId is provided (from URL query param)
   useEffect(() => {
@@ -1078,6 +1175,7 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
               if (state.rooms) setRooms(state.rooms);
               if (state.openings) setOpenings(state.openings);
               if (state.cameras) setCameras(state.cameras);
+        if (state.sensors) setSensors(state.sensors);
               if (state.safePoints) setSafePoints(state.safePoints);
               if (state.levels) {
                 setLevels(state.levels);
@@ -1115,9 +1213,10 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
                 rooms: JSON.parse(JSON.stringify(state.rooms || [])),
                 openings: JSON.parse(JSON.stringify(state.openings || [])),
                 cameras: JSON.parse(JSON.stringify(state.cameras || [])),
+                sensors: JSON.parse(JSON.stringify(state.sensors || [])),
                 safePoints: JSON.parse(JSON.stringify(state.safePoints || [])),
               };
-              setDeletedItems({ rooms: [], openings: [], cameras: [], safePoints: [] });
+              setDeletedItems({ rooms: [], openings: [], cameras: [], sensors: [], safePoints: [] });
             }
 
             setHasUnsavedChanges(false);
@@ -1364,6 +1463,7 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
       setCurrentPoints(newPoints);
       setSelectedRoom(null);
       setSelectedOpening(null);
+      setSelectedSensor(null);
       setSelectedSafePoint(null);
     } else if (mode === "door") {
       if (!openingStart) {
@@ -1422,6 +1522,7 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
         return isPointInPolygon(pos, room.points);
       });
       setSelectedRoom(clickedRoom?.id || null);
+      setSelectedSensor(null);
       setSelectedOpening(null);
     } else if (mode === "route_test") {
       // Find clicked room for route testing
@@ -1453,6 +1554,7 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
         pushToHistory();
         setSafePoints([...safePoints, newSafePoint]);
         setSelectedSafePoint(newSafePoint.id);
+        setSelectedSensor(null);
         setSelectedRoom(null);
         setSelectedOpening(null);
         setHasUnsavedChanges(true);
@@ -1465,12 +1567,18 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
       try {
         // Find if camera is being placed inside a room
         let linkedRoomId: string | undefined = undefined;
+        let linkedRoomName: string | undefined = undefined;
+        
         for (const room of rooms) {
-          if (room.level === currentLevel && isPointInPolygon(pos, room.points)) {
+          // Use string comparison for levels to be safe
+          if (String(room.level) === String(currentLevel) && isPointInPolygon(pos, room.points)) {
             linkedRoomId = room.id;
+            linkedRoomName = room.name;
             break;
           }
         }
+
+        console.log(`[SensorPlacement] Linked to room: ${linkedRoomName || "None"} (${linkedRoomId || "N/A"}) at level ${currentLevel}`);
 
         const newCamera: Camera = {
           id: `cam-${Date.now()}`,
@@ -1494,6 +1602,47 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
         errorHandler.info(linkedRoomId ? `Camera placed in room` : "Camera placed");
       } catch (err) {
         errorHandler.handle(err, "Place Camera");
+      }
+    } else if (mode === "sensor") {
+      // Phase 7: Place gas/smoke sensor for Arduino integration
+      try {
+        // Auto-link sensor to whatever room it is dropped inside
+        let linkedRoomId: string | undefined = undefined;
+        let linkedRoomName: string | undefined = undefined;
+        
+        for (const room of rooms) {
+          // Use string comparison for levels to be safe
+          if (String(room.level) === String(currentLevel) && isPointInPolygon(pos, room.points)) {
+            linkedRoomId = room.id;
+            linkedRoomName = room.name;
+            break;
+          }
+        }
+
+        console.log(`[SensorPlacement] Linked to room: ${linkedRoomName || "None"} (${linkedRoomId || "N/A"}) at level ${currentLevel}`);
+
+        const defaultUnit = currentSensorType === "temperature" ? "°C" : currentSensorType === "smoke" ? "%" : "ppm";
+        const newSensor: SensorData = {
+          id: `sen-${Date.now()}`,
+          position: pos,
+          level: currentLevel,
+          name: `Sensor ${sensors.length + 1}`,
+          type: currentSensorType,
+          unit: defaultUnit,
+          linked_room_id: linkedRoomId,
+        };
+
+        pushToHistory();
+        setSensors([...sensors, newSensor]);
+        setSelectedSensor(newSensor.id);
+        setSelectedRoom(null);
+        setSelectedOpening(null);
+        setSelectedSafePoint(null);
+        setSelectedCamera(null);
+        setHasUnsavedChanges(true);
+        errorHandler.info(linkedRoomId ? `Sensor placed in room` : "Sensor placed (not in a room)");
+      } catch (err) {
+        errorHandler.handle(err, "Place Sensor");
       }
     }
   };
@@ -1789,6 +1938,35 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
       setHasUnsavedChanges(true);
     } catch (err) {
       errorHandler.handle(err, "Update Camera");
+    }
+  };
+
+  
+  const deleteSensor = (id) => {
+    try {
+      pushToHistory();
+      const senToDelete = sensors.find(s => s.id === id);
+      if (senToDelete?.db_id) {
+        setDeletedItems(prev => ({
+          ...prev,
+          sensors: [...prev.sensors, String(senToDelete.db_id)]
+        }));
+      }
+      setSensors(sensors.filter((s) => s.id !== id));
+      if (selectedSensor === id) setSelectedSensor(null);
+      setHasUnsavedChanges(true);
+    } catch (err) {
+      errorHandler.handle(err, "Delete Sensor");
+    }
+  };
+
+  const updateSensor = (id, updates) => {
+    try {
+      pushToHistory();
+      setSensors(sensors.map((s) => (s.id === id ? { ...s, ...updates } : s)));
+      setHasUnsavedChanges(true);
+    } catch (err) {
+      errorHandler.handle(err, "Update Sensor");
     }
   };
 
@@ -2176,6 +2354,30 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
         });
       });
 
+      
+      // Phase 7: Export sensors as Points
+      sensors.forEach((sen) => {
+        const geo = pixelToGeo(sen.position.x, sen.position.y);
+        features.push({
+          type: "Feature",
+          properties: {
+            id: sen.id,
+            type: "sensor",
+            is_sensor: true,
+            level: sen.level,
+            name: sen.name,
+            sensor_type: sen.type,
+            unit: sen.unit,
+            linked_room_id: sen.linked_room_id,
+            color: "#4f46e5",
+          },
+          geometry: {
+            type: "Point",
+            coordinates: [geo.lng, geo.lat],
+          },
+        });
+      });
+
       const geojson = {
         type: "FeatureCollection",
         properties: {
@@ -2223,6 +2425,7 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
       openings: { added: [] as any[], modified: [] as any[], deleted: deletedItems.openings },
       cameras: { added: [] as any[], modified: [] as any[], deleted: deletedItems.cameras },
       safePoints: { added: [] as any[], modified: [] as any[], deleted: deletedItems.safePoints },
+      sensors: { added: [] as any[], modified: [] as any[], deleted: deletedItems.sensors },
     };
 
     // If first save (no original), all items are "added"
@@ -2230,6 +2433,7 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
       changes.rooms.added = rooms;
       changes.openings.added = openings;
       changes.cameras.added = cameras;
+      changes.sensors.added = sensors;
       changes.safePoints.added = safePoints;
       return changes;
     }
@@ -2272,12 +2476,36 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
       }
     });
 
+    
+    // Compute sensor changes
+    // Compute sensor changes
+    sensors.forEach(sensor => {
+      if (!sensor.db_id) {
+        // No db_id means it's a new map element. 
+        // Note: Map elements that are *linked* to hardware also have a db_id.
+        changes.sensors.added.push(sensor);
+      } else {
+        // Has db_id (either existing or mapped hardware)
+        const originalSensors = original.sensors || [];
+        const originalSensor = originalSensors.find(s => s.db_id === sensor.db_id);
+        
+        if (!originalSensor) {
+          // If it has a db_id but isn't in original, it's a mapped NEW item
+          changes.sensors.added.push(sensor);
+        } else if (itemsAreDifferent(sensor, originalSensor)) {
+          changes.sensors.modified.push(sensor);
+        }
+      }
+    });
+
+    // Compute safe point changes
     // Compute safe point changes
     safePoints.forEach(sp => {
       if (!sp.db_id) {
         changes.safePoints.added.push(sp);
       } else {
-        const originalSp = original.safePoints.find(s => s.db_id === sp.db_id);
+        const originalSps = original.safePoints || [];
+        const originalSp = originalSps.find(s => s.db_id === sp.db_id);
         if (originalSp && itemsAreDifferent(sp, originalSp)) {
           changes.safePoints.modified.push(sp);
         }
@@ -2312,12 +2540,14 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
         changes.rooms.added.length + changes.rooms.modified.length + changes.rooms.deleted.length +
         changes.openings.added.length + changes.openings.modified.length + changes.openings.deleted.length +
         changes.cameras.added.length + changes.cameras.modified.length + changes.cameras.deleted.length +
+        changes.sensors.added.length + changes.sensors.modified.length + changes.sensors.deleted.length +
         changes.safePoints.added.length + changes.safePoints.modified.length + changes.safePoints.deleted.length;
 
       console.log(`[SaveToDatabase] Changes detected:`, {
         rooms: { added: changes.rooms.added.length, modified: changes.rooms.modified.length, deleted: changes.rooms.deleted.length },
         openings: { added: changes.openings.added.length, modified: changes.openings.modified.length, deleted: changes.openings.deleted.length },
         cameras: { added: changes.cameras.added.length, modified: changes.cameras.modified.length, deleted: changes.cameras.deleted.length },
+        sensors: { added: changes.sensors.added.length, modified: changes.sensors.modified.length, deleted: changes.sensors.deleted.length },
         safePoints: { added: changes.safePoints.added.length, modified: changes.safePoints.modified.length, deleted: changes.safePoints.deleted.length },
       });
 
@@ -2369,6 +2599,29 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
             connects_db_ids: connectsDbIds,        // Resolved DB room IDs
           },
           geometry: { type: "LineString", coordinates: [[startGeo.lng, startGeo.lat], [endGeo.lng, endGeo.lat]] },
+        };
+      };
+
+      
+      const sensorToFeature = (sen: any) => {
+        const geo = pixelToGeo(sen.position.x, sen.position.y);
+        const linkedRoom = sen.linked_room_id ? rooms.find((r: any) => r.id === sen.linked_room_id) : null;
+        return {
+          type: "Feature",
+          properties: {
+            id: sen.id,
+            db_id: sen.db_id,
+            type: "sensor",
+            is_sensor: true,
+            level: sen.level,
+            name: sen.name,
+            sensor_type: sen.type,
+            unit: sen.unit,
+            hardware_uid: sen.hardware_uid,
+            linked_room_id: sen.linked_room_id,
+            linked_room_db_id: linkedRoom?.db_id || null,
+          },
+          geometry: { type: "Point", coordinates: [geo.lng, geo.lat] },
         };
       };
 
@@ -2434,6 +2687,11 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
             modified: changes.cameras.modified.map(cameraToFeature),
             deleted: changes.cameras.deleted,
           },
+          sensors: {
+            added: changes.sensors.added.map(sensorToFeature),
+            modified: changes.sensors.modified.map(sensorToFeature),
+            deleted: changes.sensors.deleted,
+          },
           safePoints: {
             added: changes.safePoints.added.map(safePointToFeature),
             modified: changes.safePoints.modified.map(safePointToFeature),
@@ -2465,6 +2723,7 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
         rooms,
         openings,
         cameras,
+        sensors,
         safePoints,
         levels,
         currentLevel,
@@ -2514,6 +2773,14 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
           }));
         }
 
+        
+        if (idMappings.sensors && Object.keys(idMappings.sensors).length > 0) {
+          setSensors(prev => prev.map(sensor => {
+            const dbId = idMappings.sensors[sensor.id];
+            return dbId ? { ...sensor, db_id: dbId } : sensor;
+          }));
+        }
+
         // Update safe points with database IDs (stored as nodes)
         if (idMappings.safePoints && Object.keys(idMappings.safePoints).length > 0) {
           setSafePoints(prevSafePoints => prevSafePoints.map(sp => {
@@ -2529,12 +2796,13 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
             rooms: JSON.parse(JSON.stringify(rooms.map(r => idMappings.rooms?.[r.id] ? { ...r, db_id: idMappings.rooms[r.id] } : r))),
             openings: JSON.parse(JSON.stringify(openings.map(o => idMappings.openings?.[o.id] ? { ...o, db_id: idMappings.openings[o.id] } : o))),
             cameras: JSON.parse(JSON.stringify(cameras.map(c => idMappings.cameras?.[c.id] ? { ...c, db_id: idMappings.cameras[c.id] } : c))),
+            sensors: JSON.parse(JSON.stringify(sensors.map(s => idMappings.sensors?.[s.id] ? { ...s, db_id: idMappings.sensors[s.id] } : s))),
             safePoints: JSON.parse(JSON.stringify(safePoints.map(sp => idMappings.safePoints?.[sp.id] ? { ...sp, db_id: idMappings.safePoints[sp.id] } : sp))),
           };
         }, 0);
 
         // Clear deleted items tracker
-        setDeletedItems({ rooms: [], openings: [], cameras: [], safePoints: [] });
+        setDeletedItems({ rooms: [], openings: [], cameras: [], sensors: [], safePoints: [] });
         setHasUnsavedChanges(false);
         errorHandler.info(`Saved to database: ${result.message}`);
       } else {
@@ -2571,6 +2839,7 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
         if (state.rooms) setRooms(state.rooms);
         if (state.openings) setOpenings(state.openings);
         if (state.cameras) setCameras(state.cameras);
+        if (state.sensors) setSensors(state.sensors);
         if (state.safePoints) setSafePoints(state.safePoints);
         if (state.levels) {
           setLevels(state.levels);
@@ -2610,10 +2879,11 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
           rooms: JSON.parse(JSON.stringify(state.rooms || [])),
           openings: JSON.parse(JSON.stringify(state.openings || [])),
           cameras: JSON.parse(JSON.stringify(state.cameras || [])),
+          sensors: JSON.parse(JSON.stringify(state.sensors || [])),
           safePoints: JSON.parse(JSON.stringify(state.safePoints || [])),
         };
         // Clear deleted items tracker
-        setDeletedItems({ rooms: [], openings: [], cameras: [], safePoints: [] });
+        setDeletedItems({ rooms: [], openings: [], cameras: [], sensors: [], safePoints: [] });
 
         setHasUnsavedChanges(false);
         return;
@@ -2699,7 +2969,7 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
         cameras: [],
         safePoints: JSON.parse(JSON.stringify(importedSafePoints)),
       };
-      setDeletedItems({ rooms: [], openings: [], cameras: [], safePoints: [] });
+      setDeletedItems({ rooms: [], openings: [], cameras: [], sensors: [], safePoints: [] });
       setHasUnsavedChanges(false);
 
       errorHandler.info(`Loaded ${importedRooms.length} rooms and ${importedSafePoints.length} safe points from database.`);
@@ -3633,6 +3903,18 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
               >
                 <Shield size={18} className="mx-auto" />
               </button>
+              {/* Sensor Mode */}
+              <button
+                onClick={() => setMode("sensor")}
+                className={`p-3 rounded-xl transition-all ${
+                  mode === "sensor"
+                    ? "green-gradient text-white shadow-md"
+                    : "bg-white border border-gray-200 text-dark-green-600 hover:bg-dark-green-50 hover:border-dark-green-300"
+                }`}
+                title="Place Sensor"
+              >
+                <Activity size={18} className="mx-auto" />
+              </button>
               {/* Phase 6: Camera Mode */}
               <button
                 onClick={() => setMode("camera")}
@@ -4229,7 +4511,69 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
                     </g>
                   ))}
 
-                {/* Phase 6: Cameras */}
+                {/* Phase 7: Sensors */}
+              {sensors
+                .filter((sen) => showLevels[sen.level])
+                .map((sen) => {
+                  const isSelected = selectedSensor === sen.id;
+                  const isHovered = hoveredItem === sen.id;
+                  return (
+                    <g
+                      key={sen.id}
+                      transform={`translate(${sen.position.x}, ${sen.position.y})`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (mode === "select") {
+                          setSelectedSensor(sen.id);
+                        }
+                      }}
+                      onMouseEnter={() => setHoveredItem(sen.id)}
+                      onMouseLeave={() => setHoveredItem(null)}
+                      className={mode === "select" ? "cursor-pointer" : ""}
+                    >
+                      <circle
+                        r={8 / zoom}
+                        fill={isSelected ? "#3b82f6" : "#4f46e5"}
+                        stroke={isSelected ? "#2563eb" : "white"}
+                        strokeWidth={2 / zoom}
+                        className="transition-colors duration-200 shadow-sm"
+                        filter={isHovered ? "drop-shadow(0px 2px 4px rgba(0,0,0,0.3))" : ""}
+                      />
+                      <path
+                        d={`M-${4 / zoom},-${1 / zoom} L${4 / zoom},-${1 / zoom} M0,-${5 / zoom} L0,${3 / zoom}`}
+                        stroke="white"
+                        strokeWidth={1.5 / zoom}
+                        fill="none"
+                      />
+                      {(isSelected || isHovered) && (
+                        <g transform={`translate(0, ${-15 / zoom})`}>
+                          <rect
+                            x={-30 / zoom}
+                            y={-10 / zoom}
+                            width={60 / zoom}
+                            height={14 / zoom}
+                            fill="white"
+                            rx={2 / zoom}
+                            className="shadow-sm"
+                            opacity={0.9}
+                          />
+                          <text
+                            textAnchor="middle"
+                            fontSize={8 / zoom}
+                            fill="#1e293b"
+                            fontWeight="600"
+                            y={-2 / zoom}
+                            className="font-sans"
+                          >
+                            {sen.name}
+                          </text>
+                        </g>
+                      )}
+                    </g>
+                  );
+                })}
+
+              {/* Phase 6: Cameras */}
                 {cameras
                   .filter((cam) => showLevels[cam.level])
                   .map((cam) => (
@@ -4597,7 +4941,6 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
                             className="w-full bg-gray-50 border border-gray-200 rounded px-2 py-1.5 text-sm"
                           />
                         </div>
-
                         <div>
                           <label className="text-xs text-dark-green-500 block mb-1">
                             Camera ID (for fire-detect)
@@ -4724,6 +5067,165 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
                     </div>
                   );
                 })()
+              ) : selectedSensor ? (
+                // Sensor properties - Unified Panel
+                (() => {
+                  const sensor = sensors.find((s) => s.id === selectedSensor);
+                  if (!sensor) return null;
+                  return (
+                    <div className="space-y-4">
+                      <div className="p-3 bg-white rounded-lg shadow-sm border border-indigo-100 space-y-3">
+                        <div className="flex items-center justify-between border-b border-gray-50 pb-2">
+                          <div className="flex items-center gap-2">
+                            <Activity size={16} className="text-indigo-500" />
+                            <span className="font-bold text-indigo-600 drop-shadow-sm">
+                              {sensor.name || "Unnamed Sensor"}
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => deleteSensor(sensor.id)}
+                            className="p-1.5 hover:bg-red-50 rounded-full text-red-400 transition-colors"
+                            title="Delete Sensor"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+
+                        {/* Mapping Dropdown */}
+                        <div className="bg-indigo-50/50 p-2 rounded-md border border-indigo-100/50">
+                          <label className="text-[10px] text-indigo-500 font-bold uppercase block mb-1">
+                            Link to System Hardware
+                          </label>
+                          <select
+                            value={sensor.db_id || ""}
+                            onChange={(e) => {
+                              const dbId = e.target.value ? parseInt(e.target.value) : undefined;
+                              const mapped = linkableSystemSensors.find(s => s.id === dbId);
+                              if (mapped) {
+                                updateSensor(sensor.id, {
+                                  db_id: dbId,
+                                  type: mapped.type,
+                                  unit: mapped.unit || sensor.unit,
+                                  hardware_uid: mapped.hardware_uid || sensor.hardware_uid,
+                                });
+                              } else {
+                                updateSensor(sensor.id, { db_id: undefined });
+                              }
+                            }}
+                            className="w-full bg-white border border-indigo-200 rounded px-2 py-1.5 text-sm text-indigo-700 font-medium focus:ring-2 focus:ring-indigo-400 outline-none transition-shadow"
+                          >
+                            <option value="">-- Create/New Sensor --</option>
+                            {!hardwareConnected && (
+                              <option value="" disabled>
+                                No hardware port connected
+                              </option>
+                            )}
+                            {hardwareConnected && linkableSystemSensors.length === 0 && (
+                              <option value="" disabled>
+                                No mapped hardware sensors found
+                              </option>
+                            )}
+                            {linkableSystemSensors.map(s => (
+                              <option key={s.id} value={s.id}>
+                                {s.name} ({s.type} - ID:{s.id})
+                              </option>
+                            ))}
+                          </select>
+                          <p className="mt-1 text-[9px] text-indigo-400 italic">
+                             Connects this map point to live Arduino data.
+                          </p>
+                        </div>
+
+                        {/* Unique Hardware ID */}
+                        <div>
+                          <label className="text-[10px] text-gray-500 font-bold uppercase block mb-1">
+                            Unique Hardware ID (Serial/MAC)
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="e.g. SENSOR-MQ5-001"
+                            value={sensor.hardware_uid || ""}
+                            onChange={(e) =>
+                              updateSensor(sensor.id, {
+                                hardware_uid: e.target.value.toUpperCase().replace(/\s/g, "-"),
+                              })
+                            }
+                            className="w-full bg-gray-50 border border-gray-200 rounded px-2 py-1.5 text-sm focus:border-indigo-400 outline-none"
+                          />
+                          <p className="mt-1 text-[10px] text-gray-400">
+                             Ensures persistence even if connection port changes.
+                          </p>
+                        </div>
+
+                        {/* Name Input */}
+                        <div>
+                          <label className="text-[10px] text-gray-500 font-bold uppercase block mb-1">
+                            Display Name
+                          </label>
+                          <input
+                            type="text"
+                            value={sensor.name}
+                            onChange={(e) =>
+                              updateSensor(sensor.id, {
+                                name: e.target.value,
+                              })
+                            }
+                            className="w-full bg-gray-50 border border-gray-200 rounded px-2 py-1.5 text-sm focus:border-indigo-400 outline-none"
+                          />
+                        </div>
+
+                        {/* Sensor Type */}
+                        <div>
+                          <label className="text-[10px] text-gray-500 font-bold uppercase block mb-1">
+                            Sensor Type
+                          </label>
+                          <select
+                            value={sensor.type}
+                            onChange={(e) =>
+                              updateSensor(sensor.id, {
+                                type: e.target.value,
+                                unit: e.target.value === 'gas' ? 'ppm' : e.target.value === 'temperature' ? '°C' : 'units'
+                              })
+                            }
+                            className="w-full bg-gray-50 border border-gray-200 rounded px-2 py-1.5 text-sm focus:border-indigo-400 outline-none"
+                          >
+                            <option value="gas">Gas/Smoke (MQ-5/7)</option>
+                            <option value="temperature">Temperature</option>
+                            <option value="humidity">Humidity</option>
+                            <option value="other">Other</option>
+                          </select>
+                        </div>
+
+                        {/* Metadata */}
+                        <div className="pt-2 mt-2 border-t border-gray-50 text-[10px] text-gray-500 space-y-1 bg-gray-50/50 p-2 rounded">
+                          <div className="flex justify-between">
+                            <span>Level:</span>
+                            <span className="font-medium">{sensor.level}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Position:</span>
+                            <span className="font-medium">({sensor.position.x.toFixed(0)}, {sensor.position.y.toFixed(0)})</span>
+                          </div>
+                          {sensor.linked_room_id ? (
+                            <div className="flex justify-between text-green-600">
+                              <span>Room:</span>
+                              <span className="font-bold">Linked Automatically</span>
+                            </div>
+                          ) : (
+                            <div className="text-red-400 italic font-medium">Not in any room polygon</div>
+                          )}
+                        </div>
+
+                        <div className="p-2 bg-indigo-500/5 border border-indigo-500/10 rounded flex items-start gap-2">
+                           <Activity size={10} className="text-indigo-400 mt-0.5" />
+                           <span className="text-[9px] text-indigo-400 leading-tight">
+                              Once saved, real-time values from the hardware will appear on the dashboard.
+                           </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()
               ) : selectedSafePoint ? (
                 // Safe Point properties (Feature 2)
                 (() => {
@@ -4752,6 +5254,7 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
                           </button>
                         </div>
 
+
                         <div>
                           <label className="text-xs text-dark-green-500 block mb-1">
                             Name
@@ -4767,7 +5270,6 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
                             className="w-full bg-gray-50 border border-gray-200 rounded px-2 py-1.5 text-sm"
                           />
                         </div>
-
                         <div>
                           <label className="text-xs text-dark-green-500 block mb-1">
                             Capacity (people)

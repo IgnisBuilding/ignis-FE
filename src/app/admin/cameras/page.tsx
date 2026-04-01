@@ -31,6 +31,7 @@ export function CamerasManagementContent() {
     status: 'active',
     location_description: '',
     is_fire_detection_enabled: true,
+    privacy_mode: false,
   });
 
   // Fire Alert Config State
@@ -39,7 +40,7 @@ export function CamerasManagementContent() {
   const [configLoading, setConfigLoading] = useState(false);
   const [configSaving, setConfigSaving] = useState(false);
   const [configFormData, setConfigFormData] = useState({
-    min_confidence: 0.7,
+    min_confidence: 0.4,
     consecutive_detections: 3,
     cooldown_seconds: 60,
     auto_create_hazard: true,
@@ -123,7 +124,7 @@ export function CamerasManagementContent() {
       console.error('Failed to load fire alert config:', err);
       // If config doesn't exist, use defaults
       setConfigFormData({
-        min_confidence: 0.7,
+        min_confidence: 0.4,
         consecutive_detections: 3,
         cooldown_seconds: 60,
         auto_create_hazard: true,
@@ -179,6 +180,7 @@ export function CamerasManagementContent() {
       status: 'active',
       location_description: '',
       is_fire_detection_enabled: true,
+      privacy_mode: false,
     });
     setShowModal(true);
   };
@@ -195,6 +197,7 @@ export function CamerasManagementContent() {
       status: camera.status,
       location_description: camera.location_description || '',
       is_fire_detection_enabled: camera.is_fire_detection_enabled,
+      privacy_mode: camera.privacy_mode || false,
     });
     // Pre-load floors and rooms for the camera's building/floor
     if (camera.building_id) {
@@ -388,7 +391,7 @@ export function CamerasManagementContent() {
                     <div className="flex items-center space-x-3">
                       <input
                         type="range"
-                        min="0.5"
+                        min="0.3"
                         max="0.99"
                         step="0.01"
                         value={configFormData.min_confidence}
@@ -729,6 +732,17 @@ export function CamerasManagementContent() {
                             className="w-5 h-5 text-dark-green-600 rounded focus:ring-dark-green-500"
                           />
                           <span className="text-sm font-semibold text-dark-green-700">Enable Fire Detection</span>
+                        </label>
+                      </div>
+                      <div className="flex items-center">
+                        <label className="flex items-center space-x-3 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={formData.privacy_mode}
+                            onChange={(e) => setFormData({...formData, privacy_mode: e.target.checked})}
+                            className="w-5 h-5 text-dark-green-600 rounded focus:ring-dark-green-500"
+                          />
+                          <span className="text-sm font-semibold text-dark-green-700">Privacy mode (only capture when triggered)</span>
                         </label>
                       </div>
                     </div>

@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import DashboardLayout from '@/components/layout/DashboardLayout';
@@ -200,6 +201,14 @@ function ManagerMapContent() {
                                         onClick={() => handleBuildingClick(building.id)}
                                         className={`p-3 rounded-lg border cursor-pointer transition-colors ${getStatusColor(building.status)} ${selectedBuilding === building.id ? 'ring-2 ring-[#1f3d2f]' : ''}`}
                                     >
+                                        <div className="relative w-full h-24 mb-2 rounded-md overflow-hidden">
+                                            <Image
+                                                src="/ignispng.jpeg"
+                                                alt={building.name}
+                                                fill
+                                                className="object-cover"
+                                            />
+                                        </div>
                                         <div className="flex justify-between items-start mb-1">
                                             {getStatusBadge(building.status)}
                                             <span className="text-[10px] text-muted-foreground font-mono">#B-{String(building.id).padStart(3, '0')}</span>
