@@ -3188,42 +3188,13 @@ const EvacuationMap = memo(({
 
             {/* Body */}
             <div className="p-6">
-              {/* Warning Message */}
-              <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-4 rounded-r">
+              {/* Unified shelter-in-place message — single line, in sync
+                  with the backend's IsolatedLocationException.message and
+                  the Android mobile client's SHELTER_IN_PLACE_MESSAGE. */}
+              <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-r">
                 <p className="text-red-800 text-sm font-medium">
                   {isolationAlert.message}
                 </p>
-              </div>
-
-              {/* Shelter Instructions */}
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
-                <h3 className="text-amber-800 font-bold text-sm mb-2 flex items-center gap-2">
-                  <span>🏠</span> SHELTER IN PLACE INSTRUCTIONS
-                </h3>
-                {Array.isArray(isolationAlert.shelterInstructions) ? (
-                  <ul className="text-amber-700 text-sm space-y-1">
-                    {isolationAlert.shelterInstructions.map((instruction, idx) => (
-                      <li key={idx}>• {instruction}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-amber-700 text-sm whitespace-pre-line">
-                    {isolationAlert.shelterInstructions}
-                  </p>
-                )}
-              </div>
-
-              {/* Safety Tips */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h3 className="text-blue-800 font-bold text-sm mb-2 flex items-center gap-2">
-                  <span>💡</span> WHILE WAITING FOR RESCUE
-                </h3>
-                <ul className="text-blue-700 text-sm space-y-1">
-                  <li>• Stay low to avoid smoke inhalation</li>
-                  <li>• Seal door gaps with wet towels</li>
-                  <li>• Signal from window if possible</li>
-                  <li>• Keep calm and conserve energy</li>
-                </ul>
               </div>
             </div>
 
