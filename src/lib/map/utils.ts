@@ -512,7 +512,8 @@ export interface FireZoneInput {
 
 export async function placeFires(
   fireZones: FireZoneInput[],
-  severity: 'HIGH' | 'CRITICAL' = 'HIGH'
+  severity: 'HIGH' | 'CRITICAL' = 'HIGH',
+  buildingId?: number
 ): Promise<{ success: boolean; hazardIds?: number[]; error?: string }> {
   const apiBase = DEFAULT_MAP_CONFIG.apiBase;
   const url = `${apiBase}${API_ENDPOINTS.placeFires}`;
@@ -520,10 +521,17 @@ export async function placeFires(
   console.log(`[MapAPI] Placing fires at ${fireZones.length} zone(s):`, fireZones);
 
   try {
+    // buildingId is required for the backend to room-scope the
+    // `hazard.created:building` WebSocket emission to subscribers of this
+    // building. Without it, PlaceFiresDto.buildingId arrives undefined and
+    // fire-detection.gateway.ts:193 skips the room emit entirely — no
+    // client would hear the alarm. See fire_safety.controller.ts placeFires
+    // for the emission site.
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        buildingId,
         fireZones,
         severity: severity.toLowerCase(),
         type: 'fire',
