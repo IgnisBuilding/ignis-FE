@@ -29,6 +29,8 @@ export function SensorsManagementContent() {
     name: '',
     type: 'smoke',
     hardwareUid: '',
+    warningThreshold: undefined as number | undefined,
+    alertThreshold: undefined as number | undefined,
     value: 0,
     unit: 'ppm',
     status: 'active',
@@ -46,6 +48,34 @@ export function SensorsManagementContent() {
     });
     return filtered.length > 0 ? filtered : availableSystemSensors;
   }, [availableSystemSensors]);
+
+  const createSyntheticHardwareSensor = useCallback((key: 'MQ5' | 'MQ7', existing?: ApiSensor): ApiSensor => {
+    const defaultName = key === 'MQ5' ? 'MQ5 LPG' : 'MQ7 CO';
+    const now = new Date().toISOString();
+
+    return {
+      id: existing?.id ?? (key === 'MQ5' ? -5 : -7),
+      name: existing?.name || defaultName,
+      type: existing?.type || 'gas',
+      hardwareUid: key,
+      warningThreshold: existing?.warningThreshold,
+      alertThreshold: existing?.alertThreshold,
+      value: existing?.value ?? 0,
+      unit: existing?.unit || 'adc',
+      status: existing?.status || 'active',
+      roomId: existing?.roomId,
+      room: existing?.room,
+      floorId: existing?.floorId,
+      floor: existing?.floor,
+      buildingId: existing?.buildingId,
+      building: existing?.building,
+      latitude: existing?.latitude,
+      longitude: existing?.longitude,
+      lastReading: existing?.lastReading || now,
+      createdAt: existing?.createdAt || now,
+      updatedAt: existing?.updatedAt || now,
+    } as ApiSensor;
+  }, []);
 
   const applyLiveReading = (event: SensorReadingEvent) => {
     setSensors((prev) => {
@@ -106,26 +136,24 @@ export function SensorsManagementContent() {
         return;
       }
 
-      const mappedIds = Object.values(health?.sensorMapping || {})
-        .map((id) => Number(id))
-        .filter((id) => !Number.isNaN(id));
+      const directHardwareSensors = allSensors.filter((sensor: ApiSensor) => {
+        const uid = String(sensor?.hardwareUid || '').toUpperCase();
+        return uid === 'MQ5' || uid === 'MQ7';
+      });
 
-      if (mappedIds.length === 0) {
-        setAvailableSystemSensors([]);
-        return;
-      }
+      const mq5Sensor = directHardwareSensors.find((sensor) => String(sensor.hardwareUid || '').toUpperCase() === 'MQ5');
+      const mq7Sensor = directHardwareSensors.find((sensor) => String(sensor.hardwareUid || '').toUpperCase() === 'MQ7');
 
-      const connectedSensors = allSensors.filter((sensor: ApiSensor) =>
-        mappedIds.includes(Number(sensor?.id))
-      );
-
-      setAvailableSystemSensors(connectedSensors);
+      setAvailableSystemSensors([
+        createSyntheticHardwareSensor('MQ5', mq5Sensor),
+        createSyntheticHardwareSensor('MQ7', mq7Sensor),
+      ]);
     } catch (err) {
       console.error('Failed to load connected hardware sensors:', err);
       setHardwareConnected(false);
       setAvailableSystemSensors([]);
     }
-  }, []);
+  }, [createSyntheticHardwareSensor]);
 
   useEffect(() => {
     if (user) {
@@ -250,6 +278,21 @@ export function SensorsManagementContent() {
     }
   };
 
+  const getSensorValueDisplay = (sensor: ApiSensor) => {
+    const value = sensor.value ?? null;
+    if (value === null) {
+      return 'N/A';
+    }
+
+    const isArduinoGasSensor =
+      sensor.hardwareUid === 'MQ5' ||
+      sensor.hardwareUid === 'MQ7' ||
+      /^Arduino MQ-[57]$/i.test(sensor.name || '');
+
+    const unit = isArduinoGasSensor ? 'ADC' : (sensor.unit || '');
+    return `${Number(value).toFixed(2)} ${unit}`.trim();
+  };
+
   const handleAdd = () => {
     setEditingSensor(null);
     setMappedSensorId(undefined);
@@ -261,6 +304,8 @@ export function SensorsManagementContent() {
       name: '',
       type: 'smoke',
       hardwareUid: '',
+      warningThreshold: undefined,
+      alertThreshold: undefined,
       value: 0,
       unit: 'ppm',
       status: 'active',
@@ -297,6 +342,8 @@ export function SensorsManagementContent() {
       name: sensor.name,
       type: sensor.type,
       hardwareUid: sensor.hardwareUid || '',
+      warningThreshold: sensor.warningThreshold,
+      alertThreshold: sensor.alertThreshold,
       value: sensor.value || 0,
       unit: sensor.unit || 'ppm',
       status: sensor.status,
@@ -323,12 +370,28 @@ export function SensorsManagementContent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const toNumberOrUndefined = (value: unknown): number | undefined => {
+        return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+      };
+
+      const payload = {
+        ...formData,
+        value: toNumberOrUndefined(formData.value),
+        warningThreshold: toNumberOrUndefined(formData.warningThreshold),
+        alertThreshold: toNumberOrUndefined(formData.alertThreshold),
+        latitude: toNumberOrUndefined(formData.latitude),
+        longitude: toNumberOrUndefined(formData.longitude),
+      };
+
       if (editingSensor) {
-        await api.updateSensor(editingSensor.id, formData);
-      } else if (mappedSensorId) {
-        await api.updateSensor(mappedSensorId, formData);
+        await api.updateSensor(editingSensor.id, payload);
+      } else if (mappedSensorId && mappedSensorId > 0) {
+        await api.updateSensor(mappedSensorId, payload);
       } else {
-        await api.createSensor(formData);
+        await api.createSensor({
+          ...payload,
+          value: payload.value ?? 0,
+        });
       }
       setShowModal(false);
       setMappedSensorId(undefined);
@@ -408,7 +471,7 @@ export function SensorsManagementContent() {
                             </div>
                           </td>
                           <td className="px-6 py-4 text-dark-green-600">{sensor.name || 'Unnamed Sensor'}</td>
-                          <td className="px-6 py-4 text-dark-green-600">{sensor.value ?? 'N/A'} {sensor.unit || ''}</td>
+                          <td className="px-6 py-4 text-dark-green-600">{getSensorValueDisplay(sensor)}</td>
                           <td className="px-6 py-4">
                             {sensor.room ? (
                               <div className="text-dark-green-600 text-sm">
@@ -481,6 +544,8 @@ export function SensorsManagementContent() {
                                   type: mapped.type || prev.type,
                                   unit: mapped.unit || prev.unit,
                                   hardwareUid: mapped.hardwareUid || prev.hardwareUid,
+                                  warningThreshold: prev.warningThreshold ?? mapped.warningThreshold,
+                                  alertThreshold: prev.alertThreshold ?? mapped.alertThreshold,
                                 }));
                               }
                             }}
@@ -494,12 +559,12 @@ export function SensorsManagementContent() {
                             )}
                             {hardwareConnected && linkableSystemSensors.length === 0 && (
                               <option value="" disabled>
-                                No mapped hardware sensors found
+                                No hardware sensors detected
                               </option>
                             )}
                             {linkableSystemSensors.map((sensor) => (
                               <option key={sensor.id} value={sensor.id}>
-                                {sensor.name} ({sensor.type} - ID:{sensor.id})
+                                {sensor.hardwareUid || sensor.name} ({sensor.type}{sensor.unit ? ` - ${sensor.unit}` : ''})
                               </option>
                             ))}
                           </select>
@@ -533,8 +598,53 @@ export function SensorsManagementContent() {
                           <input type="text" required value={formData.unit} onChange={(e) => setFormData({...formData, unit: e.target.value})} placeholder="e.g., ppm, °C, %" className="w-full px-4 py-2 border-2 border-dark-green-200 rounded-xl focus:border-dark-green-500 focus:outline-none" />
                         </div>
                         <div>
+                          <label className="block text-sm font-semibold text-dark-green-700 mb-2">Warning Threshold</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={formData.warningThreshold ?? ''}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                warningThreshold: e.target.value === '' ? undefined : parseFloat(e.target.value),
+                              })
+                            }
+                            placeholder="e.g., 300"
+                            className="w-full px-4 py-2 border-2 border-dark-green-200 rounded-xl focus:border-dark-green-500 focus:outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-dark-green-700 mb-2">Alert Threshold</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={formData.alertThreshold ?? ''}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                alertThreshold: e.target.value === '' ? undefined : parseFloat(e.target.value),
+                              })
+                            }
+                            placeholder="e.g., 500"
+                            className="w-full px-4 py-2 border-2 border-dark-green-200 rounded-xl focus:border-dark-green-500 focus:outline-none"
+                          />
+                        </div>
+                        <div>
                           <label className="block text-sm font-semibold text-dark-green-700 mb-2">Initial Value</label>
-                          <input type="number" step="0.01" value={formData.value} onChange={(e) => setFormData({...formData, value: parseFloat(e.target.value)})} className="w-full px-4 py-2 border-2 border-dark-green-200 rounded-xl focus:border-dark-green-500 focus:outline-none" />
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={formData.value}
+                            onChange={(e) => {
+                              const next = e.target.value;
+                              const parsed = Number(next);
+                              setFormData({
+                                ...formData,
+                                value: next === '' || !Number.isFinite(parsed) ? 0 : parsed,
+                              });
+                            }}
+                            className="w-full px-4 py-2 border-2 border-dark-green-200 rounded-xl focus:border-dark-green-500 focus:outline-none"
+                          />
                         </div>
                         <div>
                           <label className="block text-sm font-semibold text-dark-green-700 mb-2">Building</label>

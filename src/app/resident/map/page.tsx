@@ -7,6 +7,7 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import dynamic from 'next/dynamic';
 import { api, type Floor } from '@/lib/api';
 import { AlertTriangle, Building2 } from 'lucide-react';
+import { useEvacueeTracking } from '@/hooks/use-evacuee-tracking';
 
 // Dynamically import EvacuationMap to avoid SSR issues with MapLibre
 const EvacuationMap = dynamic(
@@ -53,6 +54,23 @@ function ResidentMapContent() {
     const [activeFloor, setActiveFloor] = useState<Floor | null>(null);
     const [floorPlanData, setFloorPlanData] = useState<any>(null);
     const [floorPlanLoading, setFloorPlanLoading] = useState(false);
+
+    // Current user's starting node for auto-routing
+    const [currentUserStartNode, setCurrentUserStartNode] = useState<string | null>(null);
+
+    // Real-time position tracking for auto-routing
+    const { isConnected: isPositionConnected, evacuees } = useEvacueeTracking({
+        buildingId: apartmentInfo?.building.id || 1,
+        autoConnect: true,
+        onEvacueePositionUpdate: (position) => {
+            // If this is the current user, find their nearest node from coordinates
+            if (user?.id && position.user_id === Number(user.id) && position.coordinates) {
+                console.log('[ResidentMap] User position updated:', position.coordinates);
+                // Find nearest node from their coordinates using the routeNodes
+                // This will be done in the EvacuationMap component since it has access to routeNodes
+            }
+        },
+    });
 
     // Fetch apartment data
     useEffect(() => {
@@ -187,6 +205,11 @@ function ResidentMapContent() {
                             floorPlanData={floorPlanData}
                             activeFloorLevel={activeFloor?.level}
                             activeFloorId={activeFloor?.id}
+                            // Auto-routing from detected position
+                            currentUserStartNode={currentUserStartNode}
+                            currentUserId={user?.id ? Number(user.id) : undefined}
+                            // Real-time position for finding nearest node
+                            evacuees={evacuees}
                         />
                     ) : apartmentInfo && !floorPlanData ? (
                         <div className="w-full h-full flex items-center justify-center bg-muted/10">

@@ -26,6 +26,8 @@ export interface Sensor {
   name: string;
   type: string;
   hardwareUid?: string;
+  warningThreshold?: number;
+  alertThreshold?: number;
   value?: number;
   unit?: string;
   status: string;

@@ -68,6 +68,8 @@ interface EvacuationMapProps {
   evacuees?: Map<number, EvacueePosition>; // Map of user_id to position
   showEvacuees?: boolean; // Whether to show evacuee markers
   currentUserId?: number; // Current user's ID (to highlight their marker)
+  // Auto-routing from detected position
+  currentUserStartNode?: string | null; // Auto-detected start node ID from WiFi/IMU positioning
 }
 
 // Notification component
@@ -104,6 +106,7 @@ const EvacuationMap = memo(({
   evacuees,
   showEvacuees = true,
   currentUserId,
+  currentUserStartNode,
 }: EvacuationMapProps) => {
   // Refs
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -2621,6 +2624,65 @@ const EvacuationMap = memo(({
 
     showNotification('Emergency cleared. System reset.', 'success');
   }, [clearFireZones, showNotification, updateEmergencyState]);
+
+  // Auto-populate selectedStart when user position is available
+  useEffect(() => {
+    if (!currentUserId || !evacuees || !routeNodes.length) return;
+
+    const userPosition = evacuees.get(currentUserId);
+    if (!userPosition || !userPosition.coordinates) return;
+
+    // If currentUserStartNode is provided, use it directly
+    if (currentUserStartNode) {
+      const matchingNode = routeNodes.find(n => String(n.nodeId) === String(currentUserStartNode));
+      if (matchingNode && selectedStart !== currentUserStartNode) {
+        console.log('[EvacuationMap] Auto-selecting start node:', currentUserStartNode, 'Node:', matchingNode.name);
+        setSelectedStart(currentUserStartNode);
+        showNotification(`📍 Your location: ${matchingNode.name}`, 'info');
+      }
+      return;
+    }
+
+    // Otherwise, find the nearest node based on coordinates
+    const [userLng, userLat] = userPosition.coordinates;
+    let nearestNode = null;
+    let minDistance = Infinity;
+
+    routeNodes.forEach((node) => {
+      if (!node.coordinates) return;
+      const [nodeLng, nodeLat] = node.coordinates;
+      
+      // Simple distance calculation (for very small distances, this is fine)
+      const distance = Math.sqrt(
+        Math.pow(userLng - nodeLng, 2) + Math.pow(userLat - nodeLat, 2)
+      );
+      
+      if (distance < minDistance) {
+        minDistance = distance;
+        nearestNode = node;
+      }
+    });
+
+    if (nearestNode && selectedStart !== nearestNode.nodeId) {
+      console.log('[EvacuationMap] Auto-selected nearest node:', nearestNode.nodeId, 'Distance:', minDistance, 'Node:', nearestNode.name);
+      setSelectedStart(String(nearestNode.nodeId));
+      showNotification(`📍 Your location: ${nearestNode.name}`, 'info');
+    }
+  }, [currentUserId, evacuees, routeNodes, selectedStart, showNotification, currentUserStartNode]);
+
+  // Auto-populate selectedStart when currentUserStartNode prop is provided
+  useEffect(() => {
+    if (!currentUserStartNode || !routeNodes.length) return;
+
+    // Find the node with matching nodeId
+    const matchingNode = routeNodes.find(n => String(n.nodeId) === String(currentUserStartNode));
+    
+    if (matchingNode && selectedStart !== currentUserStartNode) {
+      console.log('[EvacuationMap] Auto-selecting start node from prop:', currentUserStartNode, 'Node:', matchingNode.name);
+      setSelectedStart(currentUserStartNode);
+      showNotification(`📍 Your location: ${matchingNode.name}`, 'info');
+    }
+  }, [currentUserStartNode, routeNodes, selectedStart, showNotification]);
 
   // Compute route
   const handleComputeRoute = useCallback(async () => {
