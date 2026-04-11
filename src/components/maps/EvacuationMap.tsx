@@ -1925,10 +1925,13 @@ const EvacuationMap = memo(({
     console.log('[FireZone] Final API payload:', JSON.stringify(apiFireZones, null, 2));
     console.log('[FireZone] Severity value:', fireSeverity, 'type:', typeof fireSeverity);
 
-    // Use local fire placement for imported buildings, backend API otherwise
+    // Use local fire placement for imported buildings, backend API otherwise.
+    // Pass buildingId so the backend can room-scope the `hazard.created:building`
+    // WebSocket emission to subscribers of this building — without it, no
+    // client would hear the alarm.
     const result = isUsingImportedRouting()
       ? placeLocalFires(apiFireZones, fireSeverity)
-      : await placeFires(apiFireZones, fireSeverity);
+      : await placeFires(apiFireZones, fireSeverity, buildingId);
 
     if (!result.success) {
       showNotification(`Failed to register fire zones: ${result.error}`, 'error');
@@ -2107,10 +2110,12 @@ const EvacuationMap = memo(({
     };
 
     try {
-      // Use local fire placement for imported buildings, backend API otherwise
+      // Use local fire placement for imported buildings, backend API otherwise.
+      // Pass buildingId so the backend can room-scope the WebSocket emission
+      // to subscribers of this building.
       const result = isUsingImportedRouting()
         ? placeLocalFires([fireZone], 'CRITICAL')
-        : await placeFires([fireZone], 'CRITICAL');
+        : await placeFires([fireZone], 'CRITICAL', buildingId);
 
       if (result.success) {
         // Add fire marker

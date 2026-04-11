@@ -5,6 +5,39 @@ import { useToast } from '@/hooks/use-toast';
 import { useFireDetection, FireDetectionEvent, FireResolvedEvent } from '@/hooks/use-fire-detection';
 import { FireAlertBanner } from './FireAlertBanner';
 
+/**
+ * Plays a 3-beep fire alarm via the Web Audio API. No asset file needed
+ * (the previous /sounds/fire-alarm.mp3 path does not exist). Silently
+ * no-ops when AudioContext is unavailable or blocked by autoplay policy.
+ */
+function playFireAlertBeep() {
+  try {
+    const Ctx =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!Ctx) return;
+    const ctx = new Ctx();
+    const beep = (startOffset: number) => {
+      const osc = ctx.createOscillator();
+      osc.type = 'square';
+      osc.frequency.value = 880;
+      osc.connect(ctx.destination);
+      osc.start(ctx.currentTime + startOffset);
+      osc.stop(ctx.currentTime + startOffset + 0.18);
+    };
+    beep(0.0);
+    beep(0.3);
+    beep(0.6);
+    setTimeout(() => {
+      ctx.close().catch(() => {
+        /* ignore */
+      });
+    }, 1200);
+  } catch {
+    /* blocked by autoplay policy or AudioContext unavailable */
+  }
+}
+
 interface FireDetectionContextType {
   isConnected: boolean;
   activeAlerts: FireDetectionEvent[];
@@ -33,23 +66,24 @@ export function FireDetectionProvider({
 
   const handleFireDetected = useCallback(
     (event: FireDetectionEvent) => {
-      // Show toast notification
       toast({
         title: 'Fire Detected!',
         description: `${event.camera_name} - ${(event.confidence * 100).toFixed(1)}% confidence`,
         variant: 'destructive',
       });
+      playFireAlertBeep();
+    },
+    [toast]
+  );
 
-      // Play alert sound
-      try {
-        const audio = new Audio('/sounds/fire-alarm.mp3');
-        audio.volume = 0.5;
-        audio.play().catch(() => {
-          // Ignore audio play errors (often blocked by browser)
-        });
-      } catch {
-        // Ignore audio errors
-      }
+  const handleHazardCreated = useCallback(
+    (_hazard: unknown) => {
+      toast({
+        title: 'Fire Placed',
+        description: 'A fire hazard has been placed in this building.',
+        variant: 'destructive',
+      });
+      playFireAlertBeep();
     },
     [toast]
   );
@@ -75,6 +109,7 @@ export function FireDetectionProvider({
     buildingId,
     onFireDetected: handleFireDetected,
     onFireResolved: handleFireResolved,
+    onHazardCreated: handleHazardCreated,
   });
 
   const handleDismiss = useCallback(

@@ -28,6 +28,7 @@ interface UseFireDetectionOptions {
   buildingId?: number;
   onFireDetected?: (event: FireDetectionEvent) => void;
   onFireResolved?: (event: FireResolvedEvent) => void;
+  onHazardCreated?: (hazard: unknown) => void;
   autoConnect?: boolean;
 }
 
@@ -43,7 +44,7 @@ interface UseFireDetectionReturn {
 }
 
 export function useFireDetection(options: UseFireDetectionOptions = {}): UseFireDetectionReturn {
-  const { buildingId, onFireDetected, onFireResolved, autoConnect = true } = options;
+  const { buildingId, onFireDetected, onFireResolved, onHazardCreated, autoConnect = true } = options;
 
   const [isConnected, setIsConnected] = useState(false);
   const [recentDetections, setRecentDetections] = useState<FireDetectionEvent[]>([]);
@@ -107,12 +108,20 @@ export function useFireDetection(options: UseFireDetectionOptions = {}): UseFire
       onFireResolved?.(event);
     });
 
+    // Manual hazard placement — only listen to the room-scoped variant so
+    // alerts fire exclusively for the subscribed building (room membership
+    // is established by the `subscribe:building` emit above).
+    socket.on('hazard.created:building', (hazard: unknown) => {
+      console.log('[FireDetection WS] Hazard created in subscribed building:', hazard);
+      onHazardCreated?.(hazard);
+    });
+
     socket.on('error', (error) => {
       console.error('[FireDetection WS] Error:', error);
     });
 
     socketRef.current = socket;
-  }, [buildingId, onFireDetected, onFireResolved]);
+  }, [buildingId, onFireDetected, onFireResolved, onHazardCreated]);
 
   const disconnect = useCallback(() => {
     if (socketRef.current) {
