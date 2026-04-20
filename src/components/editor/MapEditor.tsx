@@ -623,14 +623,16 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
   // Camera State (Phase 6 - Fire Detection Integration)
   const [cameras, setCameras] = useState<Camera[]>([]);
   const [sensors, setSensors] = useState<SensorData[]>([]);
-  const [availableSystemSensors, setAvailableSystemSensors] = useState<any[]>([]);
-  const linkableSystemSensors = useMemo(() => {
-    const filtered = availableSystemSensors.filter((sensor) => {
-      const status = String(sensor?.status || "").toLowerCase();
-      return status !== "offline" && status !== "inactive" && status !== "disconnected";
-    });
-    return filtered.length > 0 ? filtered : availableSystemSensors;
-  }, [availableSystemSensors]);
+  interface DetectedHardware { key: string; label: string; lastValue: number | null; lastSeenAt: string | null; }
+  const [detectedHardwareSensors, setDetectedHardwareSensors] = useState<DetectedHardware[]>([]);
+  const activeDetectedSensors = useMemo(() => {
+    if (!detectedHardwareSensors.length) return [];
+    const cutoff = Date.now() - 5 * 60 * 1000;
+    const active = detectedHardwareSensors.filter(
+      (hw) => hw.lastSeenAt && new Date(hw.lastSeenAt).getTime() >= cutoff
+    );
+    return active.length > 0 ? active : detectedHardwareSensors;
+  }, [detectedHardwareSensors]);
   const [selectedSensor, setSelectedSensor] = useState<string | null>(null);
   const [currentSensorType, setCurrentSensorType] = useState<string>("gas");
   const [selectedCamera, setSelectedCamera] = useState<string | null>(null);
@@ -912,56 +914,13 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
 
   const loadConnectedHardwareSensors = useCallback(async () => {
     try {
-      const [health, allSensors] = await Promise.all([
-        api.getArduinoSensorHealth(),
-        api.getSensors(),
-      ]);
-
-      const isConnected = Boolean(health?.connected);
-      setHardwareConnected(isConnected);
-
-      if (!isConnected) {
-        setAvailableSystemSensors([]);
-        return;
-      }
-
-      const mappedIds = Object.values(health?.sensorMapping || {})
-        .map((id) => Number(id))
-        .filter((id) => !Number.isNaN(id));
-
-      if (mappedIds.length === 0) {
-        setAvailableSystemSensors([]);
-        return;
-      }
-
-      const connectedSensors = allSensors.filter((sensor: any) =>
-        mappedIds.includes(Number(sensor?.id))
-      );
-      const activeWindowMs = Number(process.env.NEXT_PUBLIC_HARDWARE_SENSOR_ACTIVE_WINDOW_MS || 120000);
-      const now = Date.now();
-
-      const activeConnectedSensors = connectedSensors.filter((sensor: any) => {
-        const status = String(sensor?.status || '').toLowerCase();
-        if (status === 'offline' || status === 'inactive' || status === 'disconnected') {
-          return false;
-        }
-
-        const readingTime = sensor?.lastReading || sensor?.updatedAt;
-        if (!readingTime) {
-          return false;
-        }
-
-        const timestamp = new Date(readingTime).getTime();
-        return Number.isFinite(timestamp) && now - timestamp <= activeWindowMs;
-      });
-
-      setAvailableSystemSensors(
-        activeConnectedSensors.length > 0 ? activeConnectedSensors : connectedSensors
-      );
+      const health = await api.getArduinoSensorHealth();
+      setHardwareConnected(Boolean(health?.connected));
+      setDetectedHardwareSensors(health?.detectedSensors || []);
     } catch (err) {
       console.error("Failed to load connected hardware sensors:", err);
       setHardwareConnected(false);
-      setAvailableSystemSensors([]);
+      setDetectedHardwareSensors([]);
     }
   }, []);
 
@@ -5097,37 +5056,22 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
                             Link to System Hardware
                           </label>
                           <select
-                            value={sensor.db_id || ""}
+                            value={sensor.hardware_uid || ""}
                             onChange={(e) => {
-                              const dbId = e.target.value ? parseInt(e.target.value) : undefined;
-                              const mapped = linkableSystemSensors.find(s => s.id === dbId);
-                              if (mapped) {
-                                updateSensor(sensor.id, {
-                                  db_id: dbId,
-                                  type: mapped.type,
-                                  unit: mapped.unit || sensor.unit,
-                                  hardware_uid: mapped.hardware_uid || sensor.hardware_uid,
-                                });
-                              } else {
-                                updateSensor(sensor.id, { db_id: undefined });
-                              }
+                              updateSensor(sensor.id, { hardware_uid: e.target.value || undefined });
                             }}
                             className="w-full bg-white border border-indigo-200 rounded px-2 py-1.5 text-sm text-indigo-700 font-medium focus:ring-2 focus:ring-indigo-400 outline-none transition-shadow"
                           >
-                            <option value="">-- Create/New Sensor --</option>
+                            <option value="">-- No Hardware Link --</option>
                             {!hardwareConnected && (
-                              <option value="" disabled>
-                                No hardware port connected
-                              </option>
+                              <option value="" disabled>No hardware port connected</option>
                             )}
-                            {hardwareConnected && linkableSystemSensors.length === 0 && (
-                              <option value="" disabled>
-                                No mapped hardware sensors found
-                              </option>
+                            {hardwareConnected && activeDetectedSensors.length === 0 && (
+                              <option value="" disabled>No sensors detected yet — send a packet first</option>
                             )}
-                            {linkableSystemSensors.map(s => (
-                              <option key={s.id} value={s.id}>
-                                {s.name} ({s.type} - ID:{s.id})
+                            {activeDetectedSensors.map((hw) => (
+                              <option key={hw.key} value={hw.key}>
+                                {hw.label} ({hw.key}) — {hw.lastValue ?? 'N/A'} adc
                               </option>
                             ))}
                           </select>
