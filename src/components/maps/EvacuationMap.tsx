@@ -1,9 +1,11 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback, memo } from 'react';
+import { useEffect, useRef, useState, useCallback, memo, type CSSProperties } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { io, Socket } from 'socket.io-client';
+import usePeerPositions, { OccupantPosition } from '../../hooks/usePeerPositions';
+import PeerMarker from '../map/PeerMarker';
 
 import {
   DEFAULT_MAP_CONFIG,
@@ -70,6 +72,8 @@ interface EvacuationMapProps {
   currentUserId?: number; // Current user's ID (to highlight their marker)
   // Auto-routing from detected position
   currentUserStartNode?: string | null; // Auto-detected start node ID from WiFi/IMU positioning
+  // Optional current user info for real-time peers
+  currentUser?: { id: string; role: 'EVACUEE'|'RESPONDER'|'ADMIN'; display_name: string };
 }
 
 // Notification component
@@ -107,6 +111,7 @@ const EvacuationMap = memo(({
   showEvacuees = true,
   currentUserId,
   currentUserStartNode,
+  currentUser,
 }: EvacuationMapProps) => {
   // Refs
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -2875,6 +2880,71 @@ const EvacuationMap = memo(({
     showNotification('Route cleared', 'info');
   }, [showNotification]);
 
+    // -------------------
+    // Peer positions overlay
+    // -------------------
+    const myRole = (currentUser?.role as 'EVACUEE' | 'RESPONDER' | 'ADMIN') || 'EVACUEE';
+    const currentFloorKey = typeof activeFloorId === 'number' ? activeFloorId : (currentFloor === 'floor1' ? 1 : 2);
+    const { positions: peerPositions } = usePeerPositions(myRole, {
+      buildingId,
+      floorId: currentFloorKey,
+    });
+    const [showOthers, setShowOthers] = useState(true);
+    const [mapTick, setMapTick] = useState(0);
+
+    // Re-project markers when map moves/zooms
+    useEffect(() => {
+      const map = mapRef.current;
+      if (!map) return;
+      const onMove = () => setMapTick(t => t + 1);
+      map.on('move', onMove);
+      map.on('zoom', onMove);
+      return () => {
+        map.off('move', onMove);
+        map.off('zoom', onMove);
+      };
+    }, []);
+
+    const currentFloorNum = typeof activeFloorLevel === 'number' ? activeFloorLevel : (currentFloor === 'floor1' ? 1 : 2);
+
+    const filteredPeers = (peerPositions || []).filter(p => p.occupant_id !== (currentUser?.id || ''));
+    const peersOnFloor = filteredPeers.filter(p => (p.floor_id ?? p.floor ?? currentFloorNum) === currentFloorKey);
+
+    function MapPeerMarker({ position, role, label, floor, isOnCurrentFloor, id }: {
+      position: [number, number];
+      role: string;
+      label: string;
+      floor: number;
+      isOnCurrentFloor: boolean;
+      id: string;
+    }) {
+      if (!mapRef.current || !mapContainerRef.current) return null;
+      const [lat, lng] = position;
+      const point = mapRef.current.project([lng, lat]);
+      const style: CSSProperties = {
+        position: 'absolute',
+        left: point.x,
+        top: point.y,
+        transform: 'translate(-50%, -50%)',
+        pointerEvents: 'auto',
+      };
+
+      const pos: OccupantPosition = {
+        occupant_id: id,
+        role: role as any,
+        display_name: label,
+        floor,
+        floor_id: floor,
+        node_id: '',
+        lat,
+        lng,
+        accuracy: 0,
+        timestamp: Date.now(),
+      };
+
+      return <PeerMarker key={id} pos={pos} viewerRole={myRole} sameFloor={isOnCurrentFloor} style={style} />;
+    }
+
   return (
     <div className={`flex flex-col w-full h-full ${className}`}>
       {/* CSS for evacuee marker animations */}
@@ -2900,6 +2970,39 @@ const EvacuationMap = memo(({
       <div className="relative flex-1 min-h-0">
         {/* Map Container */}
         <div ref={mapContainerRef} className="w-full h-full rounded-lg overflow-hidden" />
+        {/* Peers overlay and controls */}
+        {/* Toggle and live count */}
+        <div className="absolute inset-0 pointer-events-none z-20">
+          {/* Controls: toggle + counter */}
+          <div className="absolute top-4 right-4 z-30 flex items-center gap-2 pointer-events-auto">
+            <button
+              onClick={() => setShowOthers(s => !s)}
+              className={`px-3 py-1 rounded-lg font-medium shadow ${showOthers ? 'bg-white/95' : 'bg-gray-100'}`}
+              aria-pressed={!showOthers}
+            >
+              {showOthers ? 'Hide others' : 'Show others'}
+            </button>
+            <div className="inline-flex items-center bg-red-600 text-white rounded-full px-3 py-1 text-sm">
+              {peersOnFloor.length} nearby
+            </div>
+          </div>
+
+          {/* Markers layer (absolute over map). pointer-events-none on container; markers have pointer-events-auto */}
+          <div className="absolute inset-0 pointer-events-none">
+            {showOthers && peersOnFloor.map(p => (
+              <div key={p.occupant_id} style={{ position: 'absolute' }}>
+                <MapPeerMarker
+                  position={[p.lat, p.lng]}
+                  role={p.role}
+                  label={p.display_name}
+                  floor={(p.floor_id ?? p.floor ?? currentFloorNum)}
+                  isOnCurrentFloor={(p.floor_id ?? p.floor ?? currentFloorNum) === currentFloorKey}
+                  id={p.occupant_id}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
 
       {/* Floor Selector - only show if showFloorSelector is true */}
       {showFloorSelector && isMapLoaded && (

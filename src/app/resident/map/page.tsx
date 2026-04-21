@@ -208,6 +208,11 @@ function ResidentMapContent() {
                             // Auto-routing from detected position
                             currentUserStartNode={currentUserStartNode}
                             currentUserId={user?.id ? Number(user.id) : undefined}
+                            currentUser={user?.id ? {
+                                id: String(user.id),
+                                role: 'EVACUEE',
+                                display_name: user.name || 'Resident',
+                            } : undefined}
                             // Real-time position for finding nearest node
                             evacuees={evacuees}
                         />

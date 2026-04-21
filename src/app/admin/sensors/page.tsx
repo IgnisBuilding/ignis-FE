@@ -22,9 +22,10 @@ export function SensorsManagementContent() {
   const [rooms, setRooms] = useState<any[]>([]);
   const [selectedBuilding, setSelectedBuilding] = useState<number | undefined>();
   const [selectedFloor, setSelectedFloor] = useState<number | undefined>();
-  const [availableSystemSensors, setAvailableSystemSensors] = useState<ApiSensor[]>([]);
   const [hardwareConnected, setHardwareConnected] = useState(false);
-  const [mappedSensorId, setMappedSensorId] = useState<number | undefined>();
+
+  interface DetectedHardware { key: string; label: string; lastValue: number | null; lastSeenAt: string | null; }
+  const [detectedHardwareSensors, setDetectedHardwareSensors] = useState<DetectedHardware[]>([]);
   const [formData, setFormData] = useState({
     name: '',
     type: 'smoke',
@@ -41,13 +42,14 @@ export function SensorsManagementContent() {
     longitude: undefined as number | undefined,
   });
 
-  const linkableSystemSensors = useMemo(() => {
-    const filtered = availableSystemSensors.filter((sensor) => {
-      const status = String(sensor?.status || '').toLowerCase();
-      return status !== 'offline' && status !== 'inactive' && status !== 'disconnected';
-    });
-    return filtered.length > 0 ? filtered : availableSystemSensors;
-  }, [availableSystemSensors]);
+  const activeDetectedSensors = useMemo(() => {
+    if (!detectedHardwareSensors.length) return [];
+    const cutoff = Date.now() - 5 * 60 * 1000; // 5 minutes
+    const active = detectedHardwareSensors.filter(
+      (hw) => hw.lastSeenAt && new Date(hw.lastSeenAt).getTime() >= cutoff
+    );
+    return active.length > 0 ? active : detectedHardwareSensors;
+  }, [detectedHardwareSensors]);
 
   const createSyntheticHardwareSensor = useCallback((key: 'MQ5' | 'MQ7', existing?: ApiSensor): ApiSensor => {
     const defaultName = key === 'MQ5' ? 'MQ5 LPG' : 'MQ7 CO';
@@ -123,6 +125,7 @@ export function SensorsManagementContent() {
 
   const loadConnectedHardwareSensors = useCallback(async () => {
     try {
+<<<<<<< HEAD
       const [health, allSensors] = await Promise.all([
         api.getArduinoSensorHealth(),
         api.getSensors(),
@@ -148,10 +151,15 @@ export function SensorsManagementContent() {
         createSyntheticHardwareSensor('MQ5', mq5Sensor),
         createSyntheticHardwareSensor('MQ7', mq7Sensor),
       ]);
+=======
+      const health = await api.getArduinoSensorHealth();
+      setHardwareConnected(Boolean(health?.connected));
+      setDetectedHardwareSensors(health?.detectedSensors || []);
+>>>>>>> e04f96a3bc619972b0b06f733c572b4fbabe402b
     } catch (err) {
       console.error('Failed to load connected hardware sensors:', err);
       setHardwareConnected(false);
-      setAvailableSystemSensors([]);
+      setDetectedHardwareSensors([]);
     }
   }, [createSyntheticHardwareSensor]);
 
@@ -295,7 +303,6 @@ export function SensorsManagementContent() {
 
   const handleAdd = () => {
     setEditingSensor(null);
-    setMappedSensorId(undefined);
     setSelectedBuilding(undefined);
     setSelectedFloor(undefined);
     setFloors([]);
@@ -320,7 +327,6 @@ export function SensorsManagementContent() {
 
   const handleEdit = async (sensor: ApiSensor) => {
     setEditingSensor(sensor);
-    setMappedSensorId(sensor.id);
     
     // Pre-populate building, floor, room
     const buildingId = sensor.building?.id || sensor.floor?.building?.id || sensor.room?.floor?.building?.id;
@@ -384,9 +390,13 @@ export function SensorsManagementContent() {
       };
 
       if (editingSensor) {
+<<<<<<< HEAD
         await api.updateSensor(editingSensor.id, payload);
       } else if (mappedSensorId && mappedSensorId > 0) {
         await api.updateSensor(mappedSensorId, payload);
+=======
+        await api.updateSensor(editingSensor.id, formData);
+>>>>>>> e04f96a3bc619972b0b06f733c572b4fbabe402b
       } else {
         await api.createSensor({
           ...payload,
@@ -394,7 +404,6 @@ export function SensorsManagementContent() {
         });
       }
       setShowModal(false);
-      setMappedSensorId(undefined);
       await loadSensors();
     } catch (err: any) {
       alert('Failed to save sensor: ' + err.message);
@@ -532,8 +541,9 @@ export function SensorsManagementContent() {
                         <div className="col-span-2">
                           <label className="block text-sm font-semibold text-dark-green-700 mb-2">Link to Connected Hardware Sensor</label>
                           <select
-                            value={mappedSensorId || ''}
+                            value={formData.hardwareUid || ''}
                             onChange={(e) => {
+<<<<<<< HEAD
                               const id = e.target.value ? parseInt(e.target.value, 10) : undefined;
                               setMappedSensorId(id);
                               const mapped = linkableSystemSensors.find((s) => s.id === id);
@@ -548,15 +558,17 @@ export function SensorsManagementContent() {
                                   alertThreshold: prev.alertThreshold ?? mapped.alertThreshold,
                                 }));
                               }
+=======
+                              setFormData((prev) => ({ ...prev, hardwareUid: e.target.value }));
+>>>>>>> e04f96a3bc619972b0b06f733c572b4fbabe402b
                             }}
                             className="w-full px-4 py-2 border-2 border-dark-green-200 rounded-xl focus:border-dark-green-500 focus:outline-none"
                           >
-                            <option value="">-- Create New Sensor Record --</option>
+                            <option value="">-- No Hardware Link --</option>
                             {!hardwareConnected && (
-                              <option value="" disabled>
-                                No hardware port connected
-                              </option>
+                              <option value="" disabled>No hardware port connected</option>
                             )}
+<<<<<<< HEAD
                             {hardwareConnected && linkableSystemSensors.length === 0 && (
                               <option value="" disabled>
                                 No hardware sensors detected
@@ -565,6 +577,14 @@ export function SensorsManagementContent() {
                             {linkableSystemSensors.map((sensor) => (
                               <option key={sensor.id} value={sensor.id}>
                                 {sensor.hardwareUid || sensor.name} ({sensor.type}{sensor.unit ? ` - ${sensor.unit}` : ''})
+=======
+                            {hardwareConnected && activeDetectedSensors.length === 0 && (
+                              <option value="" disabled>No sensors detected yet — send a packet first</option>
+                            )}
+                            {activeDetectedSensors.map((hw) => (
+                              <option key={hw.key} value={hw.key}>
+                                {hw.label} ({hw.key}) — {hw.lastValue ?? 'N/A'} adc
+>>>>>>> e04f96a3bc619972b0b06f733c572b4fbabe402b
                               </option>
                             ))}
                           </select>

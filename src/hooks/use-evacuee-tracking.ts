@@ -131,11 +131,21 @@ export function useEvacueeTracking(
   }, [onEvacueePositionUpdate, onEvacueeRouteUpdate, onEvacueeSafe, onEvacueeTrapped, onStatsUpdate]);
 
   const connect = useCallback(() => {
+    if (socketRef.current) {
+      socketRef.current.disconnect();
+      socketRef.current = null;
+    }
+
     if (socketRef.current?.connected) return;
 
     console.log('[EvacueeTracking WS] Connecting to:', `${WS_URL}/navigation`);
+    const token =
+      (typeof window !== 'undefined' &&
+        (localStorage.getItem('ignis_token') || localStorage.getItem('token') || '')) ||
+      '';
 
     const socket = io(`${WS_URL}/navigation`, {
+      auth: { token: token ? `Bearer ${token}` : '' },
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: 5,

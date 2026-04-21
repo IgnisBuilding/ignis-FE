@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, Suspense } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { isFirefighterRole, isManagementRole } from '@/context/AuthContext';
 import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -47,6 +48,7 @@ function EmergencyPageContent() {
   const buildingName = searchParams.get('building') || 'Building';
   const buildingId = buildingIdParam ? parseInt(buildingIdParam, 10) : 1;
   const isMobileMode = searchParams.get('mobile') === 'true';
+  const viewerRole = isManagementRole(user?.role) ? 'ADMIN' : isFirefighterRole(user?.role) ? 'RESPONDER' : 'EVACUEE';
 
   // Building & Floor State
   const [floors, setFloors] = useState<Floor[]>([]);
@@ -420,6 +422,11 @@ function EmergencyPageContent() {
               evacuees={evacuees}
               showEvacuees={true}
               currentUserId={user?.id}
+              currentUser={user?.id ? {
+                id: String(user.id),
+                role: viewerRole,
+                display_name: user.name || 'User',
+              } : undefined}
             />
 
             {/* Tactical Overlay Legend - compact on mobile */}
