@@ -5,7 +5,7 @@ import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { io, Socket } from 'socket.io-client';
 import usePeerPositions, { OccupantPosition } from '../../hooks/usePeerPositions';
-import PeerMarker from '../map/PeerMarker';
+import { NodeOccupantOverlay } from '../map/NodeOccupantOverlay';
 
 import {
   DEFAULT_MAP_CONFIG,
@@ -73,7 +73,7 @@ interface EvacuationMapProps {
   // Auto-routing from detected position
   currentUserStartNode?: string | null; // Auto-detected start node ID from WiFi/IMU positioning
   // Optional current user info for real-time peers
-  currentUser?: { id: string; role: 'EVACUEE'|'RESPONDER'|'ADMIN'; display_name: string };
+  currentUser?: { id: string; role: 'EVACUEE' | 'RESPONDER' | 'ADMIN'; display_name: string };
 }
 
 // Notification component
@@ -120,7 +120,7 @@ const EvacuationMap = memo(({
   const startMarkerRef = useRef<maplibregl.Marker | null>(null);
   const endMarkerRef = useRef<maplibregl.Marker | null>(null);
   const roomsDataRef = useRef<GeoJSON.FeatureCollection | null>(null);
-  const evacueeMarkersRef = useRef<Map<number, maplibregl.Marker>>(new Map());
+  const roomsDataRef = useRef<GeoJSON.FeatureCollection | null>(null);
 
   // State
   const [isMapLoaded, setIsMapLoaded] = useState(false);
@@ -176,141 +176,9 @@ const EvacuationMap = memo(({
   // ═══════════════════════════════════════════════════════════════
   // REAL-TIME EVACUEE MARKERS
   // ═══════════════════════════════════════════════════════════════
-  useEffect(() => {
-    if (!isMapLoaded || !mapRef.current || !showEvacuees || !evacuees) return;
+  // (Legacy MapLibre marker logic removed - replaced by NodeOccupantOverlay)
 
-    const map = mapRef.current;
-    const currentMarkers = evacueeMarkersRef.current;
-    const evacueeIds = new Set(evacuees.keys());
-
-    // Remove markers for evacuees no longer in the list
-    currentMarkers.forEach((marker, userId) => {
-      if (!evacueeIds.has(userId)) {
-        marker.remove();
-        currentMarkers.delete(userId);
-      }
-    });
-
-    // Add or update markers for each evacuee
-    evacuees.forEach((evacuee, userId) => {
-      // Skip if coordinates are invalid
-      if (!evacuee.coordinates || evacuee.coordinates.length !== 2) return;
-      if (!isValidLonLat(evacuee.coordinates[0], evacuee.coordinates[1])) return;
-
-      // Filter by floor if activeFloorId is set
-      if (activeFloorId && evacuee.floor_id !== activeFloorId) {
-        // Hide marker if on different floor
-        const existingMarker = currentMarkers.get(userId);
-        if (existingMarker) {
-          existingMarker.getElement().style.display = 'none';
-        }
-        return;
-      }
-
-      const isCurrentUser = currentUserId === userId;
-      const existingMarker = currentMarkers.get(userId);
-
-      if (existingMarker) {
-        // Update existing marker position with smooth animation
-        existingMarker.setLngLat(evacuee.coordinates);
-        existingMarker.getElement().style.display = 'block';
-
-        // Update marker style based on status
-        const el = existingMarker.getElement();
-        el.className = `evacuee-marker evacuee-${evacuee.status}${isCurrentUser ? ' current-user' : ''}`;
-
-        // Update rotation if heading is available
-        if (evacuee.heading !== undefined) {
-          el.style.transform = `rotate(${evacuee.heading}deg)`;
-        }
-      } else {
-        // Create new marker
-        const el = document.createElement('div');
-        el.className = `evacuee-marker evacuee-${evacuee.status}${isCurrentUser ? ' current-user' : ''}`;
-
-        // Style based on status
-        const statusColors: Record<string, string> = {
-          active: '#3B82F6',      // Blue
-          navigating: '#10B981',  // Green
-          safe: '#22C55E',        // Bright green
-          trapped: '#EF4444',     // Red
-          offline: '#6B7280',     // Gray
-        };
-
-        const color = statusColors[evacuee.status] || statusColors.active;
-        const size = isCurrentUser ? 24 : 18;
-
-        el.innerHTML = `
-          <div style="
-            width: ${size}px;
-            height: ${size}px;
-            background: ${color};
-            border: 3px solid white;
-            border-radius: 50%;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-            cursor: pointer;
-            transition: all 0.3s ease;
-            ${isCurrentUser ? 'animation: pulse 2s infinite;' : ''}
-          ">
-            ${isCurrentUser ? `
-              <div style="
-                position: absolute;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                width: 8px;
-                height: 8px;
-                background: white;
-                border-radius: 50%;
-              "></div>
-            ` : ''}
-          </div>
-          ${evacuee.heading !== undefined ? `
-            <div style="
-              position: absolute;
-              top: -8px;
-              left: 50%;
-              transform: translateX(-50%) rotate(${evacuee.heading}deg);
-              width: 0;
-              height: 0;
-              border-left: 5px solid transparent;
-              border-right: 5px solid transparent;
-              border-bottom: 8px solid ${color};
-            "></div>
-          ` : ''}
-        `;
-
-        const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
-          .setLngLat(evacuee.coordinates)
-          .setPopup(
-            new maplibregl.Popup({ offset: 25, closeButton: false })
-              .setHTML(`
-                <div style="padding: 8px; min-width: 150px;">
-                  <div style="font-weight: 600; margin-bottom: 4px;">
-                    ${isCurrentUser ? '📍 You' : `👤 User ${evacuee.user_id}`}
-                  </div>
-                  <div style="font-size: 12px; color: #666;">
-                    <div>Status: <span style="color: ${color}; font-weight: 500;">${evacuee.status}</span></div>
-                    ${evacuee.current_instruction ? `<div style="margin-top: 4px;">📢 ${evacuee.current_instruction}</div>` : ''}
-                    ${evacuee.progress !== undefined ? `<div>Progress: ${evacuee.progress}%</div>` : ''}
-                  </div>
-                </div>
-              `)
-          )
-          .addTo(map);
-
-        currentMarkers.set(userId, marker);
-      }
-    });
-  }, [evacuees, isMapLoaded, showEvacuees, activeFloorId, currentUserId]);
-
-  // Cleanup evacuee markers on unmount
-  useEffect(() => {
-    return () => {
-      evacueeMarkersRef.current.forEach(marker => marker.remove());
-      evacueeMarkersRef.current.clear();
-    };
-  }, []);
+  // (Cleanup markers removed - MapLibre markers no longer used for occupants)
 
   // Imported building state
   const [isUsingImportedData, setIsUsingImportedData] = useState(false);
@@ -2661,12 +2529,12 @@ const EvacuationMap = memo(({
     routeNodes.forEach((node) => {
       if (!node.coordinates) return;
       const [nodeLng, nodeLat] = node.coordinates;
-      
+
       // Simple distance calculation (for very small distances, this is fine)
       const distance = Math.sqrt(
         Math.pow(userLng - nodeLng, 2) + Math.pow(userLat - nodeLat, 2)
       );
-      
+
       if (distance < minDistance) {
         minDistance = distance;
         nearestNode = node;
@@ -2686,7 +2554,7 @@ const EvacuationMap = memo(({
 
     // Find the node with matching nodeId
     const matchingNode = routeNodes.find(n => String(n.nodeId) === String(currentUserStartNode));
-    
+
     if (matchingNode && selectedStart !== currentUserStartNode) {
       console.log('[EvacuationMap] Auto-selecting start node from prop:', currentUserStartNode, 'Node:', matchingNode.name);
       setSelectedStart(currentUserStartNode);
@@ -2880,70 +2748,35 @@ const EvacuationMap = memo(({
     showNotification('Route cleared', 'info');
   }, [showNotification]);
 
-    // -------------------
-    // Peer positions overlay
-    // -------------------
-    const myRole = (currentUser?.role as 'EVACUEE' | 'RESPONDER' | 'ADMIN') || 'EVACUEE';
-    const currentFloorKey = typeof activeFloorId === 'number' ? activeFloorId : (currentFloor === 'floor1' ? 1 : 2);
-    const { positions: peerPositions } = usePeerPositions(myRole, {
-      buildingId,
-      floorId: currentFloorKey,
-    });
-    const [showOthers, setShowOthers] = useState(true);
-    const [mapTick, setMapTick] = useState(0);
+  // -------------------
+  // Peer positions overlay
+  // -------------------
+  const myRole = (currentUser?.role as 'EVACUEE' | 'RESPONDER' | 'ADMIN') || 'EVACUEE';
+  const currentFloorKey = typeof activeFloorId === 'number' ? activeFloorId : (currentFloor === 'floor1' ? 1 : 2);
+  const { positions: peerPositions } = usePeerPositions(myRole, {
+    buildingId,
+    floorId: currentFloorKey,
+  });
+  const [showOthers, setShowOthers] = useState(true);
+  const [mapTick, setMapTick] = useState(0);
 
-    // Re-project markers when map moves/zooms
-    useEffect(() => {
-      const map = mapRef.current;
-      if (!map) return;
-      const onMove = () => setMapTick(t => t + 1);
-      map.on('move', onMove);
-      map.on('zoom', onMove);
-      return () => {
-        map.off('move', onMove);
-        map.off('zoom', onMove);
-      };
-    }, []);
+  // Re-project markers when map moves/zooms
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const onMove = () => setMapTick(t => t + 1);
+    map.on('move', onMove);
+    map.on('zoom', onMove);
+    return () => {
+      map.off('move', onMove);
+      map.off('zoom', onMove);
+    };
+  }, []);
 
-    const currentFloorNum = typeof activeFloorLevel === 'number' ? activeFloorLevel : (currentFloor === 'floor1' ? 1 : 2);
+  const currentFloorNum = typeof activeFloorLevel === 'number' ? activeFloorLevel : (currentFloor === 'floor1' ? 1 : 2);
 
-    const filteredPeers = (peerPositions || []).filter(p => p.occupant_id !== (currentUser?.id || ''));
-    const peersOnFloor = filteredPeers.filter(p => (p.floor_id ?? p.floor ?? currentFloorNum) === currentFloorKey);
-
-    function MapPeerMarker({ position, role, label, floor, isOnCurrentFloor, id }: {
-      position: [number, number];
-      role: string;
-      label: string;
-      floor: number;
-      isOnCurrentFloor: boolean;
-      id: string;
-    }) {
-      if (!mapRef.current || !mapContainerRef.current) return null;
-      const [lat, lng] = position;
-      const point = mapRef.current.project([lng, lat]);
-      const style: CSSProperties = {
-        position: 'absolute',
-        left: point.x,
-        top: point.y,
-        transform: 'translate(-50%, -50%)',
-        pointerEvents: 'auto',
-      };
-
-      const pos: OccupantPosition = {
-        occupant_id: id,
-        role: role as any,
-        display_name: label,
-        floor,
-        floor_id: floor,
-        node_id: '',
-        lat,
-        lng,
-        accuracy: 0,
-        timestamp: Date.now(),
-      };
-
-      return <PeerMarker key={id} pos={pos} viewerRole={myRole} sameFloor={isOnCurrentFloor} style={style} />;
-    }
+  const filteredPeers = (peerPositions || []).filter(p => p.user_id !== (currentUser?.id || ''));
+  const peersOnFloor = filteredPeers.filter(p => (p.floor_id ?? currentFloorNum) === currentFloorKey);
 
   return (
     <div className={`flex flex-col w-full h-full ${className}`}>
@@ -2986,410 +2819,399 @@ const EvacuationMap = memo(({
               {peersOnFloor.length} nearby
             </div>
           </div>
-
-          {/* Markers layer (absolute over map). pointer-events-none on container; markers have pointer-events-auto */}
-          <div className="absolute inset-0 pointer-events-none">
-            {showOthers && peersOnFloor.map(p => (
-              <div key={p.occupant_id} style={{ position: 'absolute' }}>
-                <MapPeerMarker
-                  position={[p.lat, p.lng]}
-                  role={p.role}
-                  label={p.display_name}
-                  floor={(p.floor_id ?? p.floor ?? currentFloorNum)}
-                  isOnCurrentFloor={(p.floor_id ?? p.floor ?? currentFloorNum) === currentFloorKey}
-                  id={p.occupant_id}
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-
-      {/* Floor Selector - only show if showFloorSelector is true */}
-      {showFloorSelector && isMapLoaded && (
-        <div className="absolute top-4 left-4 z-10 flex gap-2">
-          <button
-            onClick={() => switchFloor('floor1')}
-            className={`px-4 py-2 rounded-lg transition-all font-semibold ${
-              currentFloor === 'floor1'
-                ? 'bg-emerald-600 text-white shadow-lg'
-                : 'bg-white/90 text-emerald-800 hover:bg-emerald-50'
-            }`}
-          >
-            Floor 1
-          </button>
-          <button
-            onClick={() => switchFloor('floor2')}
-            className={`px-4 py-2 rounded-lg transition-all font-semibold ${
-              currentFloor === 'floor2'
-                ? 'bg-emerald-600 text-white shadow-lg'
-                : 'bg-white/90 text-emerald-800 hover:bg-emerald-50'
-            }`}
-          >
-            Floor 2
-          </button>
-        </div>
-      )}
-
-      {/* Emergency Controls */}
-      {showEmergencyControls && isMapLoaded && (
-        <div className="absolute top-4 right-[140px] z-10 bg-white/95 backdrop-blur-sm rounded-lg shadow-lg max-w-[220px] overflow-hidden">
-          <button
-            type="button"
-            onClick={() => setIsEmergencyPanelCollapsed(!isEmergencyPanelCollapsed)}
-            className="w-full flex items-center justify-between px-4 py-2 hover:bg-gray-50 transition-colors"
-          >
-            <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
-              <span>🚨</span> Emergency Controls
-            </h3>
-            <span className={`text-gray-500 transition-transform duration-200 ${isEmergencyPanelCollapsed ? '' : 'rotate-180'}`}>
-              ▼
-            </span>
-          </button>
-
-          {!isEmergencyPanelCollapsed && (
-            <div className="px-4 pb-4 border-t border-gray-100">
-              <div className="flex items-center gap-2 mb-2 mt-3">
-                <span className="text-xs text-gray-600">Status:</span>
-                <span className={`text-xs font-semibold ${
-                  emergencyState.mode === 'idle' ? 'text-green-600' :
-                  emergencyState.mode === 'fire_detected' ? 'text-red-600' :
-                  emergencyState.mode === 'evacuation_in_progress' ? 'text-orange-600' :
-                  'text-green-600'
-                }`}>
-                  {emergencyState.mode === 'idle' ? 'System Ready' :
-                   emergencyState.mode === 'fire_detected' ? 'FIRE DETECTED!' :
-                   emergencyState.mode === 'evacuation_in_progress' ? 'EVACUATION IN PROGRESS' :
-                   'Evacuation Complete'}
-                </span>
-              </div>
-
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-xs text-gray-600">Occupancy:</span>
-                <span className="text-xs font-semibold text-gray-800">{emergencyState.occupancy} people</span>
-              </div>
-
-              {activeFireZones.length > 0 && (
-                <div className="text-xs text-red-600 mb-2">
-                  Active Fires: {activeFireZones.map(z => z.roomName).join(', ')}
-                </div>
-              )}
-
-              <div className="flex gap-2 flex-wrap">
-                <button
-                  type="button"
-                  onClick={startEvacuation}
-                  disabled={emergencyState.mode !== 'fire_detected'}
-                  className="px-3 py-1.5 text-xs font-semibold bg-orange-500 text-white rounded hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Start Evacuation
-                </button>
-                <button
-                  type="button"
-                  onClick={clearEmergency}
-                  className="px-3 py-1.5 text-xs font-semibold bg-green-500 text-white rounded hover:bg-green-600"
-                >
-                  Clear
-                </button>
-              </div>
-            </div>
+          {/* Optimized Node-Based Overlay */}
+          {showOthers && (
+            <NodeOccupantOverlay
+              map={mapRef.current}
+              occupants={peersOnFloor}
+              nodes={routeNodes}
+              visible={showOthers}
+            />
           )}
         </div>
-      )}
+      </div>
 
-      {/* Left Side Panel - Fire Zone Management & Route Computation */}
-      {isMapLoaded && (
-        <div className="absolute top-20 left-4 z-10 bg-white/95 backdrop-blur-sm rounded-lg shadow-lg max-w-[280px] max-h-[calc(100%-120px)] overflow-y-auto">
-          {/* Fire Zone Management */}
-          <div className="border-b border-gray-200">
+        {/* Floor Selector - only show if showFloorSelector is true */}
+        {showFloorSelector && isMapLoaded && (
+          <div className="absolute top-4 left-4 z-10 flex gap-2">
+            <button
+              onClick={() => switchFloor('floor1')}
+              className={`px-4 py-2 rounded-lg transition-all font-semibold ${currentFloor === 'floor1'
+                  ? 'bg-emerald-600 text-white shadow-lg'
+                  : 'bg-white/90 text-emerald-800 hover:bg-emerald-50'
+                }`}
+            >
+              Floor 1
+            </button>
+            <button
+              onClick={() => switchFloor('floor2')}
+              className={`px-4 py-2 rounded-lg transition-all font-semibold ${currentFloor === 'floor2'
+                  ? 'bg-emerald-600 text-white shadow-lg'
+                  : 'bg-white/90 text-emerald-800 hover:bg-emerald-50'
+                }`}
+            >
+              Floor 2
+            </button>
+          </div>
+        )}
+
+        {/* Emergency Controls */}
+        {showEmergencyControls && isMapLoaded && (
+          <div className="absolute top-4 right-[140px] z-10 bg-white/95 backdrop-blur-sm rounded-lg shadow-lg max-w-[220px] overflow-hidden">
             <button
               type="button"
-              onClick={() => setIsFireZonePanelCollapsed(!isFireZonePanelCollapsed)}
-              className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors"
+              onClick={() => setIsEmergencyPanelCollapsed(!isEmergencyPanelCollapsed)}
+              className="w-full flex items-center justify-between px-4 py-2 hover:bg-gray-50 transition-colors"
             >
-              <h3 className="text-sm font-bold text-orange-600 flex items-center gap-2">
-                <span>🔥</span> Fire Zone Management
+              <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+                <span>🚨</span> Emergency Controls
               </h3>
-              <span className={`text-gray-500 transition-transform duration-200 ${isFireZonePanelCollapsed ? '' : 'rotate-180'}`}>
+              <span className={`text-gray-500 transition-transform duration-200 ${isEmergencyPanelCollapsed ? '' : 'rotate-180'}`}>
                 ▼
               </span>
             </button>
 
-            {!isFireZonePanelCollapsed && (
-              <div className="px-4 pb-4 space-y-3">
-                {/* Ignis-BE Real-time Fire Detection Status */}
-                <div className="p-2 bg-blue-50 border border-blue-200 rounded-lg mb-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-medium text-blue-800">
-                      📡 Camera Fire Detection
-                    </span>
-                    <span className={`text-[10px] px-2 py-0.5 rounded ${
-                      isConnectedToIgnis
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-yellow-100 text-yellow-700'
+            {!isEmergencyPanelCollapsed && (
+              <div className="px-4 pb-4 border-t border-gray-100">
+                <div className="flex items-center gap-2 mb-2 mt-3">
+                  <span className="text-xs text-gray-600">Status:</span>
+                  <span className={`text-xs font-semibold ${emergencyState.mode === 'idle' ? 'text-green-600' :
+                      emergencyState.mode === 'fire_detected' ? 'text-red-600' :
+                        emergencyState.mode === 'evacuation_in_progress' ? 'text-orange-600' :
+                          'text-green-600'
                     }`}>
-                      {isConnectedToIgnis ? '● Live' : '○ Connecting...'}
-                    </span>
-                  </div>
-                  {isConnectedToIgnis && (
-                    <p className="text-[9px] text-blue-600 mt-1">
-                      Receiving real-time fire alerts from registered cameras
-                    </p>
-                  )}
+                    {emergencyState.mode === 'idle' ? 'System Ready' :
+                      emergencyState.mode === 'fire_detected' ? 'FIRE DETECTED!' :
+                        emergencyState.mode === 'evacuation_in_progress' ? 'EVACUATION IN PROGRESS' :
+                          'Evacuation Complete'}
+                  </span>
                 </div>
 
-                {/* Automatic Fire Detection Section */}
-                <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={autoFireEnabled}
-                        onChange={(e) => {
-                          setAutoFireEnabled(e.target.checked);
-                          if (!e.target.checked) {
-                            setAutoFireRoom('');
-                          }
-                        }}
-                        className="w-4 h-4 text-orange-600 rounded focus:ring-orange-500"
-                      />
-                      <span className="text-xs font-medium text-orange-800">
-                        🤖 Manual Room Detection
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs text-gray-600">Occupancy:</span>
+                  <span className="text-xs font-semibold text-gray-800">{emergencyState.occupancy} people</span>
+                </div>
+
+                {activeFireZones.length > 0 && (
+                  <div className="text-xs text-red-600 mb-2">
+                    Active Fires: {activeFireZones.map(z => z.roomName).join(', ')}
+                  </div>
+                )}
+
+                <div className="flex gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={startEvacuation}
+                    disabled={emergencyState.mode !== 'fire_detected'}
+                    className="px-3 py-1.5 text-xs font-semibold bg-orange-500 text-white rounded hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Start Evacuation
+                  </button>
+                  <button
+                    type="button"
+                    onClick={clearEmergency}
+                    className="px-3 py-1.5 text-xs font-semibold bg-green-500 text-white rounded hover:bg-green-600"
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Left Side Panel - Fire Zone Management & Route Computation */}
+        {isMapLoaded && (
+          <div className="absolute top-20 left-4 z-10 bg-white/95 backdrop-blur-sm rounded-lg shadow-lg max-w-[280px] max-h-[calc(100%-120px)] overflow-y-auto">
+            {/* Fire Zone Management */}
+            <div className="border-b border-gray-200">
+              <button
+                type="button"
+                onClick={() => setIsFireZonePanelCollapsed(!isFireZonePanelCollapsed)}
+                className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors"
+              >
+                <h3 className="text-sm font-bold text-orange-600 flex items-center gap-2">
+                  <span>🔥</span> Fire Zone Management
+                </h3>
+                <span className={`text-gray-500 transition-transform duration-200 ${isFireZonePanelCollapsed ? '' : 'rotate-180'}`}>
+                  ▼
+                </span>
+              </button>
+
+              {!isFireZonePanelCollapsed && (
+                <div className="px-4 pb-4 space-y-3">
+                  {/* Ignis-BE Real-time Fire Detection Status */}
+                  <div className="p-2 bg-blue-50 border border-blue-200 rounded-lg mb-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-medium text-blue-800">
+                        📡 Camera Fire Detection
                       </span>
-                    </label>
-                    {autoFireEnabled && (
-                      <span className={`text-[10px] px-2 py-0.5 rounded ${
-                        isConnectedToDetection
+                      <span className={`text-[10px] px-2 py-0.5 rounded ${isConnectedToIgnis
                           ? 'bg-green-100 text-green-700'
-                          : 'bg-red-100 text-red-700'
-                      }`}>
-                        {isConnectedToDetection ? '● Connected' : '○ Disconnected'}
+                          : 'bg-yellow-100 text-yellow-700'
+                        }`}>
+                        {isConnectedToIgnis ? '● Live' : '○ Connecting...'}
                       </span>
+                    </div>
+                    {isConnectedToIgnis && (
+                      <p className="text-[9px] text-blue-600 mt-1">
+                        Receiving real-time fire alerts from registered cameras
+                      </p>
                     )}
                   </div>
 
-                  {autoFireEnabled && (
-                    <>
-                      <p className="text-[10px] text-orange-600 mb-2">
-                        Select room to auto-place fire when YOLO detects fire
-                      </p>
+                  {/* Automatic Fire Detection Section */}
+                  <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={autoFireEnabled}
+                          onChange={(e) => {
+                            setAutoFireEnabled(e.target.checked);
+                            if (!e.target.checked) {
+                              setAutoFireRoom('');
+                            }
+                          }}
+                          className="w-4 h-4 text-orange-600 rounded focus:ring-orange-500"
+                        />
+                        <span className="text-xs font-medium text-orange-800">
+                          🤖 Manual Room Detection
+                        </span>
+                      </label>
+                      {autoFireEnabled && (
+                        <span className={`text-[10px] px-2 py-0.5 rounded ${isConnectedToDetection
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-red-100 text-red-700'
+                          }`}>
+                          {isConnectedToDetection ? '● Connected' : '○ Disconnected'}
+                        </span>
+                      )}
+                    </div>
+
+                    {autoFireEnabled && (
+                      <>
+                        <p className="text-[10px] text-orange-600 mb-2">
+                          Select room to auto-place fire when YOLO detects fire
+                        </p>
+                        <select
+                          value={autoFireRoom}
+                          onChange={(e) => setAutoFireRoom(e.target.value)}
+                          className="w-full px-2 py-1.5 text-xs border border-orange-300 rounded focus:ring-2 focus:ring-orange-500"
+                        >
+                          <option value="">-- Select Room --</option>
+                          {routeNodes.filter(n => !n.id.startsWith('nav-')).map(node => (
+                            <option key={node.roomId} value={node.roomId}>
+                              {node.name}
+                            </option>
+                          ))}
+                        </select>
+                        {autoFireRoom && isConnectedToDetection && (
+                          <p className="text-[10px] text-green-600 mt-1">
+                            ✓ Listening for fire detections...
+                          </p>
+                        )}
+                      </>
+                    )}
+                  </div>
+
+                  {/* Manual Fire Placement - disabled when auto is enabled */}
+                  <div className={autoFireEnabled ? 'opacity-50 pointer-events-none' : ''}>
+                    <div>
+                      <label htmlFor="fire-zones-select" className="text-xs text-gray-600 block mb-1">
+                        Select Fire Zones {autoFireEnabled && '(Disabled in auto mode)'}:
+                      </label>
                       <select
-                        value={autoFireRoom}
-                        onChange={(e) => setAutoFireRoom(e.target.value)}
-                        className="w-full px-2 py-1.5 text-xs border border-orange-300 rounded focus:ring-2 focus:ring-orange-500"
+                        id="fire-zones-select"
+                        multiple
+                        value={selectedFireZones}
+                        onChange={(e) => {
+                          const values = Array.from(e.target.selectedOptions, option => option.value);
+                          setSelectedFireZones(values);
+                        }}
+                        disabled={autoFireEnabled}
+                        className="w-full px-2 py-1.5 text-xs border rounded focus:ring-2 focus:ring-orange-500 focus:border-orange-500 h-28"
+                        title="Select rooms where fire should be placed"
                       >
-                        <option value="">-- Select Room --</option>
-                        {routeNodes.filter(n => !n.id.startsWith('nav-')).map(node => (
-                          <option key={node.roomId} value={node.roomId}>
-                            {node.name}
-                          </option>
+                        {routeNodes.map(node => (
+                          <option key={node.roomId} value={node.roomId}>{node.name}</option>
                         ))}
                       </select>
-                      {autoFireRoom && isConnectedToDetection && (
-                        <p className="text-[10px] text-green-600 mt-1">
-                          ✓ Listening for fire detections...
-                        </p>
-                      )}
-                    </>
-                  )}
-                </div>
+                      <p className="text-[10px] text-gray-500 mt-1">Hold Ctrl/Cmd to select multiple rooms</p>
+                    </div>
 
-                {/* Manual Fire Placement - disabled when auto is enabled */}
-                <div className={autoFireEnabled ? 'opacity-50 pointer-events-none' : ''}>
-                  <div>
-                    <label htmlFor="fire-zones-select" className="text-xs text-gray-600 block mb-1">
-                      Select Fire Zones {autoFireEnabled && '(Disabled in auto mode)'}:
-                    </label>
-                    <select
-                      id="fire-zones-select"
-                      multiple
-                      value={selectedFireZones}
-                      onChange={(e) => {
-                        const values = Array.from(e.target.selectedOptions, option => option.value);
-                        setSelectedFireZones(values);
-                      }}
-                      disabled={autoFireEnabled}
-                      className="w-full px-2 py-1.5 text-xs border rounded focus:ring-2 focus:ring-orange-500 focus:border-orange-500 h-28"
-                      title="Select rooms where fire should be placed"
-                    >
-                      {routeNodes.map(node => (
-                        <option key={node.roomId} value={node.roomId}>{node.name}</option>
-                      ))}
-                    </select>
-                    <p className="text-[10px] text-gray-500 mt-1">Hold Ctrl/Cmd to select multiple rooms</p>
-                  </div>
+                    <div className="mt-3">
+                      <label htmlFor="fire-severity-select" className="text-xs text-gray-600 block mb-1">Fire Severity:</label>
+                      <select
+                        id="fire-severity-select"
+                        value={fireSeverity}
+                        onChange={(e) => setFireSeverity(e.target.value as 'HIGH' | 'CRITICAL')}
+                        disabled={autoFireEnabled}
+                        className="w-full px-2 py-1.5 text-xs border rounded focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                        title="Select fire severity level"
+                      >
+                        <option value="HIGH">High (Dangerous - Avoid)</option>
+                        <option value="CRITICAL">Critical (Life Threatening)</option>
+                      </select>
+                    </div>
 
-                  <div className="mt-3">
-                    <label htmlFor="fire-severity-select" className="text-xs text-gray-600 block mb-1">Fire Severity:</label>
-                    <select
-                      id="fire-severity-select"
-                      value={fireSeverity}
-                      onChange={(e) => setFireSeverity(e.target.value as 'HIGH' | 'CRITICAL')}
-                      disabled={autoFireEnabled}
-                      className="w-full px-2 py-1.5 text-xs border rounded focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                      title="Select fire severity level"
-                    >
-                      <option value="HIGH">High (Dangerous - Avoid)</option>
-                      <option value="CRITICAL">Critical (Life Threatening)</option>
-                    </select>
-                  </div>
-
-                  <div className="flex gap-2 mt-3">
-                    <button
-                      type="button"
-                      onClick={placeFireInZones}
-                      disabled={selectedFireZones.length === 0 || autoFireEnabled}
-                      className="flex-1 px-3 py-2 text-xs font-semibold bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
-                    >
-                      <span>🔥</span> Place Fire
-                    </button>
-                    <button
-                      type="button"
-                      onClick={clearFireZones}
-                      disabled={activeFireZones.length === 0}
-                      className="flex-1 px-3 py-2 text-xs font-semibold bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
-                    >
-                      <span>✓</span> Clear All
-                    </button>
+                    <div className="flex gap-2 mt-3">
+                      <button
+                        type="button"
+                        onClick={placeFireInZones}
+                        disabled={selectedFireZones.length === 0 || autoFireEnabled}
+                        className="flex-1 px-3 py-2 text-xs font-semibold bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
+                      >
+                        <span>🔥</span> Place Fire
+                      </button>
+                      <button
+                        type="button"
+                        onClick={clearFireZones}
+                        disabled={activeFireZones.length === 0}
+                        className="flex-1 px-3 py-2 text-xs font-semibold bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
+                      >
+                        <span>✓</span> Clear All
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
-          </div>
-
-          {/* Route Computation */}
-          <div>
-            <button
-              type="button"
-              onClick={() => setIsRoutePanelCollapsed(!isRoutePanelCollapsed)}
-              className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors"
-            >
-              <h3 className="text-sm font-bold text-emerald-700 flex items-center gap-2">
-                <span>🧭</span> Compute Shortest Route
-              </h3>
-              <span className={`text-gray-500 transition-transform duration-200 ${isRoutePanelCollapsed ? '' : 'rotate-180'}`}>
-                ▼
-              </span>
-            </button>
-
-            {!isRoutePanelCollapsed && (
-              <div className="px-4 pb-4">
-                <div className="space-y-2 mb-3">
-                  <div>
-                    <label htmlFor="start-location-select" className="text-xs text-gray-600 block mb-1">Start Location:</label>
-                    <select
-                      id="start-location-select"
-                      value={selectedStart}
-                      onChange={(e) => setSelectedStart(e.target.value)}
-                      className="w-full px-2 py-1.5 text-xs border rounded focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                      title="Select starting location for route"
-                    >
-                      <option value="">Select start...</option>
-                      {routeNodes.map(node => (
-                        <option key={node.id} value={node.nodeId}>{node.name}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label htmlFor="end-location-select" className="text-xs text-gray-600 block mb-1">End Location:</label>
-                    <select
-                      id="end-location-select"
-                      value={selectedEnd}
-                      onChange={(e) => setSelectedEnd(e.target.value)}
-                      className="w-full px-2 py-1.5 text-xs border rounded focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                      title="Select destination for route"
-                    >
-                      <option value="">Select end...</option>
-                      {routeNodes.map(node => (
-                        <option key={node.id} value={node.nodeId}>{node.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={handleComputeRoute}
-                    disabled={!selectedStart || !selectedEnd || isComputingRoute}
-                    className="flex-1 px-3 py-2 text-xs font-semibold bg-emerald-600 text-white rounded hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
-                  >
-                    <span>🧭</span> {isComputingRoute ? 'Computing...' : 'Compute'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={clearComputedRoute}
-                    disabled={!hasComputedRoute}
-                    className="px-3 py-2 text-xs font-semibold bg-gray-500 text-white rounded hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
-                  >
-                    <span>✕</span> Clear
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Loading Indicator */}
-      {!isMapLoaded && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
-          <div className="text-center">
-            <div className="animate-spin w-10 h-10 border-4 border-emerald-600 border-t-transparent rounded-full mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading map...</p>
-          </div>
-        </div>
-      )}
-
-      {/* Isolation Alert - Shelter in Place Instructions */}
-      {isolationAlert && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md mx-4 overflow-hidden animate-slide-up">
-            {/* Header */}
-            <div className="bg-red-600 px-6 py-4">
-              <div className="flex items-center gap-3">
-                <span className="text-3xl">🚨</span>
-                <div>
-                  <h2 className="text-white font-bold text-lg">LOCATION ISOLATED</h2>
-                  <p className="text-red-100 text-sm">No safe evacuation path available</p>
-                </div>
-              </div>
+              )}
             </div>
 
-            {/* Body */}
-            <div className="p-6">
-              {/* Unified shelter-in-place message — single line, in sync
-                  with the backend's IsolatedLocationException.message and
-                  the Android mobile client's SHELTER_IN_PLACE_MESSAGE. */}
-              <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-r">
-                <p className="text-red-800 text-sm font-medium">
-                  {isolationAlert.message}
-                </p>
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="bg-gray-50 px-6 py-4 flex justify-between items-center">
-              <p className="text-gray-500 text-xs">
-                Rescue team has been notified
-              </p>
+            {/* Route Computation */}
+            <div>
               <button
                 type="button"
-                onClick={() => setIsolationAlert(null)}
-                className="px-4 py-2 bg-gray-600 text-white text-sm font-semibold rounded-lg hover:bg-gray-700 transition-colors"
+                onClick={() => setIsRoutePanelCollapsed(!isRoutePanelCollapsed)}
+                className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors"
               >
-                Acknowledge
+                <h3 className="text-sm font-bold text-emerald-700 flex items-center gap-2">
+                  <span>🧭</span> Compute Shortest Route
+                </h3>
+                <span className={`text-gray-500 transition-transform duration-200 ${isRoutePanelCollapsed ? '' : 'rotate-180'}`}>
+                  ▼
+                </span>
               </button>
+
+              {!isRoutePanelCollapsed && (
+                <div className="px-4 pb-4">
+                  <div className="space-y-2 mb-3">
+                    <div>
+                      <label htmlFor="start-location-select" className="text-xs text-gray-600 block mb-1">Start Location:</label>
+                      <select
+                        id="start-location-select"
+                        value={selectedStart}
+                        onChange={(e) => setSelectedStart(e.target.value)}
+                        className="w-full px-2 py-1.5 text-xs border rounded focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                        title="Select starting location for route"
+                      >
+                        <option value="">Select start...</option>
+                        {routeNodes.map(node => (
+                          <option key={node.id} value={node.nodeId}>{node.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label htmlFor="end-location-select" className="text-xs text-gray-600 block mb-1">End Location:</label>
+                      <select
+                        id="end-location-select"
+                        value={selectedEnd}
+                        onChange={(e) => setSelectedEnd(e.target.value)}
+                        className="w-full px-2 py-1.5 text-xs border rounded focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                        title="Select destination for route"
+                      >
+                        <option value="">Select end...</option>
+                        {routeNodes.map(node => (
+                          <option key={node.id} value={node.nodeId}>{node.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleComputeRoute}
+                      disabled={!selectedStart || !selectedEnd || isComputingRoute}
+                      className="flex-1 px-3 py-2 text-xs font-semibold bg-emerald-600 text-white rounded hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
+                    >
+                      <span>🧭</span> {isComputingRoute ? 'Computing...' : 'Compute'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={clearComputedRoute}
+                      disabled={!hasComputedRoute}
+                      className="px-3 py-2 text-xs font-semibold bg-gray-500 text-white rounded hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
+                    >
+                      <span>✕</span> Clear
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Notification */}
-      {notification && <Notification message={notification.message} type={notification.type} />}
+        {/* Loading Indicator */}
+        {!isMapLoaded && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+            <div className="text-center">
+              <div className="animate-spin w-10 h-10 border-4 border-emerald-600 border-t-transparent rounded-full mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading map...</p>
+            </div>
+          </div>
+        )}
 
-      {/* CSS for animation */}
-      <style jsx global>{`
+        {/* Isolation Alert - Shelter in Place Instructions */}
+        {isolationAlert && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+            <div className="bg-white rounded-xl shadow-2xl max-w-md mx-4 overflow-hidden animate-slide-up">
+              {/* Header */}
+              <div className="bg-red-600 px-6 py-4">
+                <div className="flex items-center gap-3">
+                  <span className="text-3xl">🚨</span>
+                  <div>
+                    <h2 className="text-white font-bold text-lg">LOCATION ISOLATED</h2>
+                    <p className="text-red-100 text-sm">No safe evacuation path available</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Body */}
+              <div className="p-6">
+                {/* Unified shelter-in-place message — single line, in sync
+                  with the backend's IsolatedLocationException.message and
+                  the Android mobile client's SHELTER_IN_PLACE_MESSAGE. */}
+                <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-r">
+                  <p className="text-red-800 text-sm font-medium">
+                    {isolationAlert.message}
+                  </p>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="bg-gray-50 px-6 py-4 flex justify-between items-center">
+                <p className="text-gray-500 text-xs">
+                  Rescue team has been notified
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setIsolationAlert(null)}
+                  className="px-4 py-2 bg-gray-600 text-white text-sm font-semibold rounded-lg hover:bg-gray-700 transition-colors"
+                >
+                  Acknowledge
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Notification */}
+        {notification && <Notification message={notification.message} type={notification.type} />}
+
+        {/* CSS for animation */}
+        <style jsx global>{`
         @keyframes slide-up {
           from {
             transform: translateX(-50%) translateY(20px);
@@ -3487,6 +3309,10 @@ const EvacuationMap = memo(({
     </div>
   );
 });
+
+EvacuationMap.displayName = 'EvacuationMap';
+
+export default EvacuationMap;
 
 EvacuationMap.displayName = 'EvacuationMap';
 

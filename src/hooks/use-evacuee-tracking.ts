@@ -109,6 +109,8 @@ export function useEvacueeTracking(
   const [stats, setStats] = useState<EvacuationStats | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const mountedRef = useRef(true);
+  const pollRef = useRef<number | null>(null);
+  const fallbackTimeoutRef = useRef<number | null>(null);
 
   // Store callbacks in refs to avoid dependency issues
   const callbacksRef = useRef({
@@ -152,11 +154,85 @@ export function useEvacueeTracking(
       reconnectionDelay: 1000,
     });
 
+    const stopPolling = () => {
+      if (pollRef.current) {
+        window.clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+      if (fallbackTimeoutRef.current) {
+        window.clearTimeout(fallbackTimeoutRef.current);
+        fallbackTimeoutRef.current = null;
+      }
+    };
+
+    const fetchFallbackSnapshot = async () => {
+      try {
+        const token =
+          (typeof window !== 'undefined' &&
+            (localStorage.getItem('ignis_token') || localStorage.getItem('token') || '')) ||
+          '';
+        const params = new URLSearchParams();
+        if (buildingId !== undefined) params.set('buildingId', String(buildingId));
+
+        const resp = await fetch(
+          `${WS_URL}/occupants/positions${params.toString() ? `?${params.toString()}` : ''}`,
+          {
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          },
+        );
+        if (!resp.ok) return;
+
+        const body = await resp.json();
+        const list = Array.isArray(body?.data) ? body.data : [];
+        if (!mountedRef.current) return;
+
+        setEvacuees((prev) => {
+          const updated = new Map(prev);
+          for (const p of list) {
+            const userId = Number.parseInt(String(p.occupant_id), 10);
+            const lng = Number(p.lng);
+            const lat = Number(p.lat);
+            if (!Number.isFinite(userId) || !Number.isFinite(lng) || !Number.isFinite(lat)) {
+              continue;
+            }
+            updated.set(userId, {
+              user_id: userId,
+              building_id: Number(p.building_id ?? buildingId ?? 0),
+              floor_id: Number(p.floor_id ?? p.floor ?? 0),
+              coordinates: [lng, lat],
+              heading: p.heading !== undefined ? Number(p.heading) : undefined,
+              status: 'active',
+              current_instruction: undefined,
+              progress: undefined,
+              last_update: Number(p.timestamp ?? Date.now()),
+            });
+          }
+          return updated;
+        });
+      } catch (error) {
+        console.error('[EvacueeTracking REST fallback] Error:', error);
+      }
+    };
+
+    const startPolling = () => {
+      if (pollRef.current) return;
+      fetchFallbackSnapshot();
+      pollRef.current = window.setInterval(fetchFallbackSnapshot, 5000);
+    };
+
+    fallbackTimeoutRef.current = window.setTimeout(() => {
+      if (!socket.connected && mountedRef.current) {
+        console.warn('[EvacueeTracking WS] No connection after timeout, starting REST fallback polling');
+        startPolling();
+      }
+    }, 5000);
+
     socket.on('connect', () => {
       console.log('[EvacueeTracking WS] Connected');
       if (mountedRef.current) {
         setIsConnected(true);
       }
+      stopPolling();
     });
 
     socket.on('disconnect', () => {
@@ -164,6 +240,7 @@ export function useEvacueeTracking(
       if (mountedRef.current) {
         setIsConnected(false);
       }
+      startPolling();
     });
 
     socket.on('connected', (data) => {
@@ -187,6 +264,7 @@ export function useEvacueeTracking(
       }
 
       callbacksRef.current.onEvacueePositionUpdate?.(position);
+      stopPolling();
     });
 
     // Route updates when evacuee starts navigation or gets rerouted
@@ -202,6 +280,7 @@ export function useEvacueeTracking(
       }
 
       callbacksRef.current.onEvacueeRouteUpdate?.(route);
+      stopPolling();
     });
 
     // Evacuee reached safety
@@ -227,6 +306,7 @@ export function useEvacueeTracking(
       }
 
       callbacksRef.current.onEvacueeSafe?.(event);
+      stopPolling();
     });
 
     // Evacuee trapped
@@ -245,6 +325,7 @@ export function useEvacueeTracking(
       }
 
       callbacksRef.current.onEvacueeTrapped?.(event);
+      stopPolling();
     });
 
     // Evacuation stats update
@@ -254,14 +335,17 @@ export function useEvacueeTracking(
         setStats(statsData);
       }
       callbacksRef.current.onStatsUpdate?.(statsData);
+      stopPolling();
     });
 
     socket.on('error', (error) => {
       console.error('[EvacueeTracking WS] Error:', error);
+      startPolling();
     });
 
     socket.on('connect_error', (error) => {
       console.error('[EvacueeTracking WS] Connection error:', error.message);
+      startPolling();
     });
 
     socketRef.current = socket;
@@ -271,6 +355,14 @@ export function useEvacueeTracking(
     if (socketRef.current) {
       socketRef.current.disconnect();
       socketRef.current = null;
+    }
+    if (pollRef.current) {
+      window.clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+    if (fallbackTimeoutRef.current) {
+      window.clearTimeout(fallbackTimeoutRef.current);
+      fallbackTimeoutRef.current = null;
     }
   }, []); // No dependencies - stable reference
 

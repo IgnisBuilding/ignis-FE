@@ -4,17 +4,11 @@ import { io, Socket } from 'socket.io-client';
 export type Role = 'EVACUEE' | 'RESPONDER' | 'ADMIN';
 
 export interface OccupantPosition {
-  occupant_id: string;
+  user_id: string; // backend renamed to user_id in summary
   role: Role;
   display_name: string;
-  building_id?: number;
-  floor?: number;
-  floor_id?: number;
+  floor_id: number;
   node_id: string;
-  lat: number;
-  lng: number;
-  heading?: number;
-  accuracy: number;
   timestamp: number;
 }
 
@@ -24,6 +18,7 @@ export default function usePeerPositions(
 ) {
   const { buildingId, floorId } = options;
   const [positions, setPositions] = useState<OccupantPosition[]>([]);
+  const lastPositionsRef = useRef<OccupantPosition[]>([]);
   const [connected, setConnected] = useState(false);
   const socketRef = useRef<Socket | null>(null);
   const pollRef = useRef<number | null>(null);
@@ -54,7 +49,6 @@ export default function usePeerPositions(
       socket.on('connect', () => {
         backoffRef.current = 500;
         setConnected(true);
-        // stop polling if active
         if (pollRef.current) {
           window.clearInterval(pollRef.current);
           pollRef.current = null;
@@ -66,8 +60,8 @@ export default function usePeerPositions(
         if (!stopped) scheduleReconnect();
       });
 
-      socket.on('positions_update', (msg: { event: string; data: OccupantPosition[] }) => {
-        setPositions(msg.data || []);
+      socket.on('positions_update', (data: OccupantPosition[]) => {
+        updateIfNodeChanged(data || []);
       });
 
       socket.on('connect_error', () => {
@@ -76,8 +70,23 @@ export default function usePeerPositions(
       });
     };
 
+    const updateIfNodeChanged = (incoming: OccupantPosition[]) => {
+      const current = lastPositionsRef.current;
+      
+      // Gating logic: Only update state if someone moved to a different node
+      // or if the set of people changed.
+      const hasStructuralChange = incoming.length !== current.length;
+      const hasMovementChange = incoming.some(p => {
+        const match = current.find(c => c.user_id === p.user_id);
+        return !match || match.node_id !== p.node_id;
+      });
+
+      if (hasStructuralChange || hasMovementChange) {
+        lastPositionsRef.current = incoming;
+        setPositions(incoming);
+      }
+
     const scheduleReconnect = () => {
-      // start polling fallback if not already
       if (!pollRef.current) {
         fetchAndSet();
         pollRef.current = window.setInterval(fetchAndSet, 5000);
@@ -102,7 +111,7 @@ export default function usePeerPositions(
         });
         if (!resp.ok) return;
         const body = await resp.json();
-        setPositions(body.data || []);
+        updateIfNodeChanged(body.data || []);
       } catch (e) {
         // ignore
       }
