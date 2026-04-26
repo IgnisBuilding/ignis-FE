@@ -41,6 +41,7 @@ import {
   PanelLeftClose,
   PanelLeft,
   Video,
+  MessageSquare,
 } from "lucide-react";
 
 interface NavItem {
@@ -390,6 +391,20 @@ export default function DashboardLayout({ children, role, userName, userTitle }:
 
             <div className="flex items-center gap-2 sm:gap-3">
               <NotificationModal />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-muted-foreground hover:text-foreground"
+                onClick={() => {
+                  if (typeof window !== "undefined") {
+                    window.dispatchEvent(new CustomEvent("ignis-ai-chat-toggle"));
+                  }
+                }}
+                aria-label="Toggle AI chat"
+                title="AI Chat"
+              >
+                <MessageSquare className="h-4 w-4" />
+              </Button>
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

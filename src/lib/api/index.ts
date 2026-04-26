@@ -1,5 +1,7 @@
 // Central API configuration for NestJS backend (ignis-be)
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL!;
+import { getPublicAppConfig } from '../config/public-app-config';
+
+const API_BASE_URL = getPublicAppConfig().apiUrl;
 
 // Type definitions
 export interface LoginResponse {
@@ -240,6 +242,69 @@ export interface FireAlertConfig {
   cooldown_seconds: number;
   auto_create_hazard: boolean;
   auto_notify_firefighters: boolean;
+}
+
+export interface McpApiEnvelope<T> {
+  success: boolean;
+  result?: T;
+  toolName?: string;
+  error?: string;
+}
+
+export interface McpRiskSummary {
+  totalHazards: number;
+  activeHazards: number;
+  resolvedHazards: number;
+  activeSensors: number;
+  alertSensors: number;
+  generatedAt: string;
+}
+
+export interface McpActiveHazardsContext {
+  hazards: Array<{
+    id: number;
+    type: string;
+    severity: string;
+    status: string;
+    createdAt: string;
+    apartmentId?: number;
+    roomId?: number;
+    floorId?: number;
+  }>;
+  count: number;
+}
+
+export interface McpRecentFireDetections {
+  detections: Array<{
+    id: number;
+    cameraCode: string;
+    confidence: number;
+    detectedAt: string;
+    hazardId?: number;
+  }>;
+  count: number;
+}
+
+export type ChatContextMode = 'auto' | 'global' | 'society' | 'building';
+
+export interface OrchestratedChatRequest {
+  message: string;
+  language?: 'en' | 'ur';
+  contextMode?: ChatContextMode;
+  buildingId?: number;
+  societyId?: number;
+  buildingName?: string;
+  societyName?: string;
+}
+
+export interface OrchestratedChatResponse {
+  text: string;
+  mode: 'normal' | 'emergency';
+  voice: {
+    priority: 'normal' | 'high';
+    language: 'en' | 'ur';
+    text: string;
+  };
 }
 
 class ApiService {
@@ -806,6 +871,50 @@ class ApiService {
     count: number;
   }> {
     return this.request(`/buildings/by-jurisdiction/${userId}`, {
+      method: 'GET',
+    });
+  }
+
+  // ==================== MCP PROXY ENDPOINTS ====================
+
+  async getMcpRiskSummary(buildingId?: number): Promise<McpApiEnvelope<McpRiskSummary>> {
+    return this.request<McpApiEnvelope<McpRiskSummary>>('/mcp/queryRiskSummary', {
+      method: 'POST',
+      body: JSON.stringify(buildingId ? { buildingId } : {}),
+    });
+  }
+
+  async getMcpActiveHazardsContext(
+    options?: { buildingId?: number; limit?: number }
+  ): Promise<McpApiEnvelope<McpActiveHazardsContext>> {
+    return this.request<McpApiEnvelope<McpActiveHazardsContext>>('/mcp/getActiveHazardsContext', {
+      method: 'POST',
+      body: JSON.stringify(options || {}),
+    });
+  }
+
+  async getMcpRecentFireDetections(limit?: number): Promise<McpApiEnvelope<McpRecentFireDetections>> {
+    return this.request<McpApiEnvelope<McpRecentFireDetections>>('/mcp/getRecentFireDetections', {
+      method: 'POST',
+      body: JSON.stringify(limit ? { limit } : {}),
+    });
+  }
+
+  async chatWithOrchestrator(payload: OrchestratedChatRequest): Promise<OrchestratedChatResponse> {
+    return this.request<OrchestratedChatResponse>('/chat', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async getChatSessions(): Promise<any[]> {
+    return this.request<any[]>('/mcp/sessions', {
+      method: 'GET',
+    });
+  }
+
+  async getChatSessionMessages(id: string): Promise<any> {
+    return this.request<any>(`/mcp/sessions/${id}/messages`, {
       method: 'GET',
     });
   }
