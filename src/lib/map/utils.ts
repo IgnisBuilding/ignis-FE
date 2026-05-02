@@ -555,18 +555,20 @@ export async function placeFires(
 }
 
 /**
- * Clear all active fire zones - removes hazard records from database
+ * Clear all active fire zones - removes hazard records from database.
+ * Passing buildingId lets the backend scope the camera-log reset to that building only.
  */
-export async function clearFires(): Promise<{ success: boolean; deletedCount?: number; error?: string }> {
+export async function clearFires(buildingId?: number): Promise<{ success: boolean; deletedCount?: number; error?: string }> {
   const apiBase = DEFAULT_MAP_CONFIG.apiBase;
   const url = `${apiBase}${API_ENDPOINTS.clearFires}`;
 
-  console.log(`[MapAPI] Clearing all fire zones`);
+  console.log(`[MapAPI] Clearing all fire zones`, buildingId ? `for building ${buildingId}` : '(all)');
 
   try {
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ buildingId }),
     });
 
     if (!response.ok) {

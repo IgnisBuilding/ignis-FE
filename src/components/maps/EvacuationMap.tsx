@@ -2396,12 +2396,20 @@ const EvacuationMap = memo(({
       nodeId?: number;
       floor_id?: number;
       floorId?: number;
+      created_at?: string;
     }) => {
       console.log('[HazardSync] Hazard created event:', hazard);
 
       // Only process fire hazards that are active
       if (hazard.type !== 'fire' || hazard.status !== 'active') {
         console.log('[HazardSync] Ignoring non-fire or inactive hazard');
+        return;
+      }
+
+      // Discard events that were created before the last Clear All
+      const hazardCreatedAt = hazard.created_at ? new Date(hazard.created_at).getTime() : 0;
+      if (hazardCreatedAt > 0 && hazardCreatedAt < lastClearTimestampRef.current) {
+        console.log('[HazardSync] Ignoring stale hazard.created event (created before last clear)');
         return;
       }
 
@@ -2497,7 +2505,7 @@ const EvacuationMap = memo(({
     console.log('[FireZone] Clearing fires...', isUsingImportedRouting() ? '(local)' : '(backend API)');
     const result = isUsingImportedRouting()
       ? clearLocalFires()
-      : await clearFires();
+      : await clearFires(buildingId);
 
     if (!result.success) {
       console.error('[FireZone] Failed to clear fires:', result.error);
