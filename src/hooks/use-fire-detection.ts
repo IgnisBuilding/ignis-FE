@@ -50,6 +50,9 @@ export function useFireDetection(options: UseFireDetectionOptions = {}): UseFire
   const [recentDetections, setRecentDetections] = useState<FireDetectionEvent[]>([]);
   const [activeAlerts, setActiveAlerts] = useState<FireDetectionEvent[]>([]);
   const socketRef = useRef<Socket | null>(null);
+  // After any fire.resolved event (from clear-fires or manual resolve), suppress alarm
+  // sounds for 5 minutes so rapid sensor re-triggers don't immediately re-beep.
+  const suppressAlarmUntilRef = useRef<number>(0);
 
   const connect = useCallback(() => {
     if (socketRef.current?.connected) return;
@@ -93,6 +96,12 @@ export function useFireDetection(options: UseFireDetectionOptions = {}): UseFire
         return [event, ...prev];
       });
 
+      // Skip alarm sound only (state is still updated) if suppressed after a recent clear
+      if (Date.now() < suppressAlarmUntilRef.current) {
+        console.log('[FireDetection WS] Alarm beep suppressed after recent clear');
+        return;
+      }
+
       onFireDetected?.(event);
     });
 
@@ -104,6 +113,10 @@ export function useFireDetection(options: UseFireDetectionOptions = {}): UseFire
       console.log('[FireDetection WS] Fire resolved:', event);
 
       setActiveAlerts((prev) => prev.filter((a) => a.hazard_id !== event.hazard_id));
+
+      // Suppress alarm for 5 minutes after any fire is resolved so re-trigger
+      // noise from sensors still above threshold doesn't immediately re-beep.
+      suppressAlarmUntilRef.current = Date.now() + 5 * 60 * 1000;
 
       onFireResolved?.(event);
     });

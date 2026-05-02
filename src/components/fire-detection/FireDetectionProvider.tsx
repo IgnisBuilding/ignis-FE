@@ -63,6 +63,9 @@ export function FireDetectionProvider({
   onViewMap,
 }: FireDetectionProviderProps) {
   const { toast } = useToast();
+  // Mirror of the suppressAlarmUntilRef in use-fire-detection; set when fire is resolved
+  // so hazard.created:building beeps are also silenced during the suppression window.
+  const suppressAlarmUntilRef = React.useRef<number>(0);
 
   const handleFireDetected = useCallback(
     (event: FireDetectionEvent) => {
@@ -71,6 +74,8 @@ export function FireDetectionProvider({
         description: `${event.camera_name} - ${(event.confidence * 100).toFixed(1)}% confidence`,
         variant: 'destructive',
       });
+      // Alarm sound is guarded by suppressAlarmUntilRef inside use-fire-detection —
+      // this callback is only invoked when the suppression window has passed.
       playFireAlertBeep();
     },
     [toast]
@@ -83,6 +88,8 @@ export function FireDetectionProvider({
         description: 'A fire hazard has been placed in this building.',
         variant: 'destructive',
       });
+      // Respect suppression window (set by handleFireResolved below)
+      if (Date.now() < suppressAlarmUntilRef.current) return;
       playFireAlertBeep();
     },
     [toast]
@@ -94,6 +101,8 @@ export function FireDetectionProvider({
         title: 'Fire Alert Resolved',
         description: `Hazard #${event.hazard_id} has been resolved`,
       });
+      // Suppress alarm for 5 minutes — mirrors use-fire-detection suppressAlarmUntilRef
+      suppressAlarmUntilRef.current = Date.now() + 5 * 60 * 1000;
     },
     [toast]
   );
