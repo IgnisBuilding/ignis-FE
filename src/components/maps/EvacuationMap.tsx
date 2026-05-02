@@ -22,6 +22,8 @@ import {
   extractFeatureFromResponse,
   convertGeometryIfMercator,
   isValidLonLat,
+  isValidIndoorCoord,
+  getBuildingBoundsFromRooms,
   loadImportedBuilding,
   convertImportedToMapData,
   // Local routing for imported buildings
@@ -41,6 +43,9 @@ export interface EvacueePosition {
   building_id: number;
   floor_id: number;
   coordinates: [number, number];
+  // Optional authoritative node id provided by client or determined on server
+  node_id?: number | string;
+  nearest_node_id?: number | string;
   heading?: number;
   status: 'active' | 'navigating' | 'safe' | 'trapped' | 'offline';
   current_instruction?: string;
@@ -176,19 +181,6 @@ const EvacuationMap = memo(({
     const currentMarkers = evacueeMarkersRef.current;
     const evacueeIds = new Set(evacuees.keys());
     
-    // Get map bounds for coordinate transformation
-    const bounds = map.getBounds();
-    const neLng = bounds.getNorthEast().lng;
-    const neLat = bounds.getNorthEast().lat;
-    const swLng = bounds.getSouthWest().lng;
-    const swLat = bounds.getSouthWest().lat;
-    
-    // Local building dimensions (assume ~200m x 200m typical building)
-    const LOCAL_WIDTH = 200;  // meters
-    const LOCAL_HEIGHT = 200; // meters
-    const MAP_WIDTH = neLng - swLng;
-    const MAP_HEIGHT = neLat - swLat;
-
     // Remove markers for evacuees no longer in the list
     currentMarkers.forEach((marker, userId) => {
       if (!evacueeIds.has(userId)) {
@@ -199,9 +191,8 @@ const EvacuationMap = memo(({
 
     // Add or update markers for each evacuee
     evacuees.forEach((evacuee, userId) => {
-      // Skip if coordinates are invalid
+      // Require coordinates array
       if (!evacuee.coordinates || evacuee.coordinates.length !== 2) return;
-      if (!isValidLonLat(evacuee.coordinates[0], evacuee.coordinates[1])) return;
 
       // Filter by floor if activeFloorId is set
       if (activeFloorId && evacuee.floor_id !== activeFloorId) {
@@ -215,19 +206,57 @@ const EvacuationMap = memo(({
 
       const isCurrentUser = currentUserId === userId;
       const existingMarker = currentMarkers.get(userId);
-      
+
       // Convert local building coordinates [x, y] to map coordinates [lng, lat]
       const localX = Number(evacuee.coordinates[0]) || 0;
       const localY = Number(evacuee.coordinates[1]) || 0;
-      
-      // Clamp to building bounds (0-LOCAL_WIDTH, 0-LOCAL_HEIGHT)
-      const clampedX = Math.max(0, Math.min(LOCAL_WIDTH, localX));
-      const clampedY = Math.max(0, Math.min(LOCAL_HEIGHT, localY));
-      
-      // Map to geographic coordinates within visible map bounds
-      const mappedLng = swLng + (clampedX / LOCAL_WIDTH) * MAP_WIDTH;
-      const mappedLat = swLat + (clampedY / LOCAL_HEIGHT) * MAP_HEIGHT;
-      const mapCoordinates = [mappedLng, mappedLat];
+
+      // Try node-based placement first (authoritative)
+      let resolvedCoords: [number, number] | null = null;
+      const nodeCandidate = evacuee.nearest_node_id ?? evacuee.node_id ?? (evacuee as any).nearestNodeId;
+      if (nodeCandidate) {
+        const nid = String(nodeCandidate);
+        const byRouteNode = routeNodes.find(r => String(r.nodeId) === nid || String(r.id) === nid || String(r.roomId) === nid);
+        if (byRouteNode && byRouteNode.coordinates) {
+          resolvedCoords = byRouteNode.coordinates as [number, number];
+        } else {
+          // Try global nodes data exported on window
+          const globalNodes = (window as any)._nodesData as GeoJSON.FeatureCollection | undefined;
+          if (globalNodes?.features) {
+            const found = globalNodes.features.find((f: any) => String(f.properties?.id ?? f.properties?.node_id ?? f.id) === nid);
+            if (found && found.geometry && found.geometry.type === 'Point') {
+              resolvedCoords = found.geometry.coordinates as [number, number];
+            }
+          }
+        }
+      }
+
+      // Fallback: if no node resolved, use indoor coords mapped into fixed building bounds
+      if (!resolvedCoords) {
+        // Validate indoor coordinates
+        if (!isValidIndoorCoord(localX, localY)) {
+          // Invalid indoor coords — skip to avoid wrong-room placement
+          return;
+        }
+
+        const buildingBounds = getBuildingBoundsFromRooms(roomsDataRef.current);
+        if (!buildingBounds) {
+          // Avoid using viewport-based projection; require building bounds for stable placement
+          return;
+        }
+
+        const [[minLng, minLat], [maxLng, maxLat]] = buildingBounds;
+        const LOCAL_WIDTH = 200; // meters (assumed local coordinate system scale)
+        const LOCAL_HEIGHT = 200;
+        const clampedX = Math.max(0, Math.min(LOCAL_WIDTH, localX));
+        const clampedY = Math.max(0, Math.min(LOCAL_HEIGHT, localY));
+        const mappedLng = minLng + (clampedX / LOCAL_WIDTH) * (maxLng - minLng);
+        const mappedLat = minLat + (clampedY / LOCAL_HEIGHT) * (maxLat - minLat);
+        resolvedCoords = [mappedLng, mappedLat];
+      }
+
+      if (!resolvedCoords) return;
+      const mapCoordinates = resolvedCoords;
 
       if (existingMarker) {
         // Update existing marker position with smooth animation
@@ -319,7 +348,7 @@ const EvacuationMap = memo(({
         currentMarkers.set(userId, marker);
       }
     });
-  }, [evacuees, isMapLoaded, showEvacuees, activeFloorId, currentUserId]);
+  }, [evacuees, isMapLoaded, showEvacuees, activeFloorId, currentUserId, routeNodes]);
 
   // Cleanup evacuee markers on unmount
   useEffect(() => {

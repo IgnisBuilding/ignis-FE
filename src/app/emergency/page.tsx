@@ -419,7 +419,7 @@ function EmergencyPageContent() {
               // Real-time evacuee tracking
               evacuees={evacuees}
               showEvacuees={true}
-              currentUserId={user?.id}
+              currentUserId={user?.id ? Number(user.id) : undefined}
             />
 
             {/* Tactical Overlay Legend - compact on mobile */}

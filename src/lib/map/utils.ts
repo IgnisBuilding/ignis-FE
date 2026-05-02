@@ -338,6 +338,33 @@ export function getFeatureCentroid(feature: GeoJSON.Feature): [number, number] |
 }
 
 /**
+ * Indoor coordinate validator — accepts local building coordinates (meters)
+ */
+export function isValidIndoorCoord(x: number | null | undefined, y: number | null | undefined): boolean {
+  if (x === null || x === undefined || y === null || y === undefined) return false;
+  if (!isFinite(Number(x)) || !isFinite(Number(y))) return false;
+  const nx = Number(x);
+  const ny = Number(y);
+  // Reject obvious placeholders
+  if ((nx === 0 && ny === 0) || (Math.abs(nx) > 10000 || Math.abs(ny) > 10000)) return false;
+  return true;
+}
+
+/**
+ * Get building bounds (lng/lat) from a rooms FeatureCollection.
+ * Returns null if computation fails.
+ */
+export function getBuildingBoundsFromRooms(rooms: GeoJSON.FeatureCollection | null): [[number, number], [number, number]] | null {
+  if (!rooms) return null;
+  try {
+    return calculateBounds(rooms);
+  } catch (e) {
+    console.warn('[MapUtils] Failed to compute building bounds:', e);
+    return null;
+  }
+}
+
+/**
  * Format room popup content
  */
 export function formatRoomPopupContent(properties: Record<string, any>): string {
