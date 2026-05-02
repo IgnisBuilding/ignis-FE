@@ -60,6 +60,8 @@ export interface Sensor {
   };
   latitude?: number;
   longitude?: number;
+  warningThreshold?: number;
+  alertThreshold?: number;
   lastReading?: string;
   createdAt: string;
   updatedAt: string;

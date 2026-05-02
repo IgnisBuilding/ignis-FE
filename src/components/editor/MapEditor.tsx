@@ -102,6 +102,8 @@ interface SensorData {
   unit: string;
   linked_room_id?: string;
   hardware_uid?: string;
+  warning_threshold?: number;
+  alert_threshold?: number;
 }
 
 interface Camera {
@@ -623,21 +625,11 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
   // Camera State (Phase 6 - Fire Detection Integration)
   const [cameras, setCameras] = useState<Camera[]>([]);
   const [sensors, setSensors] = useState<SensorData[]>([]);
-  interface DetectedHardware { key: string; label: string; lastValue: number | null; lastSeenAt: string | null; }
-  const [detectedHardwareSensors, setDetectedHardwareSensors] = useState<DetectedHardware[]>([]);
-  const activeDetectedSensors = useMemo(() => {
-    if (!detectedHardwareSensors.length) return [];
-    const cutoff = Date.now() - 5 * 60 * 1000;
-    const active = detectedHardwareSensors.filter(
-      (hw) => hw.lastSeenAt && new Date(hw.lastSeenAt).getTime() >= cutoff
-    );
-    return active.length > 0 ? active : detectedHardwareSensors;
-  }, [detectedHardwareSensors]);
+
   const [selectedSensor, setSelectedSensor] = useState<string | null>(null);
   const [currentSensorType, setCurrentSensorType] = useState<string>("gas");
   const [selectedCamera, setSelectedCamera] = useState<string | null>(null);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
-  const [hardwareConnected, setHardwareConnected] = useState(false);
 
   // Building Selection & Database Integration State
   const [buildings, setBuildings] = useState<APIBuilding[]>([]);
@@ -912,40 +904,19 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
 
   // ==================== EFFECTS ====================
 
-  const loadConnectedHardwareSensors = useCallback(async () => {
-    try {
-      const health = await api.getArduinoSensorHealth();
-      setHardwareConnected(Boolean(health?.connected));
-      setDetectedHardwareSensors(health?.detectedSensors || []);
-    } catch (err) {
-      console.error("Failed to load connected hardware sensors:", err);
-      setHardwareConnected(false);
-      setDetectedHardwareSensors([]);
-    }
-  }, []);
-
   // Load buildings from API on mount
   useEffect(() => {
     const loadBuildings = async () => {
       try {
         const buildingsData = await api.getBuildings();
         setBuildings(buildingsData);
-        await loadConnectedHardwareSensors();
       } catch (err) {
         console.error('Failed to load buildings:', err);
         errorHandler.warn('Could not connect to server. Working in offline mode.');
       }
     };
     loadBuildings();
-  }, [loadConnectedHardwareSensors]);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      void loadConnectedHardwareSensors();
-    }, 10000);
-
-    return () => clearInterval(interval);
-  }, [loadConnectedHardwareSensors]);
+  }, []);
 
   // Auto-select building if initialBuildingId is provided (from URL query param)
   useEffect(() => {
@@ -2577,6 +2548,8 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
             sensor_type: sen.type,
             unit: sen.unit,
             hardware_uid: sen.hardware_uid,
+            warning_threshold: sen.warning_threshold ?? null,
+            alert_threshold: sen.alert_threshold ?? null,
             linked_room_id: sen.linked_room_id,
             linked_room_db_id: linkedRoom?.db_id || null,
           },
@@ -5050,55 +5023,61 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
                           </button>
                         </div>
 
-                        {/* Mapping Dropdown */}
-                        <div className="bg-indigo-50/50 p-2 rounded-md border border-indigo-100/50">
-                          <label className="text-[10px] text-indigo-500 font-bold uppercase block mb-1">
-                            Link to System Hardware
-                          </label>
-                          <select
-                            value={sensor.hardware_uid || ""}
-                            onChange={(e) => {
-                              updateSensor(sensor.id, { hardware_uid: e.target.value || undefined });
-                            }}
-                            className="w-full bg-white border border-indigo-200 rounded px-2 py-1.5 text-sm text-indigo-700 font-medium focus:ring-2 focus:ring-indigo-400 outline-none transition-shadow"
-                          >
-                            <option value="">-- No Hardware Link --</option>
-                            {!hardwareConnected && (
-                              <option value="" disabled>No hardware port connected</option>
-                            )}
-                            {hardwareConnected && activeDetectedSensors.length === 0 && (
-                              <option value="" disabled>No sensors detected yet — send a packet first</option>
-                            )}
-                            {activeDetectedSensors.map((hw) => (
-                              <option key={hw.key} value={hw.key}>
-                                {hw.label} ({hw.key}) — {hw.lastValue ?? 'N/A'} adc
-                              </option>
-                            ))}
-                          </select>
-                          <p className="mt-1 text-[9px] text-indigo-400 italic">
-                             Connects this map point to live Arduino data.
-                          </p>
-                        </div>
-
                         {/* Unique Hardware ID */}
                         <div>
                           <label className="text-[10px] text-gray-500 font-bold uppercase block mb-1">
-                            Unique Hardware ID (Serial/MAC)
+                            Hardware UID
                           </label>
                           <input
                             type="text"
-                            placeholder="e.g. SENSOR-MQ5-001"
+                            placeholder="e.g. MQ5-B1-F1-01"
                             value={sensor.hardware_uid || ""}
                             onChange={(e) =>
                               updateSensor(sensor.id, {
-                                hardware_uid: e.target.value.toUpperCase().replace(/\s/g, "-"),
+                                hardware_uid: e.target.value,
                               })
                             }
                             className="w-full bg-gray-50 border border-gray-200 rounded px-2 py-1.5 text-sm focus:border-indigo-400 outline-none"
                           />
                           <p className="mt-1 text-[10px] text-gray-400">
-                             Ensures persistence even if connection port changes.
+                            Must match exactly what the sensor firmware sends.
                           </p>
+                        </div>
+
+                        {/* Thresholds */}
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-[10px] text-gray-500 font-bold uppercase block mb-1">
+                              Warning Threshold
+                            </label>
+                            <input
+                              type="number"
+                              placeholder="e.g. 400"
+                              value={sensor.warning_threshold ?? ""}
+                              onChange={(e) =>
+                                updateSensor(sensor.id, {
+                                  warning_threshold: e.target.value ? parseInt(e.target.value) : undefined,
+                                })
+                              }
+                              className="w-full bg-gray-50 border border-gray-200 rounded px-2 py-1.5 text-sm focus:border-indigo-400 outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-gray-500 font-bold uppercase block mb-1">
+                              Alert Threshold
+                            </label>
+                            <input
+                              type="number"
+                              placeholder="e.g. 700"
+                              value={sensor.alert_threshold ?? ""}
+                              onChange={(e) =>
+                                updateSensor(sensor.id, {
+                                  alert_threshold: e.target.value ? parseInt(e.target.value) : undefined,
+                                })
+                              }
+                              className="w-full bg-gray-50 border border-gray-200 rounded px-2 py-1.5 text-sm focus:border-indigo-400 outline-none"
+                            />
+                          </div>
                         </div>
 
                         {/* Name Input */}
