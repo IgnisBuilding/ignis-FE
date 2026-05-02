@@ -174,6 +174,19 @@ const EvacuationMap = memo(({
     const map = mapRef.current;
     const currentMarkers = evacueeMarkersRef.current;
     const evacueeIds = new Set(evacuees.keys());
+    
+    // Get map bounds for coordinate transformation
+    const bounds = map.getBounds();
+    const neLng = bounds.getNorthEast().lng;
+    const neLat = bounds.getNorthEast().lat;
+    const swLng = bounds.getSouthWest().lng;
+    const swLat = bounds.getSouthWest().lat;
+    
+    // Local building dimensions (assume ~200m x 200m typical building)
+    const LOCAL_WIDTH = 200;  // meters
+    const LOCAL_HEIGHT = 200; // meters
+    const MAP_WIDTH = neLng - swLng;
+    const MAP_HEIGHT = neLat - swLat;
 
     // Remove markers for evacuees no longer in the list
     currentMarkers.forEach((marker, userId) => {
@@ -201,10 +214,23 @@ const EvacuationMap = memo(({
 
       const isCurrentUser = currentUserId === userId;
       const existingMarker = currentMarkers.get(userId);
+      
+      // Convert local building coordinates [x, y] to map coordinates [lng, lat]
+      const localX = Number(evacuee.coordinates[0]) || 0;
+      const localY = Number(evacuee.coordinates[1]) || 0;
+      
+      // Clamp to building bounds (0-LOCAL_WIDTH, 0-LOCAL_HEIGHT)
+      const clampedX = Math.max(0, Math.min(LOCAL_WIDTH, localX));
+      const clampedY = Math.max(0, Math.min(LOCAL_HEIGHT, localY));
+      
+      // Map to geographic coordinates within visible map bounds
+      const mappedLng = swLng + (clampedX / LOCAL_WIDTH) * MAP_WIDTH;
+      const mappedLat = swLat + (clampedY / LOCAL_HEIGHT) * MAP_HEIGHT;
+      const mapCoordinates = [mappedLng, mappedLat];
 
       if (existingMarker) {
         // Update existing marker position with smooth animation
-        existingMarker.setLngLat(evacuee.coordinates);
+        existingMarker.setLngLat(mapCoordinates);
         existingMarker.getElement().style.display = 'block';
 
         // Update marker style based on status
@@ -216,9 +242,10 @@ const EvacuationMap = memo(({
           el.style.transform = `rotate(${evacuee.heading}deg)`;
         }
       } else {
-        // Create new marker
+        // Create new marker with humanoid SVG person icon
         const el = document.createElement('div');
         el.className = `evacuee-marker evacuee-${evacuee.status}${isCurrentUser ? ' current-user' : ''}`;
+        el.style.position = 'relative';
 
         // Style based on status
         const statusColors: Record<string, string> = {
@@ -230,50 +257,47 @@ const EvacuationMap = memo(({
         };
 
         const color = statusColors[evacuee.status] || statusColors.active;
-        const size = isCurrentUser ? 24 : 18;
+        const size = isCurrentUser ? 32 : 24;
+
+        // Humanoid SVG person icon (head, body, arms, legs)
+        const humanoidSvg = `
+          <svg width="${size}" height="${size}" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));">
+            <!-- Head (circle) -->
+            <circle cx="12" cy="5" r="3" fill="${color}" stroke="white" stroke-width="1"/>
+            <!-- Body (rectangle) -->
+            <rect x="10.5" y="9" width="3" height="5" fill="${color}" stroke="white" stroke-width="1" rx="0.5"/>
+            <!-- Left arm -->
+            <line x1="10.5" y1="10.5" x2="6" y2="12" stroke="${color}" stroke-width="1.5" stroke-linecap="round"/>
+            <!-- Right arm -->
+            <line x1="13.5" y1="10.5" x2="18" y2="12" stroke="${color}" stroke-width="1.5" stroke-linecap="round"/>
+            <!-- Left leg -->
+            <line x1="11" y1="14" x2="9.5" y2="19" stroke="${color}" stroke-width="1.5" stroke-linecap="round"/>
+            <!-- Right leg -->
+            <line x1="13" y1="14" x2="14.5" y2="19" stroke="${color}" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        `;
 
         el.innerHTML = `
-          <div style="
-            width: ${size}px;
-            height: ${size}px;
-            background: ${color};
-            border: 3px solid white;
-            border-radius: 50%;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-            cursor: pointer;
-            transition: all 0.3s ease;
-            ${isCurrentUser ? 'animation: pulse 2s infinite;' : ''}
-          ">
-            ${isCurrentUser ? `
+          <div style="display: flex; align-items: center; justify-content: center; position: relative; ${isCurrentUser ? 'animation: pulse 2s infinite;' : ''}">
+            ${humanoidSvg}
+            ${evacuee.heading !== undefined && evacuee.status === 'navigating' ? `
               <div style="
                 position: absolute;
-                top: 50%;
+                top: -8px;
                 left: 50%;
-                transform: translate(-50%, -50%);
-                width: 8px;
-                height: 8px;
-                background: white;
-                border-radius: 50%;
+                transform: translateX(-50%) rotate(${evacuee.heading}deg);
+                width: 0;
+                height: 0;
+                border-left: 4px solid transparent;
+                border-right: 4px solid transparent;
+                border-bottom: 6px solid ${color};
               "></div>
             ` : ''}
           </div>
-          ${evacuee.heading !== undefined ? `
-            <div style="
-              position: absolute;
-              top: -8px;
-              left: 50%;
-              transform: translateX(-50%) rotate(${evacuee.heading}deg);
-              width: 0;
-              height: 0;
-              border-left: 5px solid transparent;
-              border-right: 5px solid transparent;
-              border-bottom: 8px solid ${color};
-            "></div>
-          ` : ''}
         `;
 
         const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
-          .setLngLat(evacuee.coordinates)
+          .setLngLat(mapCoordinates)
           .setPopup(
             new maplibregl.Popup({ offset: 25, closeButton: false })
               .setHTML(`
