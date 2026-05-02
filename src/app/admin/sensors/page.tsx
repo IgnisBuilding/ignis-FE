@@ -38,6 +38,8 @@ export function SensorsManagementContent() {
     floorId: undefined as number | undefined,
     latitude: undefined as number | undefined,
     longitude: undefined as number | undefined,
+    warningThreshold: undefined as number | undefined,
+    alertThreshold: undefined as number | undefined,
   });
 
   const activeDetectedSensors = useMemo(() => {
@@ -246,6 +248,8 @@ export function SensorsManagementContent() {
       floorId: undefined,
       latitude: undefined,
       longitude: undefined,
+      warningThreshold: undefined,
+      alertThreshold: undefined,
     });
     setShowModal(true);
   };
@@ -281,6 +285,8 @@ export function SensorsManagementContent() {
       floorId: floorId,
       latitude: sensor.latitude,
       longitude: sensor.longitude,
+      warningThreshold: sensor.warningThreshold,
+      alertThreshold: sensor.alertThreshold,
     });
     setShowModal(true);
   };
@@ -489,6 +495,14 @@ export function SensorsManagementContent() {
                         <div>
                           <label className="block text-sm font-semibold text-dark-green-700 mb-2">Unit</label>
                           <input type="text" required value={formData.unit} onChange={(e) => setFormData({...formData, unit: e.target.value})} placeholder="e.g., ppm, °C, %" className="w-full px-4 py-2 border-2 border-dark-green-200 rounded-xl focus:border-dark-green-500 focus:outline-none" />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-dark-green-700 mb-2">Warning Threshold</label>
+                          <input type="number" step="1" value={formData.warningThreshold ?? ''} onChange={(e) => setFormData({...formData, warningThreshold: e.target.value ? parseInt(e.target.value) : undefined})} placeholder="e.g., 400" className="w-full px-4 py-2 border-2 border-dark-green-200 rounded-xl focus:border-dark-green-500 focus:outline-none" />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-dark-green-700 mb-2">Alert Threshold</label>
+                          <input type="number" step="1" value={formData.alertThreshold ?? ''} onChange={(e) => setFormData({...formData, alertThreshold: e.target.value ? parseInt(e.target.value) : undefined})} placeholder="e.g., 700" className="w-full px-4 py-2 border-2 border-dark-green-200 rounded-xl focus:border-dark-green-500 focus:outline-none" />
                         </div>
                         <div>
                           <label className="block text-sm font-semibold text-dark-green-700 mb-2">Initial Value</label>

@@ -151,6 +151,7 @@ const EvacuationMap = memo(({
   const allRoomsDataRef = useRef<GeoJSON.FeatureCollection | null>(null);
   const activeFireZonesRef = useRef<Array<{ roomId: string; roomName: string; severity: string }>>([]);
   const pendingFireEventsRef = useRef<Array<{ roomId: string; detectionData: any }>>([]);
+  const lastClearTimestampRef = useRef<number>(0);
 
   // Panel collapse states - start collapsed for cleaner initial view
   const [isEmergencyPanelCollapsed, setIsEmergencyPanelCollapsed] = useState(true);
@@ -2083,9 +2084,10 @@ const EvacuationMap = memo(({
     showNotification(`🔥 Fire placed in ${fireZones.length} zone(s)! Click "Start Evacuation" to begin.`, 'error');
   }, [selectedFireZones, fireSeverity, routeNodes, currentFloor, showNotification, updateEmergencyState]);
 
-  // Clear all fire zones
-  // Auto-place fire in room when YOLO detection triggers
-  const autoPlaceFireInRoom = useCallback(async (roomId: string, detectionData: any) => {
+  // Auto-place fire in room when YOLO detection triggers.
+  // createHazardInBackend=false when called from ignis-BE fire.detected handler because
+  // checkAndLogic already created the hazard — we only need to update the visual display.
+  const autoPlaceFireInRoom = useCallback(async (roomId: string, detectionData: any, createHazardInBackend = true) => {
     const map = mapRef.current;
     if (!map) return;
 
@@ -2131,10 +2133,10 @@ const EvacuationMap = memo(({
     };
 
     try {
-      // Use local fire placement for imported buildings, backend API otherwise.
-      // Pass buildingId so the backend can room-scope the WebSocket emission
-      // to subscribers of this building.
-      const result = isUsingImportedRouting()
+      // When createHazardInBackend=false the hazard already exists in DB (created by
+      // checkAndLogic). Skip the place-fires API call to avoid a duplicate row with
+      // room_id=null that confuses Guard 1 and causes the cooldown to miss it.
+      const result = (!createHazardInBackend || isUsingImportedRouting())
         ? placeLocalFires([fireZone], 'CRITICAL')
         : await placeFires([fireZone], 'CRITICAL', buildingId);
 
@@ -2328,16 +2330,26 @@ const EvacuationMap = memo(({
         return;
       }
 
+      // Discard events emitted before the last Clear All — these are stale WS events
+      // buffered by Socket.IO that arrive after the user already cleared the fire.
+      if (event.timestamp * 1000 < lastClearTimestampRef.current) {
+        console.log('[IgnisFire] Ignoring stale fire.detected event (emitted before last clear)');
+        return;
+      }
+
       // Try to find the room by room_id if available
       if (event.room_id) {
         const roomIdStr = String(event.room_id);
         // Use ref to avoid stale closure (socket handler doesn't re-bind on state changes)
         if (!activeFireZonesRef.current.some(fz => fz.roomId === roomIdStr)) {
+          // Pass createHazardInBackend=false: checkAndLogic already created the hazard in DB.
+          // Calling place-fires here creates a duplicate with room_id=null that bypasses
+          // the cooldown guard and causes the room to re-highlight after every Clear All.
           autoPlaceFireInRoom(roomIdStr, {
             camera_id: event.camera_id,
             confidence: event.confidence,
             severity: event.severity,
-          });
+          }, false);
         }
       } else {
         // If no room_id, show notification but can't place fire on map
@@ -2408,12 +2420,20 @@ const EvacuationMap = memo(({
       nodeId?: number;
       floor_id?: number;
       floorId?: number;
+      created_at?: string;
     }) => {
       console.log('[HazardSync] Hazard created event:', hazard);
 
       // Only process fire hazards that are active
       if (hazard.type !== 'fire' || hazard.status !== 'active') {
         console.log('[HazardSync] Ignoring non-fire or inactive hazard');
+        return;
+      }
+
+      // Discard events that were created before the last Clear All
+      const hazardCreatedAt = hazard.created_at ? new Date(hazard.created_at).getTime() : 0;
+      if (hazardCreatedAt > 0 && hazardCreatedAt < lastClearTimestampRef.current) {
+        console.log('[HazardSync] Ignoring stale hazard.created event (created before last clear)');
         return;
       }
 
@@ -2500,11 +2520,16 @@ const EvacuationMap = memo(({
     const map = mapRef.current;
     if (!map) return;
 
+    // Record clear time so stale fire.detected events (emitted before this moment)
+    // are ignored by the socket handler. Also reset placement debounce.
+    lastClearTimestampRef.current = Date.now();
+    lastFirePlacementRef.current = 0;
+
     // Clear fires - use local for imported buildings, backend API otherwise
     console.log('[FireZone] Clearing fires...', isUsingImportedRouting() ? '(local)' : '(backend API)');
     const result = isUsingImportedRouting()
       ? clearLocalFires()
-      : await clearFires();
+      : await clearFires(buildingId);
 
     if (!result.success) {
       console.error('[FireZone] Failed to clear fires:', result.error);
