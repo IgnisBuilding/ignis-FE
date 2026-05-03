@@ -83,6 +83,10 @@ export function useSensorStream(options: UseSensorStreamOptions = {}): UseSensor
 
     socket.on('connect', () => {
       setIsConnected(true);
+      // Opt into the dashboard room so we receive sensor.reading / sensor.alert.
+      // BE no longer broadcasts these globally — the admin sensor page must
+      // explicitly subscribe.
+      socket.emit('subscribe:sensors');
     });
 
     socket.on('disconnect', () => {
