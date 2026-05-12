@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Building2, FileDown, Layers, Plus, Search, X } from "lucide-react"
+import { useState, useEffect, useRef } from "react"
+import { Building2, FileDown, ImageIcon, Layers, Plus, Search, Trash2, X } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { buildingApi } from "../../../lib/api"
 import DashboardLayout from "@/components/layout/DashboardLayout"
@@ -23,6 +23,7 @@ interface Building {
   total_floors?: number
   apartments_per_floor?: number
   has_floor_plan?: boolean
+  has_building_image?: boolean
   floor_plan_updated_at?: string | null
   created_at?: string
   updated_at?: string
@@ -35,6 +36,7 @@ interface BuildingFormData {
   total_floors: number
   apartments_per_floor: number
   society_id?: number
+  building_image?: string | null
 }
 
 interface Society {
@@ -80,6 +82,8 @@ export function BuildingsManagementContent() {
   const [deleteLoading, setDeleteLoading] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
 
   useEffect(() => {
     fetchBuildings()
@@ -127,6 +131,7 @@ export function BuildingsManagementContent() {
   }
 
   const handleOpenModal = (building?: Building) => {
+    setImagePreview(null)
     if (building) {
       setEditingBuilding(building)
       setFormData({
@@ -136,6 +141,7 @@ export function BuildingsManagementContent() {
         total_floors: (building as any).total_floors || 1,
         apartments_per_floor: (building as any).apartments_per_floor || 1,
         society_id: building.society_id,
+        building_image: undefined,
       })
     } else {
       setEditingBuilding(null)
@@ -146,6 +152,7 @@ export function BuildingsManagementContent() {
         total_floors: 1,
         apartments_per_floor: 1,
         society_id: societies.length > 0 ? societies[0].id : undefined,
+        building_image: undefined,
       })
     }
     setIsModalOpen(true)
@@ -154,6 +161,7 @@ export function BuildingsManagementContent() {
   const handleCloseModal = () => {
     setIsModalOpen(false)
     setEditingBuilding(null)
+    setImagePreview(null)
     setFormData({
       name: "",
       address: "",
@@ -161,7 +169,31 @@ export function BuildingsManagementContent() {
       total_floors: 1,
       apartments_per_floor: 1,
       society_id: undefined,
+      building_image: undefined,
     })
+  }
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 2 * 1024 * 1024) {
+      toast({ title: "Image too large", description: "Please select an image under 2MB.", variant: "destructive" })
+      e.target.value = ""
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      const dataUrl = ev.target?.result as string
+      setFormData(prev => ({ ...prev, building_image: dataUrl }))
+      setImagePreview(dataUrl)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleRemoveImage = () => {
+    setFormData(prev => ({ ...prev, building_image: null }))
+    setImagePreview(null)
+    if (fileInputRef.current) fileInputRef.current.value = ""
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -500,6 +532,36 @@ export function BuildingsManagementContent() {
                   placeholder="e.g., 4"
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">
+                Building Photo <span className="text-muted-foreground font-normal">(optional, max 2MB)</span>
+              </label>
+              {imagePreview ? (
+                <div className="relative w-full h-36 rounded-md overflow-hidden border border-input mb-2">
+                  <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={handleRemoveImage}
+                    className="absolute top-1 right-1 bg-black/60 hover:bg-black/80 text-white rounded-full p-1 transition-colors"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                </div>
+              ) : editingBuilding?.has_building_image && formData.building_image === undefined ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2 p-2 bg-muted rounded-md">
+                  <ImageIcon className="h-4 w-4 text-green-600" />
+                  <span>Building already has a photo. Upload a new one to replace it.</span>
+                </div>
+              ) : null}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={handleImageChange}
+                className="w-full text-sm text-muted-foreground file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-secondary file:text-foreground hover:file:bg-secondary/80 cursor-pointer"
+              />
             </div>
 
             <DialogFooter className="gap-2">

@@ -679,6 +679,7 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
   const editorContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef(null);
   const fileInputGeoJSONRef = useRef(null);
+  const imageChangedRef = useRef(false); // true only when user uploads a new image
   // History Manager (Undo/Redo)
   const historyRef = useRef(createHistoryManager(MAX_HISTORY_SIZE));
 
@@ -954,8 +955,15 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
   // Keyboard shortcuts for undo/redo/save (Feature 4: Enhanced with point-level undo)
   useEffect(() => {
     const handleKeyDown = (e) => {
+      const activeEl = document.activeElement;
+      const isTypingInInput =
+        activeEl instanceof HTMLInputElement ||
+        activeEl instanceof HTMLTextAreaElement ||
+        activeEl instanceof HTMLSelectElement ||
+        (activeEl instanceof HTMLElement && activeEl.isContentEditable);
+
       // Space key for temporary pan mode (like Figma/Photoshop)
-      if (e.code === "Space" && !e.repeat) {
+      if (e.code === "Space" && !e.repeat && !isTypingInInput) {
         e.preventDefault();
         setIsSpaceHeld(true);
       }
@@ -989,29 +997,32 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
         e.preventDefault();
         saveToLocalStorage();
       }
-      // Escape key to cancel drawing
-      if (e.key === "Escape" && mode === "draw" && currentPoints.length > 0) {
-        cancelDrawing();
-      }
-      // Zoom shortcuts: + and - keys (also = for + without shift)
-      if ((e.key === "+" || e.key === "=") && !e.ctrlKey && !e.metaKey) {
-        e.preventDefault();
-        setZoom((prev) => Math.min(5, prev * 1.25));
-      }
-      if (e.key === "-" && !e.ctrlKey && !e.metaKey) {
-        e.preventDefault();
-        setZoom((prev) => Math.max(0.1, prev * 0.8));
-      }
-      // Fit to view with F key
-      if (e.key === "f" && !e.ctrlKey && !e.metaKey) {
-        e.preventDefault();
-        fitToView();
-      }
-      // Reset view with 0 key
-      if (e.key === "0" && !e.ctrlKey && !e.metaKey) {
-        e.preventDefault();
-        setZoom(1);
-        setPan({ x: 0, y: 0 });
+      // Single-key shortcuts — skip when focus is inside an input/textarea/select
+      if (!isTypingInInput) {
+        // Escape key to cancel drawing
+        if (e.key === "Escape" && mode === "draw" && currentPoints.length > 0) {
+          cancelDrawing();
+        }
+        // Zoom shortcuts: + and - keys (also = for + without shift)
+        if ((e.key === "+" || e.key === "=") && !e.ctrlKey && !e.metaKey) {
+          e.preventDefault();
+          setZoom((prev) => Math.min(5, prev * 1.25));
+        }
+        if (e.key === "-" && !e.ctrlKey && !e.metaKey) {
+          e.preventDefault();
+          setZoom((prev) => Math.max(0.1, prev * 0.8));
+        }
+        // Fit to view with F key
+        if (e.key === "f" && !e.ctrlKey && !e.metaKey) {
+          e.preventDefault();
+          fitToView();
+        }
+        // Reset view with 0 key
+        if (e.key === "0" && !e.ctrlKey && !e.metaKey) {
+          e.preventDefault();
+          setZoom(1);
+          setPan({ x: 0, y: 0 });
+        }
       }
     };
 
@@ -2667,10 +2678,13 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
         scaleCalibrated,
       };
 
-      // Send differential changes to database
+      // Send differential changes to database.
+      // Only include the base64 image when it was freshly uploaded or this is
+      // the very first save — avoids re-sending megabytes on every edit.
+      const shouldSendImage = isFirstSave || imageChangedRef.current;
       const result = await api.importFloorPlan(selectedBuildingId, {
         differential: differentialData,
-        floorPlanImage: image || undefined,
+        floorPlanImage: shouldSendImage ? (image || undefined) : undefined,
         editorState,
       });
 
@@ -2736,6 +2750,7 @@ export default function IGNISFloorPlanEditor({ initialBuildingId }: IGNISFloorPl
         // Clear deleted items tracker
         setDeletedItems({ rooms: [], openings: [], cameras: [], sensors: [], safePoints: [] });
         setHasUnsavedChanges(false);
+        imageChangedRef.current = false; // image is now persisted in DB
         errorHandler.info(`Saved to database: ${result.message}`);
       } else {
         errorHandler.handle(new Error(result.error || "Unknown error"), "Save to Database");
@@ -3229,6 +3244,7 @@ CREATE TABLE IF NOT EXISTS ignis_edges (
         img.onload = () => {
           setImageSize({ width: img.width, height: img.height });
           setImage(event.target.result);
+          imageChangedRef.current = true;
           setZoom(1);
           setPan({ x: 0, y: 0 });
           resetCalibration();

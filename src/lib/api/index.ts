@@ -113,6 +113,7 @@ export interface BuildingWithStatus {
   has_floor_plan: boolean;
   floor_plan_updated_at: string | null;
   created_at: string;
+  has_building_image: boolean;
 }
 
 export interface BuildingFull {
@@ -509,6 +510,7 @@ class ApiService {
     type?: string;
     total_floors?: number;
     apartments_per_floor?: number;
+    building_image?: string | null;
   }): Promise<Building> {
     return this.request<Building>('/buildings', {
       method: 'POST',
@@ -516,10 +518,24 @@ class ApiService {
     });
   }
 
-  async updateBuilding(id: number, data: { name?: string; address?: string; type?: string }): Promise<Building> {
+  async updateBuilding(id: number, data: {
+    name?: string;
+    address?: string;
+    type?: string;
+    society_id?: number;
+    total_floors?: number;
+    apartments_per_floor?: number;
+    building_image?: string | null;
+  }): Promise<Building> {
     return this.request<Building>(`/buildings/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
+    });
+  }
+
+  async getBuildingImage(id: number): Promise<{ building_image: string | null }> {
+    return this.request<{ building_image: string | null }>(`/buildings/${id}/image`, {
+      method: 'GET',
     });
   }
 
@@ -823,7 +839,8 @@ export const buildingApi = {
   getBuildingById: (id: number) => api.getBuildingById(id),
   getBuildingFull: (id: number) => api.getBuildingFull(id),
   getBuildingStats: () => api.getBuildingStats(),
-  createBuilding: (data: { name: string; address: string; type?: string; total_floors?: number; apartments_per_floor?: number }) => api.createBuilding(data),
-  updateBuilding: (id: number, data: { name?: string; address?: string; type?: string }) => api.updateBuilding(id, data),
+  createBuilding: (data: { name: string; address: string; type?: string; total_floors?: number; apartments_per_floor?: number; building_image?: string | null }) => api.createBuilding(data),
+  updateBuilding: (id: number, data: { name?: string; address?: string; type?: string; society_id?: number; total_floors?: number; apartments_per_floor?: number; building_image?: string | null }) => api.updateBuilding(id, data),
   deleteBuilding: (id: number) => api.deleteBuilding(id),
+  getBuildingImage: (id: number) => api.getBuildingImage(id),
 };

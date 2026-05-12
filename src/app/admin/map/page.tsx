@@ -2,7 +2,6 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import DashboardLayout from '@/components/layout/DashboardLayout';
@@ -35,6 +34,7 @@ interface BuildingDisplay {
     lat: number;
     lng: number;
     has_floor_plan: boolean;
+    has_building_image: boolean;
 }
 
 function AdminMapContent() {
@@ -44,6 +44,7 @@ function AdminMapContent() {
     const [selectedBuilding, setSelectedBuilding] = useState<number | null>(null);
     const [buildings, setBuildings] = useState<BuildingDisplay[]>([]);
     const [loading, setLoading] = useState(true);
+    const [buildingImages, setBuildingImages] = useState<Record<number, string>>({});
 
     // Fetch buildings from database
     useEffect(() => {
@@ -55,15 +56,31 @@ function AdminMapContent() {
                     id: b.id,
                     name: b.name,
                     address: b.address,
-                    status: 'normal' as const, // Default status, can be enhanced with real alert data
+                    status: 'normal' as const,
                     statusText: b.has_floor_plan ? 'Floor plan available' : 'No floor plan',
-                    alerts: 0, // Can be fetched from alerts API
+                    alerts: 0,
                     units: (b.total_floors || 1) * (b.apartments_per_floor || 1),
-                    lat: 24.8607 + (Math.random() - 0.5) * 0.02, // Random position around Karachi for demo
+                    lat: 24.8607 + (Math.random() - 0.5) * 0.02,
                     lng: 67.0011 + (Math.random() - 0.5) * 0.02,
                     has_floor_plan: b.has_floor_plan,
+                    has_building_image: b.has_building_image || false,
                 }));
                 setBuildings(displayBuildings);
+
+                // Fetch images for buildings that have one, in parallel
+                const withImages = displayBuildings.filter(b => b.has_building_image);
+                if (withImages.length > 0) {
+                    const results = await Promise.allSettled(
+                        withImages.map(b => api.getBuildingImage(b.id).then(r => ({ id: b.id, image: r.building_image })))
+                    );
+                    const imageMap: Record<number, string> = {};
+                    results.forEach(r => {
+                        if (r.status === 'fulfilled' && r.value.image) {
+                            imageMap[r.value.id] = r.value.image;
+                        }
+                    });
+                    setBuildingImages(imageMap);
+                }
             } catch (error) {
                 console.error('Failed to fetch buildings:', error);
             } finally {
@@ -165,13 +182,16 @@ function AdminMapContent() {
                                         onClick={() => handleBuildingClick(building.id)}
                                         className={`p-3 rounded-lg border cursor-pointer transition-colors ${getStatusColor(building.status)} ${selectedBuilding === building.id ? 'ring-2 ring-[#1f3d2f]' : ''}`}
                                     >
-                                        <div className="relative w-full h-24 mb-2 rounded-md overflow-hidden">
-                                            <Image
-                                                src="/ignispng.jpeg"
-                                                alt={building.name}
-                                                fill
-                                                className="object-cover"
-                                            />
+                                        <div className="relative w-full h-24 mb-2 rounded-md overflow-hidden bg-muted flex items-center justify-center">
+                                            {buildingImages[building.id] ? (
+                                                <img
+                                                    src={buildingImages[building.id]}
+                                                    alt={building.name}
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            ) : (
+                                                <Building2 className="h-10 w-10 text-muted-foreground/40" />
+                                            )}
                                         </div>
                                         <div className="flex justify-between items-start mb-1">
                                             {getStatusBadge(building.status)}
