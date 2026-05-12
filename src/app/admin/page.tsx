@@ -253,12 +253,10 @@ export function AdminDashboardContent() {
     },
     {
       label: 'Sensors',
-      value: loading ? '…' : String(stats?.sensors?.active ?? 0),
-      sub: stats?.sensors?.alert
-        ? `${stats.sensors.alert} alerting`
-        : 'All nominal',
+      value: loading ? '…' : String(stats?.sensors?.total ?? 0),
+      sub: stats ? `${stats.sensors.active} active` : '',
       icon: Activity,
-      danger: (stats?.sensors?.alert ?? 0) > 0,
+      danger: false,
     },
     {
       label: 'Buildings',
