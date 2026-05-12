@@ -553,6 +553,12 @@ class ApiService {
     });
   }
 
+  async getDashboardAlerts(): Promise<any> {
+    return this.request('/dashboard/recent-alerts', {
+      method: 'GET',
+    });
+  }
+
   // ==================== APARTMENT ENDPOINTS ====================
 
   async getApartments(): Promise<any[]> {

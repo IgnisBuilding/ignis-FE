@@ -2,219 +2,311 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { cn } from '@/lib/utils';
 import { IncidentActionModal } from '@/components/dialogs';
 import { useToast } from '@/hooks/use-toast';
-import { api } from '@/lib/api';
+import { api, BuildingWithStatus } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
-  MapPin,
-  Volume2,
-  Users,
-  TrendingUp,
-  TrendingDown,
-  Share2,
-  Siren,
-  MoreVertical,
-  Building,
-  Activity,
+  MapPin, Activity, Building2, Users, CheckCircle2,
+  Siren, Map, MoreVertical, Camera, Flame,
+  AlertTriangle, Zap, Droplets, Wind, Radio,
 } from 'lucide-react';
 
-// Status color helper
-function getStatusColor(color: string) {
-  switch (color) {
-    case "amber": return { dot: "bg-amber-500", text: "text-amber-600" };
-    case "blue": return { dot: "bg-blue-500", text: "text-blue-600" };
-    case "green": return { dot: "bg-green-500", text: "text-green-600" };
-    case "red": return { dot: "bg-red-500", text: "text-red-600" };
-    default: return { dot: "bg-gray-500", text: "text-gray-600" };
-  }
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+interface DashboardStats {
+  sensors: { total: number; active: number; alert: number; inactive: number };
+  users: { total: number; active: number };
+  hazards: { active: number; pending: number; total: number };
+  buildings: { total: number; with_floor_plan: number };
+  cameras: { total: number; active: number };
 }
 
-// Default incidents data matching the screenshot
-const defaultIncidentsData = [
-  { id: "#4922-A", status: "EN ROUTE", statusColor: "amber", title: "Vegetation Fire - Oak Canyon", desc: "2.5 acres involved, zero containment", resources: ["B2", "T4", "+2"], duration: "42m 12s" },
-  { id: "#4921-X", status: "STAGED", statusColor: "blue", title: "Gas Leak Report - Industrial Park", desc: "Hazmat unit 02 on site, isolation successful", resources: ["H2"], duration: "01h 12m" },
-  { id: "#4920-R", status: "CLEARING", statusColor: "green", title: "Medical Assist - Residential", desc: "Patient stabilized and transported", resources: ["M1", "R2"], duration: "22m 04s" },
-];
+interface DashardHazard {
+  id: number;
+  type: string;
+  severity: string;
+  status: string;
+  description: string | null;
+  created_at: string;
+  responded_at: string | null;
+  room: { id: number; name: string; type: string } | null;
+  floor: {
+    id: number;
+    level: number;
+    name: string;
+    building: {
+      id: number;
+      name: string;
+      address: string;
+      has_floor_plan: boolean;
+      has_building_image: boolean;
+    } | null;
+  } | null;
+}
+
+interface DashboardSensor {
+  id: number;
+  name: string;
+  type: string;
+  status: string;
+  value: number | null;
+  unit: string | null;
+  alertThreshold: number | null;
+  warningThreshold: number | null;
+  lastReading: string | null;
+  room: { id: number; name: string } | null;
+  building: { id: number; name: string } | null;
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+const HAZARD_LABELS: Record<string, string> = {
+  fire: 'Fire',
+  smoke: 'Smoke',
+  gas_leak: 'Gas Leak',
+  structural: 'Structural',
+  electrical: 'Electrical',
+  chemical: 'Chemical',
+  flood: 'Flood',
+  other: 'Incident',
+};
+
+const HAZARD_ICONS: Record<string, React.ElementType> = {
+  fire: Flame,
+  smoke: Wind,
+  gas_leak: Radio,
+  electrical: Zap,
+  flood: Droplets,
+  structural: Building2,
+};
+
+const SEVERITY_CLASS: Record<string, string> = {
+  critical: 'bg-red-500 text-white hover:bg-red-500',
+  high: 'bg-orange-500 text-white hover:bg-orange-500',
+  medium: 'bg-amber-400 text-white hover:bg-amber-400',
+  low: 'bg-green-500 text-white hover:bg-green-500',
+};
+
+const STATUS_BADGE_CLASS: Record<string, string> = {
+  active: 'border-red-400 bg-red-50 text-red-700 dark:bg-red-950/30 dark:border-red-800 dark:text-red-400',
+  pending: 'border-amber-400 bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:border-amber-800 dark:text-amber-400',
+  responded: 'border-blue-400 bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:border-blue-800 dark:text-blue-400',
+};
+
+const STATUS_DOT: Record<string, string> = {
+  active: 'bg-red-500',
+  pending: 'bg-amber-500',
+  responded: 'bg-blue-500',
+};
+
+const SENSOR_STATUS_CLASS: Record<string, string> = {
+  alert: 'border-red-400 bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400',
+  warning: 'border-amber-400 bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400',
+};
+
+function formatElapsed(isoDate: string): string {
+  const ms = Date.now() - new Date(isoDate).getTime();
+  const s = Math.max(0, Math.floor(ms / 1000));
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ${s % 60}s`;
+  const h = Math.floor(m / 60);
+  return `${h}h ${m % 60}m`;
+}
+
+function hazardLocation(h: DashardHazard): string {
+  const parts: string[] = [];
+  if (h.room?.name) parts.push(h.room.name);
+  if (h.floor?.level != null) parts.push(`Floor ${h.floor.level}`);
+  if (h.floor?.building?.name) parts.push(h.floor.building.name);
+  return parts.join(', ') || 'Unknown Location';
+}
+
+function hazardTitle(h: DashardHazard): string {
+  return `${HAZARD_LABELS[h.type] ?? h.type} — ${hazardLocation(h)}`;
+}
+
+function toSeverityType(s: string): 'critical' | 'high' | 'medium' | 'low' {
+  if (s === 'critical' || s === 'high' || s === 'medium' || s === 'low') return s;
+  return 'medium';
+}
+
+import type React from 'react';
+
+// ─── Main component ───────────────────────────────────────────────────────────
 
 export function AdminDashboardContent() {
   const { user, dashboardRole, roleTitle } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
 
-  // UI State
-  const [filter, setFilter] = useState<"all" | "priority">("all");
+  // Elapsed ticker — updates every 10 seconds to keep durations fresh
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick(t => t + 1), 10_000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Data state
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [hazards, setHazards] = useState<DashardHazard[]>([]);
+  const [sensors, setSensors] = useState<DashboardSensor[]>([]);
+  const [buildings, setBuildings] = useState<BuildingWithStatus[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // UI state
+  const [filter, setFilter] = useState<'all' | 'priority'>('all');
   const [showIncidentModal, setShowIncidentModal] = useState(false);
   const [respondingIncident, setRespondingIncident] = useState<{
     id: string;
     title: string;
     severity: 'critical' | 'high' | 'medium' | 'low';
-  }>({
-    id: "#4922-A",
-    title: "Structure Fire - Central Plaza Complex",
-    severity: "critical"
-  });
+  }>({ id: '', title: '', severity: 'medium' });
 
-  // Data State
-  const [stats, setStats] = useState({
-    activeAlarms: 0,
-    totalResidents: 0,
-    activeSensors: 0,
-    totalBuildings: 0,
-  });
-  const [alerts, setAlerts] = useState<any[]>(defaultIncidentsData);
-  const [loading, setLoading] = useState(true);
-
-  // Fetch dashboard data from API
+  // ── Fetch ────────────────────────────────────────────────────────────────
   useEffect(() => {
-    async function fetchDashboardData() {
+    async function load() {
       try {
         setLoading(true);
-
-        // Fetch stats from multiple endpoints
-        const [dashboardStats, activeAlerts, residents, sensors, buildings] = await Promise.all([
+        const [statsData, alertsData, buildingsData] = await Promise.all([
           api.getDashboardStats().catch(() => null),
-          api.getActiveAlerts().catch(() => []),
-          api.getResidents().catch(() => []),
-          api.getSensors().catch(() => []),
-          api.getBuildings().catch(() => []),
+          api.getDashboardAlerts().catch(() => ({ hazards: [], sensors: [] })),
+          api.getBuildingsWithStatus().catch(() => []),
         ]);
-
-        // Calculate stats from API data
-        setStats({
-          activeAlarms: activeAlerts?.length || dashboardStats?.activeAlarms || 0,
-          totalResidents: residents?.length || dashboardStats?.totalResidents || 0,
-          activeSensors: sensors?.filter((s: any) => s.status === 'active')?.length || dashboardStats?.activeSensors || 0,
-          totalBuildings: buildings?.length || dashboardStats?.totalBuildings || 0,
-        });
-
-        // Format alerts for display
-        if (activeAlerts && activeAlerts.length > 0) {
-          const formattedAlerts = activeAlerts.map((alert: any, index: number) => ({
-            id: `#${alert.id || (4922 - index)}-${String.fromCharCode(65 + index)}`,
-            status: alert.status?.toUpperCase() || 'EN ROUTE',
-            statusColor: alert.severity === 'critical' ? 'red' : alert.severity === 'high' ? 'amber' : alert.severity === 'medium' ? 'blue' : 'green',
-            title: alert.title || alert.message || 'Fire Alert',
-            desc: alert.description || alert.location || 'Alert triggered by sensor',
-            resources: alert.resources || ['B2', 'T4'],
-            duration: alert.duration || '42m 12s',
-          }));
-          setAlerts(formattedAlerts);
-        }
-
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-        // Keep default data on error
+        setStats(statsData);
+        setHazards(alertsData?.hazards ?? []);
+        setSensors(alertsData?.sensors ?? []);
+        setBuildings(buildingsData);
+      } catch (err) {
+        console.error('Dashboard load error:', err);
       } finally {
         setLoading(false);
       }
     }
-
-    fetchDashboardData();
+    load();
   }, []);
 
-  // Stats cards data with API values
-  const statsData = [
-    {
-      label: "Active Alarms",
-      value: stats.activeAlarms.toString(),
-      icon: Volume2,
-      trend: stats.activeAlarms > 0 ? "+2" : "0",
-      isUp: stats.activeAlarms > 0,
-      note: "requires attention"
-    },
-    {
-      label: "Total Residents",
-      value: stats.totalResidents.toString(),
-      icon: Users,
-      trend: "+5%",
-      isUp: true,
-      note: "registered"
-    },
-    {
-      label: "Active Sensors",
-      value: stats.activeSensors.toString(),
-      icon: Activity,
-      trend: "+1%",
-      isUp: true,
-      note: "operational"
-    },
-    {
-      label: "Buildings",
-      value: stats.totalBuildings.toString(),
-      icon: Building,
-      trend: "stable",
-      isUp: true,
-      note: "monitored"
-    },
-  ];
+  // ── Derived ──────────────────────────────────────────────────────────────
+  const criticalHazard: DashardHazard | null =
+    hazards.find(h => h.severity === 'critical') ??
+    hazards.find(h => h.severity === 'high') ??
+    hazards[0] ??
+    null;
 
-  const handleRespondClick = (incident?: any) => {
-    if (incident) {
-      setRespondingIncident({
-        id: incident.id,
-        title: incident.title,
-        severity: incident.statusColor === 'red' ? 'critical' : incident.statusColor === 'amber' ? 'high' : 'medium'
-      });
-    }
+  const filteredHazards =
+    filter === 'priority'
+      ? hazards.filter(h => h.severity === 'critical' || h.severity === 'high')
+      : hazards;
+
+  const buildingIdsWithHazards = new Set(
+    hazards.map(h => h.floor?.building?.id).filter(Boolean)
+  );
+
+  // ── Handlers ─────────────────────────────────────────────────────────────
+  const handleRespondClick = (h: DashardHazard) => {
+    setRespondingIncident({
+      id: String(h.id),
+      title: hazardTitle(h),
+      severity: toSeverityType(h.severity),
+    });
     setShowIncidentModal(true);
   };
 
   const handleIncidentRespond = async (notes: string) => {
     try {
-      // TODO: Call API to log incident response - needs new API endpoint
-      // await api.respondToIncident(respondingIncident.id, notes);
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 800));
       toast({
-        title: "Response Logged",
-        description: "Your response to the incident has been recorded and units have been notified.",
-        duration: 5000,
+        title: 'Response Logged',
+        description: 'Your response has been recorded.',
+        duration: 4000,
       });
       setShowIncidentModal(false);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to log incident response. Please try again.",
-        variant: "destructive",
-      });
+    } catch {
+      toast({ title: 'Error', description: 'Failed to log response.', variant: 'destructive' });
     }
   };
 
+  // ── Stats cards ───────────────────────────────────────────────────────────
+  const statsCards = [
+    {
+      label: 'Active Hazards',
+      value: loading ? '…' : String(stats?.hazards?.total ?? 0),
+      sub: stats?.hazards?.active
+        ? `${stats.hazards.active} active${stats.hazards.pending ? `, ${stats.hazards.pending} pending` : ''}`
+        : 'None reported',
+      icon: AlertTriangle,
+      danger: (stats?.hazards?.total ?? 0) > 0,
+    },
+    {
+      label: 'Registered Users',
+      value: loading ? '…' : String(stats?.users?.total ?? 0),
+      sub: stats ? `${stats.users.active} active` : '',
+      icon: Users,
+      danger: false,
+    },
+    {
+      label: 'Sensors',
+      value: loading ? '…' : String(stats?.sensors?.active ?? 0),
+      sub: stats?.sensors?.alert
+        ? `${stats.sensors.alert} alerting`
+        : 'All nominal',
+      icon: Activity,
+      danger: (stats?.sensors?.alert ?? 0) > 0,
+    },
+    {
+      label: 'Buildings',
+      value: loading ? '…' : String(stats?.buildings?.total ?? 0),
+      sub: stats
+        ? `${stats.buildings.with_floor_plan} with floor plans`
+        : '',
+      icon: Building2,
+      danger: false,
+    },
+  ];
+
+  // ─────────────────────────────────────────────────────────────────────────
   return (
     <DashboardLayout role={dashboardRole} userName={user?.name || 'Admin'} userTitle={roleTitle}>
-      <div className="flex-1 space-y-4 sm:space-y-6 overflow-auto p-3 sm:p-4 md:p-6 lg:p-8 lg:space-y-8 w-full max-w-none">
-        {/* Stats Cards */}
+      <div className="flex-1 space-y-6 overflow-auto p-3 sm:p-4 md:p-6 lg:p-8 w-full max-w-none">
+
+        {/* ── Stats Cards ── */}
         <div className="grid gap-3 grid-cols-1 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {statsData.map((stat) => (
-            <Card key={stat.label} className="border border-border">
-              <CardContent className="p-3 sm:p-4 md:p-5">
+          {statsCards.map((card) => (
+            <Card key={card.label} className="border border-border">
+              <CardContent className="p-4 md:p-5">
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground truncate">{stat.label}</p>
-                    <p className="mt-2 text-2xl sm:text-3xl font-bold text-[#1f3d2f] break-words">
-                      {loading ? '...' : stat.value}
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      {card.label}
                     </p>
-                    <div className="mt-2 flex items-center gap-1 flex-wrap">
-                      {stat.isUp ? (
-                        <TrendingUp className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-green-600 flex-shrink-0" />
-                      ) : (
-                        <TrendingDown className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-red-600 flex-shrink-0" />
-                      )}
-                      <span className={cn("text-xs font-medium truncate", stat.isUp ? "text-green-600" : "text-red-600")}>
-                        {stat.trend} {stat.note}
-                      </span>
-                    </div>
+                    <p className={cn(
+                      'mt-2 text-3xl font-bold',
+                      card.danger ? 'text-red-600' : 'text-[#1f3d2f]'
+                    )}>
+                      {card.value}
+                    </p>
+                    <p className={cn(
+                      'mt-1.5 text-xs font-medium',
+                      card.danger ? 'text-red-500' : 'text-muted-foreground'
+                    )}>
+                      {card.sub}
+                    </p>
                   </div>
-                  {/* Fixed: Square icon container */}
-                  <div className="rounded-lg bg-secondary p-2.5 flex-shrink-0 h-10 w-10 flex items-center justify-center">
-                    <stat.icon className="h-5 w-5 text-muted-foreground" />
+                  <div className={cn(
+                    'rounded-lg p-2.5 flex-shrink-0 h-10 w-10 flex items-center justify-center',
+                    card.danger ? 'bg-red-100 dark:bg-red-950/40' : 'bg-secondary'
+                  )}>
+                    <card.icon className={cn(
+                      'h-5 w-5',
+                      card.danger ? 'text-red-500' : 'text-muted-foreground'
+                    )} />
                   </div>
                 </div>
               </CardContent>
@@ -222,89 +314,134 @@ export function AdminDashboardContent() {
           ))}
         </div>
 
-        {/* Critical Incident - Matching screenshot exactly */}
+        {/* ── Critical Incident Hero ── */}
         <section>
-          <div className="mb-3 sm:mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2">
-              <span className="h-2.5 w-2.5 sm:h-3 sm:w-3 animate-pulse rounded-full bg-red-500 flex-shrink-0" />
-              <h2 className="text-base sm:text-lg font-bold text-foreground">Critical Priority Incident</h2>
+              {criticalHazard ? (
+                <span className="h-3 w-3 animate-pulse rounded-full bg-red-500 flex-shrink-0" />
+              ) : (
+                <span className="h-3 w-3 rounded-full bg-green-500 flex-shrink-0" />
+              )}
+              <h2 className="text-base sm:text-lg font-bold text-foreground">
+                {criticalHazard ? 'Critical Priority Incident' : 'Incident Status'}
+              </h2>
             </div>
-            <button
-              type="button"
-              onClick={() => router.push('/admin/alerts')}
-              className="text-xs sm:text-sm font-medium text-blue-600 hover:text-blue-700 w-fit"
-            >
-              View Full Incident Queue
-            </button>
+            {hazards.length > 1 && (
+              <button
+                type="button"
+                onClick={() => router.push('/emergency')}
+                className="text-xs sm:text-sm font-medium text-blue-600 hover:text-blue-700 w-fit"
+              >
+                View All ({hazards.length}) →
+              </button>
+            )}
           </div>
 
-          <Card className="overflow-hidden border border-border">
-            <CardContent className="p-0">
-              <div className="flex flex-col lg:flex-row">
-                {/* Building image */}
-                <div className="relative h-48 w-full flex-shrink-0 bg-neutral-200 sm:h-56 lg:h-auto lg:w-80 border-r border-border">
-                  <Image
-                    src="/ignispng.jpeg"
-                    alt="Building incident"
-                    fill
-                    className="object-cover border-2 border-border"
-                    unoptimized
-                    priority
-                  />
-                  <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4">
-                    <Badge variant="secondary" className="gap-1.5 bg-white dark:bg-card px-3 py-1.5 text-sm font-medium text-foreground shadow-sm rounded-full">
-                      <MapPin className="h-3.5 w-3.5 text-red-500 flex-shrink-0" />
-                      <span>Sector 4 (Commercial)</span>
-                    </Badge>
-                  </div>
-                </div>
-
-                <div className="flex flex-1 flex-col p-4 sm:p-5 md:p-6">
-                  <div className="flex flex-wrap gap-2">
-                    <Badge className="bg-red-500 px-2.5 py-0.5 text-xs font-semibold text-white hover:bg-red-500 rounded">
-                      SEVERITY: EXTREME
-                    </Badge>
-                    <Badge variant="outline" className="border-amber-500 bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700 rounded">
-                      GRADE A RESPONSE
-                    </Badge>
-                  </div>
-
-                  <h3 className="mt-4 text-xl sm:text-2xl font-bold text-foreground">Structure Fire - Central Plaza Complex</h3>
-                  <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                    Multiple alarms triggered in the North Wing. Structural integrity alert in B-block. Heavy smoke reported on floors 4-7. Evacuation in progress.{" "}
-                    <span className="font-semibold text-foreground">Units Assigned: Engine 42, Truck 18, Rescue 09.</span>
-                  </p>
-
-                  <div className="mt-6 flex flex-col gap-4 border-t border-border pt-4">
-                    <div className="flex gap-8">
-                      <div>
-                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">ELAPSED</p>
-                        <p className="mt-0.5 text-xl font-bold text-foreground">08:42</p>
-                      </div>
-                      <div>
-                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">BACKUP ETA</p>
-                        <p className="mt-0.5 text-xl font-bold text-foreground">03m 15s</p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      <Button onClick={() => handleRespondClick()} className="gap-2 bg-[#1f3d2f] px-6 text-sm text-white hover:bg-[#2a4f3d]">
-                        <Siren className="h-4 w-4 flex-shrink-0" />
-                        Respond to Incident
-                      </Button>
-                      <Button variant="outline" size="icon" onClick={() => toast({
-                        title: "Incident Shared",
-                        description: "Incident details copied to clipboard",
-                        duration: 3000,
-                      })} className="h-10 w-10 flex-shrink-0">
-                        <Share2 className="h-4 w-4" />
-                      </Button>
+          {loading ? (
+            <Card className="border border-border">
+              <CardContent className="p-8 text-center text-muted-foreground text-sm">
+                Loading...
+              </CardContent>
+            </Card>
+          ) : criticalHazard ? (
+            <Card className="overflow-hidden border border-border">
+              <CardContent className="p-0">
+                <div className="flex flex-col lg:flex-row">
+                  {/* Icon/image panel */}
+                  <div className="relative h-48 w-full flex-shrink-0 lg:h-auto lg:w-72 bg-gradient-to-br from-red-900 to-red-700 flex items-center justify-center border-r border-border">
+                    {(() => {
+                      const Icon = HAZARD_ICONS[criticalHazard.type] ?? AlertTriangle;
+                      return <Icon className="h-20 w-20 text-red-200 opacity-60" />;
+                    })()}
+                    <div className="absolute bottom-3 left-3">
+                      <Badge variant="secondary" className="gap-1.5 bg-white dark:bg-card px-3 py-1.5 text-sm font-medium text-foreground shadow-sm rounded-full">
+                        <MapPin className="h-3.5 w-3.5 text-red-500 flex-shrink-0" />
+                        <span>{criticalHazard.floor?.building?.name ?? 'Unknown Building'}</span>
+                      </Badge>
                     </div>
                   </div>
+
+                  {/* Details */}
+                  <div className="flex flex-1 flex-col p-4 sm:p-5 md:p-6">
+                    <div className="flex flex-wrap gap-2">
+                      <Badge className={cn('px-2.5 py-0.5 text-xs font-semibold rounded capitalize', SEVERITY_CLASS[criticalHazard.severity] ?? SEVERITY_CLASS.medium)}>
+                        SEVERITY: {criticalHazard.severity.toUpperCase()}
+                      </Badge>
+                      <Badge variant="outline" className={cn('px-2.5 py-0.5 text-xs font-semibold rounded capitalize border', STATUS_BADGE_CLASS[criticalHazard.status] ?? '')}>
+                        {criticalHazard.status.toUpperCase()}
+                      </Badge>
+                    </div>
+
+                    <h3 className="mt-4 text-xl sm:text-2xl font-bold text-foreground">
+                      {HAZARD_LABELS[criticalHazard.type] ?? criticalHazard.type} —{' '}
+                      {criticalHazard.floor?.building?.name ?? 'Unknown Building'}
+                    </h3>
+
+                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                      {criticalHazard.description ?? `${HAZARD_LABELS[criticalHazard.type] ?? 'Incident'} detected.`}{' '}
+                      <span className="font-semibold text-foreground">
+                        Location: {hazardLocation(criticalHazard)}.
+                      </span>
+                    </p>
+
+                    <div className="mt-5 flex flex-col gap-4 border-t border-border pt-4">
+                      <div className="flex gap-8">
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">ELAPSED</p>
+                          <p className="mt-0.5 text-xl font-bold text-foreground font-mono">
+                            {formatElapsed(criticalHazard.created_at)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">HAZARD ID</p>
+                          <p className="mt-0.5 text-xl font-bold text-foreground font-mono">
+                            #{criticalHazard.id}
+                          </p>
+                        </div>
+                        {criticalHazard.responded_at && (
+                          <div>
+                            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">RESPONDED</p>
+                            <p className="mt-0.5 text-xl font-bold text-foreground font-mono">
+                              {formatElapsed(criticalHazard.responded_at)} ago
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <Button
+                          onClick={() => handleRespondClick(criticalHazard)}
+                          className="gap-2 bg-[#1f3d2f] px-5 text-sm text-white hover:bg-[#2a4f3d]"
+                        >
+                          <Siren className="h-4 w-4 flex-shrink-0" />
+                          Respond to Incident
+                        </Button>
+                        {criticalHazard.floor?.building?.id && (
+                          <Button
+                            variant="outline"
+                            onClick={() => router.push(`/emergency?id=${criticalHazard.floor!.building!.id}`)}
+                            className="gap-2 text-sm"
+                          >
+                            <Map className="h-4 w-4" />
+                            View on Map
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card className="border border-border">
+              <CardContent className="p-8 flex flex-col items-center gap-3 text-center">
+                <CheckCircle2 className="h-12 w-12 text-green-500" />
+                <p className="text-lg font-semibold text-foreground">All Clear</p>
+                <p className="text-sm text-muted-foreground">No active incidents at this time.</p>
+              </CardContent>
+            </Card>
+          )}
 
           <IncidentActionModal
             open={showIncidentModal}
@@ -316,114 +453,265 @@ export function AdminDashboardContent() {
           />
         </section>
 
-        {/* Active Incident Feed - Matching screenshot exactly */}
+        {/* ── Active Incident Feed ── */}
         <section>
           <Card className="border border-border">
             <CardHeader className="flex flex-row items-center justify-between px-6 py-4">
-              <CardTitle className="text-sm font-bold uppercase tracking-wider text-foreground">ACTIVE INCIDENT FEED</CardTitle>
+              <CardTitle className="text-sm font-bold uppercase tracking-wider text-foreground">
+                Active Incident Feed
+              </CardTitle>
               <div className="flex items-center gap-0 border border-border rounded-md overflow-hidden">
-                <Button
-                  variant={filter === "all" ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setFilter("all")}
-                  className={cn(
-                    "text-sm font-medium rounded-none px-4",
-                    filter === "all" ? "bg-foreground text-background hover:bg-foreground/90" : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  All Units
-                </Button>
-                <Button
-                  variant={filter === "priority" ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setFilter("priority")}
-                  className={cn(
-                    "text-sm font-medium rounded-none px-4",
-                    filter === "priority" ? "bg-foreground text-background hover:bg-foreground/90" : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  Priority Only
-                </Button>
+                {(['all', 'priority'] as const).map(f => (
+                  <button
+                    key={f}
+                    onClick={() => setFilter(f)}
+                    className={cn(
+                      'px-4 py-1.5 text-xs font-semibold transition-colors',
+                      filter === f
+                        ? 'bg-foreground text-background'
+                        : 'text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    {f === 'all' ? 'All' : 'Critical / High'}
+                  </button>
+                ))}
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              {/* Table Header */}
-              <div className="hidden md:grid grid-cols-[100px_1fr_140px_100px_60px] gap-4 border-y border-border bg-muted/30 px-6 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              {/* Table header */}
+              <div className="hidden md:grid grid-cols-[120px_1fr_110px_100px_60px] gap-4 border-y border-border bg-muted/30 px-6 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 <div>ID / STATUS</div>
                 <div>INCIDENT DETAILS</div>
-                <div className="text-right">RESOURCES</div>
-                <div>DURATION</div>
-                <div>ACTIONS</div>
+                <div>SEVERITY</div>
+                <div>ELAPSED</div>
+                <div>ACTION</div>
               </div>
 
-              {/* Table Body */}
               <div className="divide-y divide-border">
-                {(filter === "priority" ? alerts.filter(a => a.statusColor === 'red' || a.statusColor === 'amber') : alerts).map((incident) => {
-                  const colors = getStatusColor(incident.statusColor);
-                  return (
-                    <div key={incident.id} className="flex flex-col gap-3 px-6 py-4 transition-colors hover:bg-muted/20 md:grid md:grid-cols-[100px_1fr_140px_100px_60px] md:items-center md:gap-4">
+                {loading ? (
+                  <div className="px-6 py-10 text-center text-muted-foreground text-sm">Loading incidents…</div>
+                ) : filteredHazards.length === 0 ? (
+                  <div className="px-6 py-10 text-center text-muted-foreground text-sm">
+                    {filter === 'priority' ? 'No critical or high-severity incidents.' : 'No active incidents at this time.'}
+                  </div>
+                ) : (
+                  filteredHazards.map(h => (
+                    <div
+                      key={h.id}
+                      className="flex flex-col gap-3 px-6 py-4 transition-colors hover:bg-muted/20 md:grid md:grid-cols-[120px_1fr_110px_100px_60px] md:items-center md:gap-4"
+                    >
                       {/* ID / Status */}
                       <div>
-                        <p className="text-sm font-medium text-muted-foreground">{incident.id}</p>
+                        <p className="text-sm font-mono font-medium text-muted-foreground">#{h.id}</p>
                         <div className="mt-1 flex items-center gap-1.5">
-                          <span className={cn("h-2 w-2 rounded-full", colors.dot)} />
-                          <span className={cn("text-xs font-bold uppercase", colors.text)}>{incident.status}</span>
+                          <span className={cn('h-2 w-2 rounded-full flex-shrink-0', STATUS_DOT[h.status] ?? 'bg-gray-400')} />
+                          <span className={cn('text-[11px] font-bold uppercase', STATUS_BADGE_CLASS[h.status]?.includes('red') ? 'text-red-600' : STATUS_BADGE_CLASS[h.status]?.includes('amber') ? 'text-amber-600' : 'text-blue-600')}>
+                            {h.status}
+                          </span>
                         </div>
                       </div>
 
-                      {/* Incident Details */}
+                      {/* Details */}
                       <div>
-                        <p className="font-semibold text-foreground text-sm">{incident.title}</p>
-                        <p className="mt-0.5 text-sm text-muted-foreground">{incident.desc}</p>
+                        <p className="font-semibold text-foreground text-sm">
+                          {HAZARD_LABELS[h.type] ?? h.type}
+                          {h.room?.name ? ` — ${h.room.name}` : ''}
+                        </p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          {h.description ?? hazardLocation(h)}
+                        </p>
                       </div>
 
-                      {/* Resources - aligned right */}
-                      <div className="flex items-center gap-1.5 md:justify-end flex-wrap">
-                        {incident.resources.map((res: string, idx: number) => (
-                          <Badge
-                            key={idx}
-                            variant="secondary"
-                            className={cn(
-                              "px-2.5 py-1 text-xs font-semibold rounded",
-                              res.startsWith("+") ? "bg-muted text-muted-foreground" : "bg-secondary"
-                            )}
-                          >
-                            {res}
-                          </Badge>
-                        ))}
+                      {/* Severity */}
+                      <div>
+                        <Badge className={cn('text-xs font-semibold rounded capitalize', SEVERITY_CLASS[h.severity] ?? SEVERITY_CLASS.medium)}>
+                          {h.severity}
+                        </Badge>
                       </div>
 
-                      {/* Duration */}
-                      <div className="text-sm font-medium text-foreground">{incident.duration}</div>
+                      {/* Elapsed */}
+                      <div className="text-sm font-mono font-medium text-foreground">
+                        {formatElapsed(h.created_at)}
+                      </div>
 
-                      {/* Actions */}
-                      <div className="flex">
+                      {/* Action */}
+                      <div className="flex gap-1">
                         <Button
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                          onClick={() => handleRespondClick(incident)}
+                          title="Respond"
+                          onClick={() => handleRespondClick(h)}
                         >
                           <MoreVertical className="h-4 w-4" />
                         </Button>
+                        {h.floor?.building?.id && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                            title="View on map"
+                            onClick={() => router.push(`/emergency?id=${h.floor!.building!.id}`)}
+                          >
+                            <Map className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     </div>
-                  );
-                })}
-                {alerts.length === 0 && !loading && (
-                  <div className="px-6 py-8 text-center text-muted-foreground">
-                    No active incidents at this time.
-                  </div>
-                )}
-                {loading && (
-                  <div className="px-6 py-8 text-center text-muted-foreground">
-                    Loading incidents...
-                  </div>
+                  ))
                 )}
               </div>
             </CardContent>
           </Card>
         </section>
+
+        {/* ── Bottom row: Sensor Alerts + Building Overview ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+          {/* Sensor Alert Feed */}
+          <Card className="border border-border">
+            <CardHeader className="px-6 py-4 border-b border-border">
+              <CardTitle className="text-sm font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
+                <Activity className="h-4 w-4 text-amber-500" />
+                Sensor Alerts
+                {sensors.length > 0 && (
+                  <Badge className="bg-amber-500 text-white ml-auto text-xs">{sensors.length}</Badge>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              {loading ? (
+                <div className="px-6 py-8 text-center text-muted-foreground text-sm">Loading…</div>
+              ) : sensors.length === 0 ? (
+                <div className="px-6 py-8 flex flex-col items-center gap-2 text-center">
+                  <CheckCircle2 className="h-8 w-8 text-green-500" />
+                  <p className="text-sm font-medium text-foreground">All Sensors Nominal</p>
+                  <p className="text-xs text-muted-foreground">No sensors are currently in alert or warning state.</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-border">
+                  {sensors.map(s => (
+                    <div key={s.id} className="px-6 py-3 flex items-start gap-3">
+                      <div className={cn(
+                        'mt-0.5 h-2 w-2 rounded-full flex-shrink-0',
+                        s.status === 'alert' ? 'bg-red-500' : 'bg-amber-500'
+                      )} />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-semibold text-foreground truncate">{s.name}</p>
+                          <Badge
+                            variant="outline"
+                            className={cn('text-[10px] font-bold uppercase flex-shrink-0', SENSOR_STATUS_CLASS[s.status] ?? '')}
+                          >
+                            {s.status}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {s.type}{s.room?.name ? ` · ${s.room.name}` : ''}{s.building?.name ? ` · ${s.building.name}` : ''}
+                        </p>
+                        {s.value != null && (
+                          <p className="text-xs font-medium mt-1">
+                            <span className={s.status === 'alert' ? 'text-red-600' : 'text-amber-600'}>
+                              {s.value} {s.unit ?? ''}
+                            </span>
+                            {s.alertThreshold != null && (
+                              <span className="text-muted-foreground"> / threshold {s.alertThreshold} {s.unit ?? ''}</span>
+                            )}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Building Safety Overview */}
+          <Card className="border border-border">
+            <CardHeader className="px-6 py-4 border-b border-border">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-[#1f3d2f]" />
+                  Building Overview
+                </CardTitle>
+                <button
+                  onClick={() => router.push('/admin/buildings')}
+                  className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                >
+                  Manage →
+                </button>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              {loading ? (
+                <div className="px-6 py-8 text-center text-muted-foreground text-sm">Loading…</div>
+              ) : buildings.length === 0 ? (
+                <div className="px-6 py-8 text-center text-muted-foreground text-sm">
+                  No buildings found.{' '}
+                  <button onClick={() => router.push('/admin/buildings')} className="text-blue-600 hover:underline">
+                    Add one
+                  </button>
+                </div>
+              ) : (
+                <div className="divide-y divide-border">
+                  {buildings.slice(0, 8).map(b => {
+                    const hasAlert = buildingIdsWithHazards.has(b.id);
+                    return (
+                      <div
+                        key={b.id}
+                        className="px-6 py-3 flex items-center gap-3 hover:bg-muted/20 transition-colors cursor-pointer"
+                        onClick={() => router.push(`/emergency?id=${b.id}&building=${encodeURIComponent(b.name)}`)}
+                      >
+                        <div className={cn(
+                          'h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0',
+                          hasAlert ? 'bg-red-100 dark:bg-red-950/40' : 'bg-secondary'
+                        )}>
+                          {hasAlert
+                            ? <AlertTriangle className="h-4 w-4 text-red-500" />
+                            : <Building2 className="h-4 w-4 text-muted-foreground" />
+                          }
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-foreground truncate">{b.name}</p>
+                          <p className="text-xs text-muted-foreground truncate">{b.address}</p>
+                        </div>
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          {hasAlert && (
+                            <Badge variant="outline" className="text-[10px] border-red-400 text-red-600 bg-red-50 dark:bg-red-950/30">
+                              Alert
+                            </Badge>
+                          )}
+                          {b.has_floor_plan ? (
+                            <Badge variant="outline" className="text-[10px] border-blue-400 text-blue-600 bg-blue-50 dark:bg-blue-950/30">
+                              <Map className="h-2.5 w-2.5 mr-1" />
+                              Map
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-[10px] text-muted-foreground">
+                              No Map
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {buildings.length > 8 && (
+                    <div className="px-6 py-3 text-center">
+                      <button
+                        onClick={() => router.push('/admin/buildings')}
+                        className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                      >
+                        + {buildings.length - 8} more buildings
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+        </div>
       </div>
     </DashboardLayout>
   );
